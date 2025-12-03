@@ -5,13 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface StockQuote {
+interface MarketData {
   symbol: string;
   name: string;
   price: string;
   change: number;
   changePercent: number;
   volume: string;
+  sparkline?: number[];
+  type: "stock" | "crypto" | "etf";
 }
 
 const stockNames: Record<string, string> = {
@@ -21,9 +23,15 @@ const stockNames: Record<string, string> = {
   NVDA: "NVIDIA Corp.",
   TSLA: "Tesla Inc.",
   AMZN: "Amazon.com Inc.",
+  META: "Meta Platforms",
+  SPY: "SPDR S&P 500 ETF",
+  QQQ: "Invesco QQQ Trust",
+  VTI: "Vanguard Total Stock",
+  VOO: "Vanguard S&P 500",
+  IWM: "iShares Russell 2000",
 };
 
-async function fetchStockQuote(symbol: string, apiKey: string): Promise<StockQuote | null> {
+async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
   try {
     const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
     console.log(`Fetching quote for ${symbol}`);
@@ -47,6 +55,10 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<StockQuo
     const changePercent = parseFloat(quote["10. change percent"]?.replace("%", "") || "0");
     const volume = parseInt(quote["06. volume"] || "0");
     
+    // Determine type based on symbol
+    const etfSymbols = ["SPY", "QQQ", "VTI", "VOO", "IWM"];
+    const type = etfSymbols.includes(symbol) ? "etf" : "stock";
+    
     return {
       symbol,
       name: stockNames[symbol] || symbol,
@@ -54,6 +66,7 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<StockQuo
       change,
       changePercent,
       volume: formatVolume(volume),
+      type,
     };
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);
@@ -74,33 +87,42 @@ function formatVolume(volume: number): string {
   return volume.toString();
 }
 
-// Fetch Bitcoin from CoinGecko (free, no API key needed)
-async function fetchBitcoin(): Promise<StockQuote | null> {
+// Fetch multiple cryptos from CoinGecko with sparkline data
+async function fetchCryptoData(): Promise<MarketData[]> {
   try {
+    const ids = "bitcoin,ethereum,solana,ripple,cardano,dogecoin";
     const response = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true"
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
     );
     const data = await response.json();
     
-    if (!data.bitcoin) {
-      return null;
+    if (!Array.isArray(data)) {
+      console.error("CoinGecko returned invalid data");
+      return [];
     }
     
-    const price = data.bitcoin.usd;
-    const changePercent = data.bitcoin.usd_24h_change || 0;
-    const volume = data.bitcoin.usd_24h_vol || 0;
-    
-    return {
-      symbol: "BTC",
-      name: "Bitcoin",
-      price: price.toFixed(2),
-      change: (price * changePercent) / 100,
-      changePercent,
-      volume: formatVolume(volume),
+    const symbolMap: Record<string, string> = {
+      bitcoin: "BTC",
+      ethereum: "ETH",
+      solana: "SOL",
+      ripple: "XRP",
+      cardano: "ADA",
+      dogecoin: "DOGE",
     };
+    
+    return data.map((coin: any) => ({
+      symbol: symbolMap[coin.id] || coin.symbol.toUpperCase(),
+      name: coin.name,
+      price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
+      change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
+      changePercent: coin.price_change_percentage_24h_in_currency || 0,
+      volume: formatVolume(coin.total_volume),
+      sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
+      type: "crypto" as const,
+    }));
   } catch (error) {
-    console.error("Error fetching Bitcoin:", error);
-    return null;
+    console.error("Error fetching crypto data:", error);
+    return [];
   }
 }
 
@@ -117,38 +139,38 @@ serve(async (req) => {
       throw new Error("ALPHA_VANTAGE_API_KEY is not configured");
     }
 
-    const { symbols = ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"] } = await req.json().catch(() => ({}));
+    const { type = "all" } = await req.json().catch(() => ({}));
     
-    console.log("Fetching market data for symbols:", symbols);
+    console.log("Fetching market data, type:", type);
 
-    // Fetch stocks sequentially to avoid rate limits (5 calls/min on free tier)
-    const stockPromises = symbols.map((symbol: string) => 
-      fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY)
-    );
-    
-    // Fetch Bitcoin separately
-    const btcPromise = fetchBitcoin();
-    
-    // Wait for all with some delay between to respect rate limits
-    const results: (StockQuote | null)[] = [];
-    for (const promise of stockPromises) {
-      const result = await promise;
-      results.push(result);
-      // Small delay to be nice to the API
-      await new Promise(resolve => setTimeout(resolve, 200));
+    const results: MarketData[] = [];
+
+    // Fetch crypto data (free, no rate limit concerns)
+    if (type === "all" || type === "crypto") {
+      const cryptoData = await fetchCryptoData();
+      results.push(...cryptoData);
+    }
+
+    // Fetch stock/ETF data based on request type
+    if (type === "all" || type === "stocks" || type === "etf") {
+      const stockSymbols = type === "etf" 
+        ? ["SPY", "QQQ", "VTI", "VOO", "IWM"]
+        : ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"];
+      
+      // Fetch sequentially to respect rate limits
+      for (const symbol of stockSymbols.slice(0, 3)) { // Limit to 3 to avoid rate limits
+        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+        if (result) {
+          results.push(result);
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
     }
     
-    const btcResult = await btcPromise;
-    if (btcResult) {
-      results.push(btcResult);
-    }
-    
-    const validResults = results.filter((r): r is StockQuote => r !== null);
-    
-    console.log(`Successfully fetched ${validResults.length} quotes`);
+    console.log(`Successfully fetched ${results.length} quotes`);
 
     return new Response(
-      JSON.stringify({ data: validResults }),
+      JSON.stringify({ data: results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
