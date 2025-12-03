@@ -1,61 +1,100 @@
-import { Clock, ExternalLink, Newspaper } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Clock, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-const newsItems = [
+interface NewsItem {
+  title: string;
+  source: string;
+  time: string;
+  category: string;
+  url: string;
+}
+
+// Curated financial news - in production, this would come from a news API
+const curatedNews: NewsItem[] = [
   {
-    title: "Fed signals potential rate cuts in 2024",
+    title: "Fed signals potential rate cuts in 2024 amid cooling inflation",
     source: "Reuters",
     time: "2h ago",
     category: "Economy",
-    sentiment: "positive",
+    url: "https://www.reuters.com/markets/",
   },
   {
-    title: "NVIDIA surpasses expectations with AI chip demand",
+    title: "NVIDIA surpasses expectations with AI chip demand surge",
     source: "Bloomberg",
     time: "3h ago",
     category: "Tech",
-    sentiment: "positive",
+    url: "https://www.bloomberg.com/technology",
   },
   {
-    title: "Bitcoin ETF approval drives institutional interest",
+    title: "Bitcoin breaks $90K as institutional adoption accelerates",
     source: "CoinDesk",
     time: "4h ago",
     category: "Crypto",
-    sentiment: "positive",
+    url: "https://www.coindesk.com/",
   },
   {
-    title: "Apple announces record-breaking services revenue",
+    title: "Apple announces record-breaking services revenue growth",
     source: "CNBC",
     time: "5h ago",
     category: "Tech",
-    sentiment: "positive",
+    url: "https://www.cnbc.com/technology/",
   },
   {
-    title: "Oil prices stabilize amid Middle East tensions",
+    title: "Oil prices stabilize as OPEC+ considers production cuts",
     source: "WSJ",
     time: "6h ago",
     category: "Commodities",
-    sentiment: "neutral",
+    url: "https://www.wsj.com/news/markets/oil-gas-energy",
   },
 ];
 
 const TrendingNews = () => {
+  const [news, setNews] = useState<NewsItem[]>(curatedNews);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const refreshNews = () => {
+    setIsLoading(true);
+    // Simulate refresh - in production, fetch from news API
+    setTimeout(() => {
+      setNews([...curatedNews].sort(() => Math.random() - 0.5));
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const handleNewsClick = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="glass-card p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Newspaper className="w-4 h-4 text-primary" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Newspaper className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Market News</h2>
+            <p className="text-xs text-muted-foreground">Latest updates</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-semibold text-foreground">Market News</h2>
-          <p className="text-xs text-muted-foreground">Latest updates</p>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={refreshNews}
+          disabled={isLoading}
+          className="text-muted-foreground"
+        >
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+        </Button>
       </div>
 
       <div className="space-y-3">
-        {newsItems.map((item, index) => (
+        {news.map((item, index) => (
           <div
             key={index}
+            onClick={() => handleNewsClick(item.url)}
             className={cn(
               "p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all cursor-pointer group animate-fade-in"
             )}
@@ -82,6 +121,10 @@ const TrendingNews = () => {
           </div>
         ))}
       </div>
+
+      <p className="text-xs text-muted-foreground text-center mt-4">
+        Click any article to read more on the source website
+      </p>
     </div>
   );
 };

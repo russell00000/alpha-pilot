@@ -4,6 +4,7 @@ import MarketOverview from "@/components/MarketOverview";
 import AIChat from "@/components/AIChat";
 import TrendingNews from "@/components/TrendingNews";
 import QuickActions from "@/components/QuickActions";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -54,12 +55,12 @@ const Index = () => {
         <div className="container px-4 md:px-6 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 InvestAI. For educational purposes only. Not financial advice.
+              © {new Date().getFullYear()} InvestAI. For educational purposes only. Not financial advice.
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link to="/chat" className="hover:text-foreground transition-colors">Support</Link>
             </div>
           </div>
         </div>
