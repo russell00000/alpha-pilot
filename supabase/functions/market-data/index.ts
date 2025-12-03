@@ -13,22 +13,63 @@ interface MarketData {
   changePercent: number;
   volume: string;
   sparkline?: number[];
-  type: "stock" | "crypto" | "etf";
+  type: "stock" | "crypto" | "etf" | "mutual_fund";
 }
 
-const stockNames: Record<string, string> = {
-  AAPL: "Apple Inc.",
-  GOOGL: "Alphabet Inc.",
-  MSFT: "Microsoft Corp.",
-  NVDA: "NVIDIA Corp.",
-  TSLA: "Tesla Inc.",
-  AMZN: "Amazon.com Inc.",
-  META: "Meta Platforms",
-  SPY: "SPDR S&P 500 ETF",
-  QQQ: "Invesco QQQ Trust",
-  VTI: "Vanguard Total Stock",
-  VOO: "Vanguard S&P 500",
-  IWM: "iShares Russell 2000",
+// Extended stock database with names and types
+const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mutual_fund" }> = {
+  // Top Stocks
+  AAPL: { name: "Apple Inc.", type: "stock" },
+  GOOGL: { name: "Alphabet Inc.", type: "stock" },
+  MSFT: { name: "Microsoft Corp.", type: "stock" },
+  NVDA: { name: "NVIDIA Corp.", type: "stock" },
+  TSLA: { name: "Tesla Inc.", type: "stock" },
+  AMZN: { name: "Amazon.com Inc.", type: "stock" },
+  META: { name: "Meta Platforms", type: "stock" },
+  NFLX: { name: "Netflix Inc.", type: "stock" },
+  AMD: { name: "AMD Inc.", type: "stock" },
+  INTC: { name: "Intel Corp.", type: "stock" },
+  CRM: { name: "Salesforce Inc.", type: "stock" },
+  ORCL: { name: "Oracle Corp.", type: "stock" },
+  ADBE: { name: "Adobe Inc.", type: "stock" },
+  CSCO: { name: "Cisco Systems", type: "stock" },
+  PYPL: { name: "PayPal Holdings", type: "stock" },
+  DIS: { name: "Walt Disney Co.", type: "stock" },
+  V: { name: "Visa Inc.", type: "stock" },
+  MA: { name: "Mastercard Inc.", type: "stock" },
+  JPM: { name: "JPMorgan Chase", type: "stock" },
+  BAC: { name: "Bank of America", type: "stock" },
+  WMT: { name: "Walmart Inc.", type: "stock" },
+  KO: { name: "Coca-Cola Co.", type: "stock" },
+  PEP: { name: "PepsiCo Inc.", type: "stock" },
+  JNJ: { name: "Johnson & Johnson", type: "stock" },
+  PFE: { name: "Pfizer Inc.", type: "stock" },
+  UNH: { name: "UnitedHealth Group", type: "stock" },
+  HD: { name: "Home Depot", type: "stock" },
+  MCD: { name: "McDonald's Corp.", type: "stock" },
+  NKE: { name: "Nike Inc.", type: "stock" },
+  SBUX: { name: "Starbucks Corp.", type: "stock" },
+  // ETFs
+  SPY: { name: "SPDR S&P 500 ETF", type: "etf" },
+  QQQ: { name: "Invesco QQQ Trust", type: "etf" },
+  VTI: { name: "Vanguard Total Stock", type: "etf" },
+  VOO: { name: "Vanguard S&P 500", type: "etf" },
+  IWM: { name: "iShares Russell 2000", type: "etf" },
+  VGT: { name: "Vanguard Info Tech", type: "etf" },
+  ARKK: { name: "ARK Innovation ETF", type: "etf" },
+  XLF: { name: "Financial Select SPDR", type: "etf" },
+  XLE: { name: "Energy Select SPDR", type: "etf" },
+  GLD: { name: "SPDR Gold Shares", type: "etf" },
+  SLV: { name: "iShares Silver Trust", type: "etf" },
+  VNQ: { name: "Vanguard Real Estate", type: "etf" },
+  BND: { name: "Vanguard Total Bond", type: "etf" },
+  SCHD: { name: "Schwab US Dividend", type: "etf" },
+  VYM: { name: "Vanguard High Dividend", type: "etf" },
+  // Mutual Funds (tickers)
+  VFIAX: { name: "Vanguard 500 Index", type: "mutual_fund" },
+  FXAIX: { name: "Fidelity 500 Index", type: "mutual_fund" },
+  VTSAX: { name: "Vanguard Total Stock", type: "mutual_fund" },
+  SWPPX: { name: "Schwab S&P 500 Index", type: "mutual_fund" },
 };
 
 async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
@@ -39,8 +80,13 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
     const response = await fetch(url);
     const data = await response.json();
     
-    if (data["Error Message"] || data["Note"]) {
-      console.error(`API error for ${symbol}:`, data["Error Message"] || data["Note"]);
+    if (data["Error Message"]) {
+      console.error(`API error for ${symbol}:`, data["Error Message"]);
+      return null;
+    }
+    
+    if (data["Note"]) {
+      console.warn(`Rate limit warning for ${symbol}:`, data["Note"]);
       return null;
     }
     
@@ -55,18 +101,16 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
     const changePercent = parseFloat(quote["10. change percent"]?.replace("%", "") || "0");
     const volume = parseInt(quote["06. volume"] || "0");
     
-    // Determine type based on symbol
-    const etfSymbols = ["SPY", "QQQ", "VTI", "VOO", "IWM"];
-    const type = etfSymbols.includes(symbol) ? "etf" : "stock";
+    const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "stock" };
     
     return {
-      symbol,
-      name: stockNames[symbol] || symbol,
+      symbol: symbol.toUpperCase(),
+      name: assetInfo.name,
       price: price.toFixed(2),
       change,
       changePercent,
       volume: formatVolume(volume),
-      type,
+      type: assetInfo.type,
     };
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);
@@ -90,7 +134,7 @@ function formatVolume(volume: number): string {
 // Fetch multiple cryptos from CoinGecko with sparkline data
 async function fetchCryptoData(): Promise<MarketData[]> {
   try {
-    const ids = "bitcoin,ethereum,solana,ripple,cardano,dogecoin";
+    const ids = "bitcoin,ethereum,solana,ripple,cardano,dogecoin,polkadot,avalanche-2,chainlink,polygon";
     const response = await fetch(
       `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
     );
@@ -108,6 +152,10 @@ async function fetchCryptoData(): Promise<MarketData[]> {
       ripple: "XRP",
       cardano: "ADA",
       dogecoin: "DOGE",
+      polkadot: "DOT",
+      "avalanche-2": "AVAX",
+      chainlink: "LINK",
+      polygon: "MATIC",
     };
     
     return data.map((coin: any) => ({
@@ -126,6 +174,58 @@ async function fetchCryptoData(): Promise<MarketData[]> {
   }
 }
 
+// Search for a specific stock/ETF
+async function searchStock(query: string, apiKey: string): Promise<MarketData[]> {
+  try {
+    // First try direct symbol lookup
+    const upperQuery = query.toUpperCase().trim();
+    
+    // If it's a known symbol, fetch it directly
+    if (assetDatabase[upperQuery]) {
+      const result = await fetchStockQuote(upperQuery, apiKey);
+      return result ? [result] : [];
+    }
+    
+    // Use Alpha Vantage symbol search
+    const searchUrl = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
+    const searchResponse = await fetch(searchUrl);
+    const searchData = await searchResponse.json();
+    
+    if (searchData["Note"]) {
+      console.warn("Rate limit on search");
+      return [];
+    }
+    
+    const matches = searchData.bestMatches || [];
+    const results: MarketData[] = [];
+    
+    // Fetch quotes for top 3 matches
+    for (const match of matches.slice(0, 3)) {
+      const symbol = match["1. symbol"];
+      const result = await fetchStockQuote(symbol, apiKey);
+      if (result) {
+        result.name = match["2. name"] || result.name;
+        results.push(result);
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("Search error:", error);
+    return [];
+  }
+}
+
+// Get list of all available assets for browsing
+function getAssetList(): { symbol: string; name: string; type: string }[] {
+  return Object.entries(assetDatabase).map(([symbol, info]) => ({
+    symbol,
+    name: info.name,
+    type: info.type,
+  }));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -139,9 +239,50 @@ serve(async (req) => {
       throw new Error("ALPHA_VANTAGE_API_KEY is not configured");
     }
 
-    const { type = "all" } = await req.json().catch(() => ({}));
+    let body: { type?: string; search?: string; symbols?: string[] } = {};
+    try {
+      const text = await req.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch (e) {
+      console.log("Failed to parse body:", e);
+    }
     
-    console.log("Fetching market data, type:", type);
+    const { type = "all", search, symbols } = body;
+    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols);
+
+    // Handle search queries
+    if (search) {
+      console.log("Searching for:", search);
+      const searchResults = await searchStock(search, ALPHA_VANTAGE_API_KEY);
+      return new Response(
+        JSON.stringify({ data: searchResults }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle specific symbol requests
+    if (symbols && Array.isArray(symbols)) {
+      const results: MarketData[] = [];
+      for (const symbol of symbols.slice(0, 5)) {
+        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+        if (result) results.push(result);
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      return new Response(
+        JSON.stringify({ data: results }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle asset list request
+    if (type === "list") {
+      return new Response(
+        JSON.stringify({ data: getAssetList() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const results: MarketData[] = [];
 
@@ -151,26 +292,33 @@ serve(async (req) => {
       results.push(...cryptoData);
     }
 
-    // Fetch stock/ETF data based on request type
-    if (type === "all" || type === "stocks" || type === "etf") {
-      const stockSymbols = type === "etf" 
-        ? ["SPY", "QQQ", "VTI", "VOO", "IWM"]
-        : ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"];
-      
-      // Fetch sequentially to respect rate limits
-      for (const symbol of stockSymbols.slice(0, 3)) { // Limit to 3 to avoid rate limits
+    // Fetch featured stocks (limited due to API rate limits)
+    if (type === "all" || type === "stocks") {
+      const featuredStocks = ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN", "META"];
+      for (const symbol of featuredStocks.slice(0, 4)) {
         const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
-        if (result) {
-          results.push(result);
-        }
-        await new Promise(resolve => setTimeout(resolve, 250));
+        if (result) results.push(result);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
+    // Fetch featured ETFs
+    if (type === "all" || type === "etf") {
+      const featuredETFs = ["SPY", "QQQ", "VOO"];
+      for (const symbol of featuredETFs.slice(0, 2)) {
+        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+        if (result) results.push(result);
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
     
     console.log(`Successfully fetched ${results.length} quotes`);
 
     return new Response(
-      JSON.stringify({ data: results }),
+      JSON.stringify({ 
+        data: results,
+        availableAssets: getAssetList()
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
