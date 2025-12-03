@@ -13,12 +13,14 @@ interface MarketData {
   change: number;
   changePercent: number;
   volume: string;
+  sparkline?: number[];
+  type: "stock" | "crypto" | "etf";
 }
 
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3 },
   { id: "crypto", label: "Crypto", icon: Bitcoin },
-  { id: "forex", label: "Forex", icon: DollarSign },
+  { id: "etf", label: "ETFs", icon: DollarSign },
   { id: "trending", label: "Trending", icon: TrendingUp },
 ];
 
@@ -35,7 +37,7 @@ const MarketOverview = () => {
     try {
       setError(null);
       const { data, error: fetchError } = await supabase.functions.invoke("market-data", {
-        body: { symbols: ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"] },
+        body: { type: "all" },
       });
 
       if (fetchError) {
@@ -77,10 +79,10 @@ const MarketOverview = () => {
     };
     loadData();
 
-    // Refresh every 60 seconds (Alpha Vantage free tier is limited)
+    // Refresh every 30 seconds for crypto (CoinGecko has no strict limits)
     const interval = setInterval(() => {
       fetchMarketData();
-    }, 60000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [fetchMarketData]);
@@ -93,10 +95,17 @@ const MarketOverview = () => {
 
   // Filter data based on active tab
   const filteredData = marketData.filter((item) => {
-    if (activeTab === "crypto") return item.symbol === "BTC";
-    if (activeTab === "stocks") return item.symbol !== "BTC";
-    return true; // trending shows all
+    if (activeTab === "crypto") return item.type === "crypto";
+    if (activeTab === "stocks") return item.type === "stock";
+    if (activeTab === "etf") return item.type === "etf";
+    // Trending: show top movers by absolute change percent
+    return true;
   });
+
+  // Sort trending by absolute change
+  const displayData = activeTab === "trending" 
+    ? [...filteredData].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 6)
+    : filteredData;
 
   return (
     <div className="glass-card p-4">
@@ -166,6 +175,7 @@ const MarketOverview = () => {
             <div key={i} className="glass-card p-4 animate-pulse">
               <div className="h-4 bg-muted rounded w-16 mb-2" />
               <div className="h-3 bg-muted rounded w-24 mb-4" />
+              <div className="h-10 bg-muted rounded w-full mb-2" />
               <div className="h-8 bg-muted rounded w-20" />
             </div>
           ))}
@@ -173,9 +183,9 @@ const MarketOverview = () => {
       )}
 
       {/* Market Cards Grid */}
-      {!isLoading && filteredData.length > 0 && (
+      {!isLoading && displayData.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredData.map((item, index) => (
+          {displayData.map((item, index) => (
             <div
               key={item.symbol}
               className="animate-fade-in"
@@ -188,7 +198,7 @@ const MarketOverview = () => {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && filteredData.length === 0 && (
+      {!isLoading && !error && displayData.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <p>No data available for this category</p>
         </div>
@@ -200,7 +210,7 @@ const MarketOverview = () => {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
         </span>
-        <span className="text-xs text-muted-foreground">Live • Alpha Vantage + CoinGecko</span>
+        <span className="text-xs text-muted-foreground">Live • Updates every 30s</span>
       </div>
     </div>
   );
