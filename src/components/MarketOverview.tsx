@@ -1,18 +1,19 @@
-import { useState, useEffect } from "react";
-import { RefreshCw, TrendingUp, Bitcoin, DollarSign, BarChart3 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { RefreshCw, TrendingUp, Bitcoin, DollarSign, BarChart3, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MarketCard from "./MarketCard";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Simulated real-time market data
-const generateMarketData = () => [
-  { symbol: "AAPL", name: "Apple Inc.", price: (178 + Math.random() * 5).toFixed(2), change: Math.random() * 4 - 2, changePercent: Math.random() * 2 - 1, volume: "52.3M" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", price: (141 + Math.random() * 3).toFixed(2), change: Math.random() * 3 - 1.5, changePercent: Math.random() * 1.5 - 0.75, volume: "28.1M" },
-  { symbol: "MSFT", name: "Microsoft Corp.", price: (378 + Math.random() * 8).toFixed(2), change: Math.random() * 5 - 2.5, changePercent: Math.random() * 1.5 - 0.75, volume: "31.2M" },
-  { symbol: "NVDA", name: "NVIDIA Corp.", price: (485 + Math.random() * 15).toFixed(2), change: Math.random() * 10 - 5, changePercent: Math.random() * 3 - 1.5, volume: "48.7M" },
-  { symbol: "TSLA", name: "Tesla Inc.", price: (248 + Math.random() * 8).toFixed(2), change: Math.random() * 6 - 3, changePercent: Math.random() * 2 - 1, volume: "95.4M" },
-  { symbol: "BTC", name: "Bitcoin", price: (43250 + Math.random() * 500).toFixed(2), change: Math.random() * 800 - 400, changePercent: Math.random() * 3 - 1.5, volume: "24.5B" },
-];
+interface MarketData {
+  symbol: string;
+  name: string;
+  price: string;
+  change: number;
+  changePercent: number;
+  volume: string;
+}
 
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3 },
@@ -23,38 +24,100 @@ const tabs = [
 
 const MarketOverview = () => {
   const [activeTab, setActiveTab] = useState("stocks");
-  const [marketData, setMarketData] = useState(generateMarketData());
+  const [marketData, setMarketData] = useState<MarketData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { toast } = useToast();
 
-  // Simulate real-time updates
+  const fetchMarketData = useCallback(async (showToast = false) => {
+    try {
+      setError(null);
+      const { data, error: fetchError } = await supabase.functions.invoke("market-data", {
+        body: { symbols: ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"] },
+      });
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (data?.data && Array.isArray(data.data)) {
+        setMarketData(data.data);
+        setLastUpdated(new Date());
+        if (showToast) {
+          toast({
+            title: "Data refreshed",
+            description: "Market data has been updated",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching market data:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch market data");
+      if (showToast) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh market data",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [toast]);
+
   useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await fetchMarketData();
+      setIsLoading(false);
+    };
+    loadData();
+
+    // Refresh every 60 seconds (Alpha Vantage free tier is limited)
     const interval = setInterval(() => {
-      setMarketData(generateMarketData());
-    }, 5000);
+      fetchMarketData();
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMarketData]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setMarketData(generateMarketData());
-    setTimeout(() => setIsRefreshing(false), 500);
+    await fetchMarketData(true);
+    setIsRefreshing(false);
   };
+
+  // Filter data based on active tab
+  const filteredData = marketData.filter((item) => {
+    if (activeTab === "crypto") return item.symbol === "BTC";
+    if (activeTab === "stocks") return item.symbol !== "BTC";
+    return true; // trending shows all
+  });
 
   return (
     <div className="glass-card p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Market Overview</h2>
-          <p className="text-sm text-muted-foreground">Real-time market data</p>
+          <p className="text-sm text-muted-foreground">
+            {lastUpdated 
+              ? `Updated ${lastUpdated.toLocaleTimeString()}`
+              : "Real-time market data"
+            }
+          </p>
         </div>
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
           className="text-muted-foreground"
         >
-          <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+          <RefreshCw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
         </Button>
       </div>
 
@@ -77,18 +140,48 @@ const MarketOverview = () => {
         ))}
       </div>
 
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive">
+          <AlertCircle className="w-4 h-4" />
+          <span className="text-sm">{error}</span>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="glass-card p-4 animate-pulse">
+              <div className="h-4 bg-muted rounded w-16 mb-2" />
+              <div className="h-3 bg-muted rounded w-24 mb-4" />
+              <div className="h-8 bg-muted rounded w-20" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Market Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        {marketData.map((item, index) => (
-          <div
-            key={item.symbol}
-            className="animate-fade-in"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <MarketCard {...item} />
-          </div>
-        ))}
-      </div>
+      {!isLoading && filteredData.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredData.map((item, index) => (
+            <div
+              key={item.symbol}
+              className="animate-fade-in"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <MarketCard {...item} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !error && filteredData.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No data available for this category</p>
+        </div>
+      )}
 
       {/* Live indicator */}
       <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-border/50">
@@ -96,7 +189,7 @@ const MarketOverview = () => {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
         </span>
-        <span className="text-xs text-muted-foreground">Live • Updates every 5s</span>
+        <span className="text-xs text-muted-foreground">Live • Alpha Vantage + CoinGecko</span>
       </div>
     </div>
   );
