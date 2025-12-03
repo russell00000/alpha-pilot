@@ -2,3 +2,6 @@ project_id = "mjnvjedokqxykhdwqpxl"
 
 [functions.ai-chat]
 verify_jwt = false
+
+[functions.market-data]
+verify_jwt = false
