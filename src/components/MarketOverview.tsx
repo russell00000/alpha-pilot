@@ -142,9 +142,20 @@ const MarketOverview = () => {
 
       {/* Error State */}
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive">
-          <AlertCircle className="w-4 h-4" />
-          <span className="text-sm">{error}</span>
+        <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm">{error}</span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-destructive border-destructive/50 hover:bg-destructive/10"
+          >
+            Retry
+          </Button>
         </div>
       )}
 
