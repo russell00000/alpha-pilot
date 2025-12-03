@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import SparklineChart from "@/components/SparklineChart";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 
 interface MarketData {
   symbol: string;
@@ -17,12 +18,6 @@ interface MarketData {
   volume: string;
   sparkline?: number[];
   type: "stock" | "crypto" | "etf" | "mutual_fund";
-}
-
-interface AssetInfo {
-  symbol: string;
-  name: string;
-  type: string;
 }
 
 const tabs = [
@@ -40,14 +35,11 @@ const popularSearches = [
   { symbol: "AMZN", name: "Amazon" },
   { symbol: "NVDA", name: "NVIDIA" },
   { symbol: "META", name: "Meta" },
-  { symbol: "NFLX", name: "Netflix" },
-  { symbol: "MSFT", name: "Microsoft" },
 ];
 
 const Markets = () => {
   const [activeTab, setActiveTab] = useState("all");
-  const [marketData, setMarketData] = useState<MarketData[]>([]);
-  const [availableAssets, setAvailableAssets] = useState<AssetInfo[]>([]);
+  const [liveData, setLiveData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -55,7 +47,11 @@ const Markets = () => {
   const [searchResults, setSearchResults] = useState<MarketData[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Map to store fetched prices
+  const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -66,12 +62,15 @@ const Markets = () => {
       if (error) throw error;
 
       if (data?.data && Array.isArray(data.data)) {
-        setMarketData(data.data);
+        setLiveData(data.data);
         setLastUpdated(new Date());
-      }
-      
-      if (data?.availableAssets) {
-        setAvailableAssets(data.availableAssets);
+        
+        // Cache the prices
+        const cache: Record<string, MarketData> = {};
+        data.data.forEach((item: MarketData) => {
+          cache[item.symbol] = item;
+        });
+        setPriceCache(prev => ({ ...prev, ...cache }));
       }
     } catch (err) {
       console.error("Error fetching market data:", err);
@@ -118,6 +117,13 @@ const Markets = () => {
 
       if (data?.data && Array.isArray(data.data)) {
         setSearchResults(data.data);
+        // Cache results
+        const cache: Record<string, MarketData> = {};
+        data.data.forEach((item: MarketData) => {
+          cache[item.symbol] = item;
+        });
+        setPriceCache(prev => ({ ...prev, ...cache }));
+        
         if (data.data.length === 0) {
           toast({
             title: "No results",
@@ -134,6 +140,25 @@ const Markets = () => {
       });
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const fetchSingleStock = async (symbol: string) => {
+    if (priceCache[symbol]) return; // Already have data
+    
+    setLoadingSymbol(symbol);
+    try {
+      const { data, error } = await supabase.functions.invoke("market-data", {
+        body: { search: symbol },
+      });
+
+      if (!error && data?.data?.[0]) {
+        setPriceCache(prev => ({ ...prev, [symbol]: data.data[0] }));
+      }
+    } catch (err) {
+      console.error("Error fetching stock:", err);
+    } finally {
+      setLoadingSymbol(null);
     }
   };
 
@@ -154,27 +179,92 @@ const Markets = () => {
     handleSearch(symbol);
   };
 
-  // Filter data based on tab and search
-  const displayData = searchResults.length > 0 
-    ? searchResults 
-    : marketData.filter((item) => {
-        if (activeTab === "all") return true;
-        if (activeTab === "stocks") return item.type === "stock";
-        if (activeTab === "crypto") return item.type === "crypto";
-        if (activeTab === "etf") return item.type === "etf";
-        if (activeTab === "mutual_fund") return item.type === "mutual_fund";
-        return true;
-      });
+  // Combine static data with live prices
+  const getDisplayData = () => {
+    if (searchResults.length > 0) return searchResults;
 
-  // Filter available assets for suggestions
-  const filteredAssets = availableAssets.filter((asset) => {
-    if (!searchQuery) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      asset.symbol.toLowerCase().includes(query) ||
-      asset.name.toLowerCase().includes(query)
-    );
-  }).slice(0, 10);
+    switch (activeTab) {
+      case "stocks":
+        return top100Stocks.map(stock => {
+          const cached = priceCache[stock.symbol];
+          return cached || {
+            symbol: stock.symbol,
+            name: stock.name,
+            price: "—",
+            change: 0,
+            changePercent: 0,
+            volume: "—",
+            type: "stock" as const,
+          };
+        });
+      case "crypto":
+        return liveData.filter(item => item.type === "crypto");
+      case "etf":
+        return topETFs.map(etf => {
+          const cached = priceCache[etf.symbol];
+          return cached || {
+            symbol: etf.symbol,
+            name: etf.name,
+            price: "—",
+            change: 0,
+            changePercent: 0,
+            volume: "—",
+            type: "etf" as const,
+          };
+        });
+      case "mutual_fund":
+        return topMutualFunds.map(fund => {
+          const cached = priceCache[fund.symbol];
+          return cached || {
+            symbol: fund.symbol,
+            name: fund.name,
+            price: "—",
+            change: 0,
+            changePercent: 0,
+            volume: "—",
+            type: "mutual_fund" as const,
+          };
+        });
+      default:
+        // All tab - show live data + unfetched stocks
+        const liveSymbols = new Set(liveData.map(d => d.symbol));
+        const additionalStocks = top100Stocks
+          .filter(s => !liveSymbols.has(s.symbol))
+          .slice(0, 20)
+          .map(stock => {
+            const cached = priceCache[stock.symbol];
+            return cached || {
+              symbol: stock.symbol,
+              name: stock.name,
+              price: "—",
+              change: 0,
+              changePercent: 0,
+              volume: "—",
+              type: "stock" as const,
+            };
+          });
+        return [...liveData, ...additionalStocks];
+    }
+  };
+
+  const displayData = getDisplayData();
+
+  // Filter suggestions from all available assets
+  const allAssets = [
+    ...top100Stocks.map(s => ({ ...s, type: "stock" })),
+    ...topETFs.map(e => ({ ...e, type: "etf" })),
+    ...topMutualFunds.map(m => ({ ...m, type: "mutual_fund" })),
+  ];
+
+  const filteredSuggestions = searchQuery
+    ? allAssets.filter(asset => {
+        const query = searchQuery.toLowerCase();
+        return (
+          asset.symbol.toLowerCase().includes(query) ||
+          asset.name.toLowerCase().includes(query)
+        );
+      }).slice(0, 10)
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,7 +281,7 @@ const Markets = () => {
           </div>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
             Access real-time data for thousands of stocks, ETFs, mutual funds, and cryptocurrencies. 
-            Search by ticker symbol or company name.
+            Browse the top 100 stocks or search by ticker symbol.
           </p>
           
           {/* Main Search Bar */}
@@ -226,12 +316,12 @@ const Markets = () => {
             </Button>
             
             {/* Search suggestions dropdown */}
-            {showSuggestions && searchQuery && filteredAssets.length > 0 && searchResults.length === 0 && (
+            {showSuggestions && searchQuery && filteredSuggestions.length > 0 && searchResults.length === 0 && (
               <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto text-left">
                 <p className="px-4 py-2 text-xs text-muted-foreground border-b border-border">
                   Quick suggestions:
                 </p>
-                {filteredAssets.map((asset) => (
+                {filteredSuggestions.map((asset) => (
                   <button
                     key={asset.symbol}
                     onClick={() => handleQuickSearch(asset.symbol)}
@@ -287,13 +377,23 @@ const Markets = () => {
           </div>
         )}
 
-        {/* Trending Section Header */}
+        {/* Section Header */}
         {searchResults.length === 0 && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Trending Assets</h2>
+              <h2 className="text-2xl font-bold text-foreground">
+                {activeTab === "stocks" ? "Top 100 Stocks" :
+                 activeTab === "crypto" ? "Cryptocurrencies" :
+                 activeTab === "etf" ? "Top ETFs" :
+                 activeTab === "mutual_fund" ? "Top Mutual Funds" :
+                 "All Markets"}
+              </h2>
               <p className="text-muted-foreground">
-                Featured stocks, crypto, and ETFs
+                {activeTab === "stocks" ? "Top US stocks by market capitalization" :
+                 activeTab === "crypto" ? "Live cryptocurrency prices" :
+                 activeTab === "etf" ? "Popular exchange-traded funds" :
+                 activeTab === "mutual_fund" ? "Top-rated mutual funds" :
+                 "Featured assets across all markets"}
                 {lastUpdated && ` • Updated ${lastUpdated.toLocaleTimeString()}`}
               </p>
             </div>
@@ -324,6 +424,7 @@ const Markets = () => {
                 )}
               >
                 {tab.label}
+                {tab.id === "stocks" && <span className="ml-1 text-xs text-muted-foreground">(100)</span>}
               </button>
             ))}
           </div>
@@ -335,6 +436,7 @@ const Markets = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/50">
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Asset</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">24h Change</th>
@@ -347,6 +449,7 @@ const Markets = () => {
                 {isLoading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/50 animate-pulse">
+                      <td className="p-4"><div className="h-4 bg-muted rounded w-6" /></td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-muted" />
@@ -356,44 +459,39 @@ const Markets = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="h-5 bg-muted rounded w-20 ml-auto" />
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="h-5 bg-muted rounded w-16 ml-auto" />
-                      </td>
-                      <td className="p-4 text-right hidden md:table-cell">
-                        <div className="h-5 bg-muted rounded w-16 ml-auto" />
-                      </td>
-                      <td className="p-4 text-right hidden md:table-cell">
-                        <div className="h-5 bg-muted rounded w-12 ml-auto" />
-                      </td>
-                      <td className="p-4 text-right hidden lg:table-cell">
-                        <div className="h-10 bg-muted rounded w-24 ml-auto" />
-                      </td>
+                      <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
+                      <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
+                      <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
+                      <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-12 ml-auto" /></td>
+                      <td className="p-4 text-right hidden lg:table-cell"><div className="h-10 bg-muted rounded w-24 ml-auto" /></td>
                     </tr>
                   ))
                 ) : displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center">
+                    <td colSpan={7} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-12 h-12 text-muted-foreground/50" />
                         <p className="text-muted-foreground">
                           {searchQuery 
-                            ? "No results found. Try searching for a different symbol or company name." 
-                            : "No data available. Use the search bar above to find any stock."}
+                            ? "No results found. Try searching for a different symbol." 
+                            : "No data available."}
                         </p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  displayData.map((item) => {
+                  displayData.map((item, index) => {
                     const isPositive = item.change >= 0;
+                    const hasPrice = item.price !== "—";
+                    const isLoadingThis = loadingSymbol === item.symbol;
+                    
                     return (
                       <tr 
                         key={item.symbol} 
                         className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                        onClick={() => !hasPrice && fetchSingleStock(item.symbol)}
                       >
+                        <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className={cn(
@@ -412,16 +510,36 @@ const Markets = () => {
                           </div>
                         </td>
                         <td className="p-4 text-right">
-                          <p className="font-semibold text-foreground">${item.price}</p>
+                          {isLoadingThis ? (
+                            <Loader2 className="w-4 h-4 animate-spin ml-auto" />
+                          ) : hasPrice ? (
+                            <p className="font-semibold text-foreground">${item.price}</p>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-xs text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fetchSingleStock(item.symbol);
+                              }}
+                            >
+                              Load Price
+                            </Button>
+                          )}
                         </td>
                         <td className="p-4 text-right">
-                          <div className={cn(
-                            "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium",
-                            isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                          )}>
-                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            {isPositive ? "+" : ""}{item.changePercent.toFixed(2)}%
-                          </div>
+                          {hasPrice ? (
+                            <div className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium",
+                              isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                            )}>
+                              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                              {isPositive ? "+" : ""}{item.changePercent.toFixed(2)}%
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </td>
                         <td className="p-4 text-right hidden md:table-cell">
                           <p className="text-muted-foreground">{item.volume}</p>
@@ -457,9 +575,9 @@ const Markets = () => {
         <div className="mt-6 p-4 glass-card">
           <h3 className="font-semibold text-foreground mb-2">About Market Data</h3>
           <p className="text-sm text-muted-foreground">
-            Search for any publicly traded stock, ETF, or mutual fund by entering the ticker symbol (e.g., AAPL, SPY, VFIAX) 
-            or company name. Cryptocurrency data includes all major coins. Stock data is provided by Alpha Vantage, 
-            cryptocurrency data by CoinGecko. Data refreshes automatically every 30 seconds.
+            Browse the top 100 US stocks by market cap, popular ETFs, and major cryptocurrencies. 
+            Click "Load Price" on any row to fetch real-time data, or use the search bar to find any publicly traded asset. 
+            Data provided by Alpha Vantage and CoinGecko.
           </p>
         </div>
 
