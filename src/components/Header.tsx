@@ -1,11 +1,29 @@
-import { TrendingUp, Bell, User } from "lucide-react";
+import { TrendingUp, Bell, User, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+
+const navItems = [
+  { label: "Dashboard", href: "/" },
+  { label: "Markets", href: "/markets" },
+  { label: "Portfolio", href: "/portfolio" },
+  { label: "Chat", href: "/chat" },
+];
 
 const Header = () => {
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
@@ -13,17 +31,22 @@ const Header = () => {
             <h1 className="text-lg font-bold tracking-tight">InvestAI</h1>
             <p className="text-xs text-muted-foreground">Your AI Investing Copilot</p>
           </div>
-        </div>
+        </Link>
 
+        {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1">
-          {["Dashboard", "Markets", "Portfolio", "Chat"].map((item) => (
-            <Button
-              key={item}
-              variant="ghost"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {item}
-            </Button>
+          {navItems.map((item) => (
+            <Link key={item.href} to={item.href}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "text-muted-foreground hover:text-foreground",
+                  location.pathname === item.href && "text-foreground bg-secondary"
+                )}
+              >
+                {item.label}
+              </Button>
+            </Link>
           ))}
         </nav>
 
@@ -35,6 +58,36 @@ const Header = () => {
           <Button variant="secondary" size="icon">
             <User className="w-5 h-5" />
           </Button>
+
+          {/* Mobile Menu */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-64">
+              <nav className="flex flex-col gap-2 mt-8">
+                {navItems.map((item) => (
+                  <Link 
+                    key={item.href} 
+                    to={item.href}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start text-muted-foreground hover:text-foreground",
+                        location.pathname === item.href && "text-foreground bg-secondary"
+                      )}
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>
