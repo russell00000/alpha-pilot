@@ -18,37 +18,106 @@ interface MarketData {
 
 // Extended stock database with names and types
 const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mutual_fund" }> = {
-  // Top Stocks
+  // Top 100 Stocks by market cap
   AAPL: { name: "Apple Inc.", type: "stock" },
-  GOOGL: { name: "Alphabet Inc.", type: "stock" },
   MSFT: { name: "Microsoft Corp.", type: "stock" },
-  NVDA: { name: "NVIDIA Corp.", type: "stock" },
-  TSLA: { name: "Tesla Inc.", type: "stock" },
+  GOOGL: { name: "Alphabet Inc.", type: "stock" },
   AMZN: { name: "Amazon.com Inc.", type: "stock" },
+  NVDA: { name: "NVIDIA Corp.", type: "stock" },
   META: { name: "Meta Platforms", type: "stock" },
-  NFLX: { name: "Netflix Inc.", type: "stock" },
-  AMD: { name: "AMD Inc.", type: "stock" },
-  INTC: { name: "Intel Corp.", type: "stock" },
-  CRM: { name: "Salesforce Inc.", type: "stock" },
-  ORCL: { name: "Oracle Corp.", type: "stock" },
-  ADBE: { name: "Adobe Inc.", type: "stock" },
-  CSCO: { name: "Cisco Systems", type: "stock" },
-  PYPL: { name: "PayPal Holdings", type: "stock" },
-  DIS: { name: "Walt Disney Co.", type: "stock" },
+  TSLA: { name: "Tesla Inc.", type: "stock" },
+  BRK: { name: "Berkshire Hathaway", type: "stock" },
+  LLY: { name: "Eli Lilly & Co.", type: "stock" },
   V: { name: "Visa Inc.", type: "stock" },
-  MA: { name: "Mastercard Inc.", type: "stock" },
+  UNH: { name: "UnitedHealth Group", type: "stock" },
   JPM: { name: "JPMorgan Chase", type: "stock" },
-  BAC: { name: "Bank of America", type: "stock" },
   WMT: { name: "Walmart Inc.", type: "stock" },
+  XOM: { name: "Exxon Mobil Corp.", type: "stock" },
+  MA: { name: "Mastercard Inc.", type: "stock" },
+  JNJ: { name: "Johnson & Johnson", type: "stock" },
+  PG: { name: "Procter & Gamble", type: "stock" },
+  HD: { name: "Home Depot", type: "stock" },
+  AVGO: { name: "Broadcom Inc.", type: "stock" },
+  ORCL: { name: "Oracle Corp.", type: "stock" },
+  CVX: { name: "Chevron Corp.", type: "stock" },
+  MRK: { name: "Merck & Co.", type: "stock" },
+  ABBV: { name: "AbbVie Inc.", type: "stock" },
+  COST: { name: "Costco Wholesale", type: "stock" },
   KO: { name: "Coca-Cola Co.", type: "stock" },
   PEP: { name: "PepsiCo Inc.", type: "stock" },
-  JNJ: { name: "Johnson & Johnson", type: "stock" },
-  PFE: { name: "Pfizer Inc.", type: "stock" },
-  UNH: { name: "UnitedHealth Group", type: "stock" },
-  HD: { name: "Home Depot", type: "stock" },
+  ADBE: { name: "Adobe Inc.", type: "stock" },
+  CRM: { name: "Salesforce Inc.", type: "stock" },
+  TMO: { name: "Thermo Fisher", type: "stock" },
+  BAC: { name: "Bank of America", type: "stock" },
+  NFLX: { name: "Netflix Inc.", type: "stock" },
+  AMD: { name: "AMD Inc.", type: "stock" },
+  CSCO: { name: "Cisco Systems", type: "stock" },
+  ACN: { name: "Accenture PLC", type: "stock" },
   MCD: { name: "McDonald's Corp.", type: "stock" },
+  LIN: { name: "Linde PLC", type: "stock" },
+  ABT: { name: "Abbott Labs", type: "stock" },
+  DIS: { name: "Walt Disney Co.", type: "stock" },
   NKE: { name: "Nike Inc.", type: "stock" },
+  DHR: { name: "Danaher Corp.", type: "stock" },
+  WFC: { name: "Wells Fargo", type: "stock" },
+  TXN: { name: "Texas Instruments", type: "stock" },
+  PM: { name: "Philip Morris", type: "stock" },
+  INTC: { name: "Intel Corp.", type: "stock" },
+  INTU: { name: "Intuit Inc.", type: "stock" },
+  QCOM: { name: "Qualcomm Inc.", type: "stock" },
+  VZ: { name: "Verizon Comm.", type: "stock" },
+  IBM: { name: "IBM Corp.", type: "stock" },
+  AMGN: { name: "Amgen Inc.", type: "stock" },
+  COP: { name: "ConocoPhillips", type: "stock" },
+  SPGI: { name: "S&P Global", type: "stock" },
+  CAT: { name: "Caterpillar Inc.", type: "stock" },
+  RTX: { name: "RTX Corp.", type: "stock" },
+  NEE: { name: "NextEra Energy", type: "stock" },
+  HON: { name: "Honeywell Int'l", type: "stock" },
+  UPS: { name: "United Parcel Service", type: "stock" },
+  LOW: { name: "Lowe's Companies", type: "stock" },
+  BA: { name: "Boeing Co.", type: "stock" },
+  GE: { name: "General Electric", type: "stock" },
+  AMAT: { name: "Applied Materials", type: "stock" },
   SBUX: { name: "Starbucks Corp.", type: "stock" },
+  ELV: { name: "Elevance Health", type: "stock" },
+  PFE: { name: "Pfizer Inc.", type: "stock" },
+  T: { name: "AT&T Inc.", type: "stock" },
+  BKNG: { name: "Booking Holdings", type: "stock" },
+  GS: { name: "Goldman Sachs", type: "stock" },
+  DE: { name: "Deere & Co.", type: "stock" },
+  MDT: { name: "Medtronic PLC", type: "stock" },
+  BLK: { name: "BlackRock Inc.", type: "stock" },
+  SYK: { name: "Stryker Corp.", type: "stock" },
+  ISRG: { name: "Intuitive Surgical", type: "stock" },
+  ADP: { name: "ADP Inc.", type: "stock" },
+  VRTX: { name: "Vertex Pharma", type: "stock" },
+  GILD: { name: "Gilead Sciences", type: "stock" },
+  MDLZ: { name: "Mondelez Int'l", type: "stock" },
+  ADI: { name: "Analog Devices", type: "stock" },
+  MMC: { name: "Marsh & McLennan", type: "stock" },
+  REGN: { name: "Regeneron Pharma", type: "stock" },
+  LRCX: { name: "Lam Research", type: "stock" },
+  CI: { name: "Cigna Group", type: "stock" },
+  CVS: { name: "CVS Health", type: "stock" },
+  SCHW: { name: "Charles Schwab", type: "stock" },
+  ZTS: { name: "Zoetis Inc.", type: "stock" },
+  CME: { name: "CME Group", type: "stock" },
+  MO: { name: "Altria Group", type: "stock" },
+  KLAC: { name: "KLA Corp.", type: "stock" },
+  AON: { name: "Aon PLC", type: "stock" },
+  SNPS: { name: "Synopsys Inc.", type: "stock" },
+  CB: { name: "Chubb Limited", type: "stock" },
+  DUK: { name: "Duke Energy", type: "stock" },
+  SO: { name: "Southern Co.", type: "stock" },
+  EQIX: { name: "Equinix Inc.", type: "stock" },
+  SHW: { name: "Sherwin-Williams", type: "stock" },
+  PLD: { name: "Prologis Inc.", type: "stock" },
+  MU: { name: "Micron Technology", type: "stock" },
+  ITW: { name: "Illinois Tool Works", type: "stock" },
+  PYPL: { name: "PayPal Holdings", type: "stock" },
+  ATVI: { name: "Activision Blizzard", type: "stock" },
+  NOW: { name: "ServiceNow Inc.", type: "stock" },
   // ETFs
   SPY: { name: "SPDR S&P 500 ETF", type: "etf" },
   QQQ: { name: "Invesco QQQ Trust", type: "etf" },
@@ -65,51 +134,53 @@ const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mut
   BND: { name: "Vanguard Total Bond", type: "etf" },
   SCHD: { name: "Schwab US Dividend", type: "etf" },
   VYM: { name: "Vanguard High Dividend", type: "etf" },
-  // Mutual Funds (tickers)
+  EFA: { name: "iShares MSCI EAFE", type: "etf" },
+  VEA: { name: "Vanguard FTSE Dev Markets", type: "etf" },
+  VWO: { name: "Vanguard FTSE Emerging", type: "etf" },
+  AGG: { name: "iShares Core US Aggregate", type: "etf" },
+  LQD: { name: "iShares iBoxx IG Corp", type: "etf" },
+  // Mutual Funds
   VFIAX: { name: "Vanguard 500 Index", type: "mutual_fund" },
   FXAIX: { name: "Fidelity 500 Index", type: "mutual_fund" },
   VTSAX: { name: "Vanguard Total Stock", type: "mutual_fund" },
   SWPPX: { name: "Schwab S&P 500 Index", type: "mutual_fund" },
+  VGTSX: { name: "Vanguard Total Int'l", type: "mutual_fund" },
+  VTSMX: { name: "Vanguard Total Stock Market", type: "mutual_fund" },
+  VFINX: { name: "Vanguard 500 Index Investor", type: "mutual_fund" },
+  FSKAX: { name: "Fidelity Total Market", type: "mutual_fund" },
+  SWTSX: { name: "Schwab Total Stock Market", type: "mutual_fund" },
+  VBTLX: { name: "Vanguard Total Bond Market", type: "mutual_fund" },
 };
 
+// Fetch stock quote from Finnhub (60 calls/minute)
 async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
   try {
-    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+    const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
     console.log(`Fetching quote for ${symbol}`);
     
     const response = await fetch(url);
     const data = await response.json();
     
-    if (data["Error Message"]) {
-      console.error(`API error for ${symbol}:`, data["Error Message"]);
+    if (data.error) {
+      console.error(`Finnhub error for ${symbol}:`, data.error);
       return null;
     }
     
-    if (data["Note"]) {
-      console.warn(`Rate limit warning for ${symbol}:`, data["Note"]);
+    // c = current price, d = change, dp = percent change, v = volume
+    if (!data.c || data.c === 0) {
+      console.warn(`No price data for ${symbol}`);
       return null;
     }
-    
-    const quote = data["Global Quote"];
-    if (!quote || !quote["05. price"]) {
-      console.error(`No quote data for ${symbol}`);
-      return null;
-    }
-    
-    const price = parseFloat(quote["05. price"]);
-    const change = parseFloat(quote["09. change"]);
-    const changePercent = parseFloat(quote["10. change percent"]?.replace("%", "") || "0");
-    const volume = parseInt(quote["06. volume"] || "0");
     
     const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "stock" };
     
     return {
       symbol: symbol.toUpperCase(),
       name: assetInfo.name,
-      price: price.toFixed(2),
-      change,
-      changePercent,
-      volume: formatVolume(volume),
+      price: data.c.toFixed(2),
+      change: data.d || 0,
+      changePercent: data.dp || 0,
+      volume: formatVolume(data.v || 0),
       type: assetInfo.type,
     };
   } catch (error) {
@@ -174,10 +245,9 @@ async function fetchCryptoData(): Promise<MarketData[]> {
   }
 }
 
-// Search for a specific stock/ETF
+// Search for a specific stock using Finnhub symbol search
 async function searchStock(query: string, apiKey: string): Promise<MarketData[]> {
   try {
-    // First try direct symbol lookup
     const upperQuery = query.toUpperCase().trim();
     
     // If it's a known symbol, fetch it directly
@@ -186,28 +256,29 @@ async function searchStock(query: string, apiKey: string): Promise<MarketData[]>
       return result ? [result] : [];
     }
     
-    // Use Alpha Vantage symbol search
-    const searchUrl = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
+    // Use Finnhub symbol search
+    const searchUrl = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${apiKey}`;
     const searchResponse = await fetch(searchUrl);
     const searchData = await searchResponse.json();
     
-    if (searchData["Note"]) {
-      console.warn("Rate limit on search");
+    if (!searchData.result || searchData.result.length === 0) {
       return [];
     }
     
-    const matches = searchData.bestMatches || [];
     const results: MarketData[] = [];
     
-    // Fetch quotes for top 3 matches
-    for (const match of matches.slice(0, 3)) {
-      const symbol = match["1. symbol"];
+    // Fetch quotes for top 5 matches (Finnhub allows 60/min)
+    for (const match of searchData.result.slice(0, 5)) {
+      const symbol = match.symbol;
+      // Skip non-US symbols
+      if (symbol.includes('.') || symbol.includes(':')) continue;
+      
       const result = await fetchStockQuote(symbol, apiKey);
       if (result) {
-        result.name = match["2. name"] || result.name;
+        result.name = match.description || result.name;
         results.push(result);
       }
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     return results;
@@ -232,14 +303,14 @@ serve(async (req) => {
   }
 
   try {
-    const ALPHA_VANTAGE_API_KEY = Deno.env.get("ALPHA_VANTAGE_API_KEY");
+    const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY");
     
-    if (!ALPHA_VANTAGE_API_KEY) {
-      console.error("ALPHA_VANTAGE_API_KEY is not configured");
-      throw new Error("ALPHA_VANTAGE_API_KEY is not configured");
+    if (!FINNHUB_API_KEY) {
+      console.error("FINNHUB_API_KEY is not configured");
+      throw new Error("FINNHUB_API_KEY is not configured");
     }
 
-    let body: { type?: string; search?: string; symbols?: string[] } = {};
+    let body: { type?: string; search?: string; symbols?: string[]; batch?: boolean } = {};
     try {
       const text = await req.text();
       if (text) {
@@ -249,13 +320,13 @@ serve(async (req) => {
       console.log("Failed to parse body:", e);
     }
     
-    const { type = "all", search, symbols } = body;
-    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols);
+    const { type = "all", search, symbols, batch = false } = body;
+    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "batch:", batch);
 
     // Handle search queries
     if (search) {
       console.log("Searching for:", search);
-      const searchResults = await searchStock(search, ALPHA_VANTAGE_API_KEY);
+      const searchResults = await searchStock(search, FINNHUB_API_KEY);
       return new Response(
         JSON.stringify({ data: searchResults }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -265,10 +336,11 @@ serve(async (req) => {
     // Handle specific symbol requests
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
-      for (const symbol of symbols.slice(0, 5)) {
-        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+      // Finnhub allows 60/min, so we can fetch more
+      for (const symbol of symbols.slice(0, 30)) {
+        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 250));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       return new Response(
         JSON.stringify({ data: results }),
@@ -292,23 +364,27 @@ serve(async (req) => {
       results.push(...cryptoData);
     }
 
-    // Fetch featured stocks (limited due to API rate limits)
+    // Fetch top stocks with real prices (Finnhub allows 60/min)
     if (type === "all" || type === "stocks") {
-      const featuredStocks = ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN", "META"];
-      for (const symbol of featuredStocks.slice(0, 4)) {
-        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+      const topStocks = [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM",
+        "WMT", "MA", "JNJ", "PG", "HD", "AVGO", "ORCL", "CVX", "MRK", "ABBV"
+      ];
+      
+      for (const symbol of topStocks) {
+        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
 
-    // Fetch featured ETFs
+    // Fetch ETFs
     if (type === "all" || type === "etf") {
-      const featuredETFs = ["SPY", "QQQ", "VOO"];
-      for (const symbol of featuredETFs.slice(0, 2)) {
-        const result = await fetchStockQuote(symbol, ALPHA_VANTAGE_API_KEY);
+      const topETFs = ["SPY", "QQQ", "VOO", "VTI", "IWM"];
+      for (const symbol of topETFs) {
+        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
     
