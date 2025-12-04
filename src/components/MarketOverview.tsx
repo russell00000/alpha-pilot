@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { RefreshCw, TrendingUp, Bitcoin, DollarSign, BarChart3, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MarketCard from "./MarketCard";
@@ -25,6 +26,7 @@ const tabs = [
 ];
 
 const MarketOverview = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("stocks");
   const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -190,6 +192,7 @@ const MarketOverview = () => {
               key={item.symbol}
               className="animate-fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
+              onClick={() => navigate(`/stock/${item.symbol}`)}
             >
               <MarketCard {...item} />
             </div>
