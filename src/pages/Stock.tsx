@@ -32,6 +32,24 @@ interface StockData {
   marketCap?: string;
 }
 
+interface StockDetails {
+  week52High: number;
+  week52Low: number;
+  marketCap: number;
+  peRatio: number;
+  eps: number;
+  dividend: number;
+  avgVolume: number;
+}
+
+interface StockAnalysis {
+  recommendation: "BUY" | "HOLD" | "SELL";
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  reasoning: string;
+  priceTarget: number;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+}
+
 interface HistoricalDataPoint {
   date: string;
   price: number;
@@ -59,9 +77,12 @@ const Stock = () => {
   const { toast } = useToast();
   
   const [stockData, setStockData] = useState<StockData | null>(null);
+  const [stockDetails, setStockDetails] = useState<StockDetails | null>(null);
+  const [stockAnalysis, setStockAnalysis] = useState<StockAnalysis | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChart, setIsLoadingChart] = useState(true);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [activeRange, setActiveRange] = useState("1M");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -290,15 +311,72 @@ const Stock = () => {
     setHistoricalData(data);
   };
 
+  const fetchStockDetails = useCallback(async () => {
+    if (!symbol) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("market-data", {
+        body: { details: true, symbol: symbol.toUpperCase() },
+      });
+
+      if (error) throw error;
+      if (data?.data) {
+        setStockDetails(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching stock details:", err);
+    }
+  }, [symbol]);
+
+  const fetchStockAnalysis = useCallback(async () => {
+    if (!symbol || !stockData || !stockDetails) return;
+    
+    setIsLoadingAnalysis(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stock-analysis", {
+        body: {
+          symbol: symbol.toUpperCase(),
+          price: stockData.price,
+          change: stockData.change,
+          changePercent: stockData.changePercent,
+          week52High: stockDetails.week52High,
+          week52Low: stockDetails.week52Low,
+          volume: stockData.volume,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.data) {
+        setStockAnalysis(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching stock analysis:", err);
+      toast({
+        title: "Analysis unavailable",
+        description: "Could not generate AI analysis at this time.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAnalysis(false);
+    }
+  }, [symbol, stockData, stockDetails, toast]);
+
   useEffect(() => {
     fetchStockData();
-  }, [fetchStockData]);
+    fetchStockDetails();
+  }, [fetchStockData, fetchStockDetails]);
 
   useEffect(() => {
     if (stockData) {
       fetchHistoricalData(activeRange);
     }
   }, [activeRange, stockData, fetchHistoricalData]);
+
+  useEffect(() => {
+    if (stockData && stockDetails && !stockAnalysis && !isLoadingAnalysis) {
+      fetchStockAnalysis();
+    }
+  }, [stockData, stockDetails, stockAnalysis, isLoadingAnalysis, fetchStockAnalysis]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -557,13 +635,112 @@ const Stock = () => {
             </p>
           </div>
           <div className="glass-card p-4">
-            <p className="text-sm text-muted-foreground mb-1">Type</p>
-            <p className="text-lg font-semibold text-foreground capitalize">{stockData.type.replace("_", " ")}</p>
+            <p className="text-sm text-muted-foreground mb-1">52-Week High</p>
+            <p className="text-lg font-semibold text-success">
+              {stockDetails?.week52High ? `$${stockDetails.week52High.toFixed(2)}` : "—"}
+            </p>
           </div>
           <div className="glass-card p-4">
-            <p className="text-sm text-muted-foreground mb-1">Symbol</p>
-            <p className="text-lg font-semibold text-foreground">{stockData.symbol}</p>
+            <p className="text-sm text-muted-foreground mb-1">52-Week Low</p>
+            <p className="text-lg font-semibold text-destructive">
+              {stockDetails?.week52Low ? `$${stockDetails.week52Low.toFixed(2)}` : "—"}
+            </p>
           </div>
+        </div>
+
+        {/* 52-Week Range Visual */}
+        {stockDetails && stockData.price !== "—" && (
+          <div className="glass-card p-6 mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">52-Week Range</h3>
+            <div className="relative">
+              <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                <span>${stockDetails.week52Low.toFixed(2)}</span>
+                <span>${stockDetails.week52High.toFixed(2)}</span>
+              </div>
+              <div className="h-2 bg-secondary rounded-full relative">
+                {(() => {
+                  const price = parseFloat(stockData.price);
+                  const range = stockDetails.week52High - stockDetails.week52Low;
+                  const position = range > 0 ? ((price - stockDetails.week52Low) / range) * 100 : 50;
+                  return (
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-lg"
+                      style={{ left: `calc(${Math.min(Math.max(position, 0), 100)}% - 8px)` }}
+                    />
+                  );
+                })()}
+              </div>
+              <p className="text-center text-sm text-muted-foreground mt-2">
+                Current: <span className="text-foreground font-medium">${stockData.price}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* AI Analysis */}
+        <div className="glass-card p-6 mb-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">AI Analysis</h3>
+          {isLoadingAnalysis ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+              <span className="text-muted-foreground">Analyzing {stockData.symbol}...</span>
+            </div>
+          ) : stockAnalysis ? (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className={cn(
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-lg",
+                  stockAnalysis.recommendation === "BUY" && "bg-success/20 text-success",
+                  stockAnalysis.recommendation === "HOLD" && "bg-warning/20 text-warning",
+                  stockAnalysis.recommendation === "SELL" && "bg-destructive/20 text-destructive"
+                )}>
+                  {stockAnalysis.recommendation === "BUY" && <TrendingUp className="w-5 h-5" />}
+                  {stockAnalysis.recommendation === "SELL" && <TrendingDown className="w-5 h-5" />}
+                  {stockAnalysis.recommendation}
+                </div>
+                <div className="flex gap-2">
+                  <span className={cn(
+                    "text-xs px-2 py-1 rounded-full",
+                    stockAnalysis.confidence === "HIGH" && "bg-success/10 text-success",
+                    stockAnalysis.confidence === "MEDIUM" && "bg-warning/10 text-warning",
+                    stockAnalysis.confidence === "LOW" && "bg-muted text-muted-foreground"
+                  )}>
+                    {stockAnalysis.confidence} confidence
+                  </span>
+                  <span className={cn(
+                    "text-xs px-2 py-1 rounded-full",
+                    stockAnalysis.riskLevel === "LOW" && "bg-success/10 text-success",
+                    stockAnalysis.riskLevel === "MEDIUM" && "bg-warning/10 text-warning",
+                    stockAnalysis.riskLevel === "HIGH" && "bg-destructive/10 text-destructive"
+                  )}>
+                    {stockAnalysis.riskLevel} risk
+                  </span>
+                </div>
+              </div>
+              <p className="text-muted-foreground">{stockAnalysis.reasoning}</p>
+              {stockAnalysis.priceTarget > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Price Target:</span>
+                  <span className={cn(
+                    "font-semibold",
+                    stockAnalysis.priceTarget > parseFloat(stockData.price) ? "text-success" : "text-destructive"
+                  )}>
+                    ${stockAnalysis.priceTarget.toFixed(2)}
+                  </span>
+                  {stockData.price !== "—" && (
+                    <span className="text-xs text-muted-foreground">
+                      ({((stockAnalysis.priceTarget - parseFloat(stockData.price)) / parseFloat(stockData.price) * 100).toFixed(1)}% from current)
+                    </span>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground italic">
+                AI-generated analysis for informational purposes only. Not financial advice.
+              </p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">Analysis unavailable</p>
+          )}
         </div>
 
         {/* Actions */}
