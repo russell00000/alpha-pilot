@@ -35,6 +35,10 @@ interface StockData {
 interface HistoricalDataPoint {
   date: string;
   price: number;
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
   displayDate: string;
 }
 
@@ -147,29 +151,118 @@ const Stock = () => {
   const generateMockHistoricalData = (range: string) => {
     const rangeConfig = timeRanges.find(r => r.id === range);
     const days = rangeConfig?.days || 30;
-    const actualDays = days === 0 ? 3650 : days; // "All" = 10 years
+    const actualDays = days === 0 ? 3650 : days;
     
     const basePrice = stockData?.price ? parseFloat(stockData.price) : 150;
     const data: HistoricalDataPoint[] = [];
     
-    let currentPrice = basePrice * (0.7 + Math.random() * 0.3);
-    const volatility = days <= 7 ? 0.02 : days <= 30 ? 0.03 : 0.05;
+    // Calculate data points based on range for smooth, detailed charts
+    let numPoints: number;
+    if (actualDays <= 1) {
+      numPoints = 78; // 5-min intervals for 6.5hr trading day
+    } else if (actualDays <= 7) {
+      numPoints = actualDays * 12; // Every 30 min
+    } else if (actualDays <= 30) {
+      numPoints = actualDays * 2; // Every 12 hours
+    } else if (actualDays <= 90) {
+      numPoints = actualDays;
+    } else if (actualDays <= 365) {
+      numPoints = Math.min(365, actualDays);
+    } else {
+      numPoints = Math.min(500, Math.ceil(actualDays / 7)); // Weekly for long ranges
+    }
     
-    const interval = actualDays <= 7 ? 1 : actualDays <= 90 ? 1 : Math.ceil(actualDays / 250);
+    // Start price calculation - work backwards from current price
+    const endPrice = basePrice;
+    const trendDirection = Math.random() > 0.4 ? 1 : -1; // Slight bullish bias
+    const overallTrendStrength = (Math.random() * 0.3 + 0.1) * trendDirection;
+    const startPrice = endPrice / (1 + overallTrendStrength);
     
-    for (let i = actualDays; i >= 0; i -= interval) {
+    let currentPrice = startPrice;
+    
+    // Volatility settings based on time range
+    const baseVolatility = actualDays <= 1 ? 0.003 : 
+                          actualDays <= 7 ? 0.008 : 
+                          actualDays <= 30 ? 0.015 : 
+                          actualDays <= 90 ? 0.02 : 0.025;
+    
+    // Generate trend phases for realistic movement
+    const numPhases = Math.max(3, Math.floor(numPoints / 20));
+    const phases: { trend: number; volatility: number; length: number }[] = [];
+    let remainingPoints = numPoints;
+    
+    for (let i = 0; i < numPhases; i++) {
+      const isLastPhase = i === numPhases - 1;
+      const phaseLength = isLastPhase ? remainingPoints : Math.floor(remainingPoints / (numPhases - i) * (0.5 + Math.random()));
+      remainingPoints -= phaseLength;
+      
+      phases.push({
+        trend: (Math.random() - 0.45) * baseVolatility * 3,
+        volatility: baseVolatility * (0.5 + Math.random() * 1.5),
+        length: phaseLength
+      });
+    }
+    
+    let phaseIndex = 0;
+    let pointsInPhase = 0;
+    let currentPhase = phases[0];
+    
+    // Base volume varies by stock price
+    const avgVolume = basePrice > 500 ? 500000 : basePrice > 100 ? 2000000 : 5000000;
+    
+    for (let i = 0; i < numPoints; i++) {
+      // Phase management
+      if (pointsInPhase >= currentPhase.length && phaseIndex < phases.length - 1) {
+        phaseIndex++;
+        currentPhase = phases[phaseIndex];
+        pointsInPhase = 0;
+      }
+      pointsInPhase++;
+      
+      // Calculate date/time
       const date = new Date();
-      date.setDate(date.getDate() - i);
+      if (actualDays <= 1) {
+        // Intraday: 9:30 AM to 4:00 PM
+        const minutesFromStart = Math.floor((i / numPoints) * 390);
+        date.setHours(9, 30 + minutesFromStart, 0, 0);
+      } else {
+        const daysBack = Math.floor((1 - i / numPoints) * actualDays);
+        date.setDate(date.getDate() - daysBack);
+      }
       
-      currentPrice = currentPrice * (1 + (Math.random() - 0.48) * volatility);
-      currentPrice = Math.max(currentPrice, basePrice * 0.3);
+      // Price movement with momentum and mean reversion
+      const momentum = i > 0 && data.length > 0 
+        ? (currentPrice - data[data.length - 1].price) / currentPrice * 0.3 
+        : 0;
       
+      const meanReversion = (endPrice - currentPrice) / endPrice * 0.01;
+      const randomWalk = (Math.random() - 0.5) * currentPhase.volatility;
+      const trend = currentPhase.trend;
+      
+      const priceChange = trend + randomWalk + momentum + meanReversion;
+      currentPrice = currentPrice * (1 + priceChange);
+      currentPrice = Math.max(currentPrice, basePrice * 0.2);
+      currentPrice = Math.min(currentPrice, basePrice * 2);
+      
+      // Generate OHLC data
+      const intraVolatility = currentPhase.volatility * 0.5;
+      const open = currentPrice * (1 + (Math.random() - 0.5) * intraVolatility);
+      const high = Math.max(currentPrice, open) * (1 + Math.random() * intraVolatility);
+      const low = Math.min(currentPrice, open) * (1 - Math.random() * intraVolatility);
+      
+      // Volume with some randomness and spikes
+      const volumeMultiplier = Math.random() > 0.95 ? (2 + Math.random() * 3) : (0.5 + Math.random());
+      const volume = Math.floor(avgVolume * volumeMultiplier / numPoints * 100);
+      
+      // Format display date
       let displayDate: string;
       if (actualDays <= 1) {
-        displayDate = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        displayDate = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } else if (actualDays <= 7) {
-        displayDate = date.toLocaleDateString([], { weekday: 'short' });
+        displayDate = date.toLocaleDateString([], { weekday: 'short', hour: 'numeric' });
       } else if (actualDays <= 90) {
+        displayDate = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } else if (actualDays <= 365) {
         displayDate = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
       } else {
         displayDate = date.toLocaleDateString([], { month: 'short', year: '2-digit' });
@@ -178,13 +271,20 @@ const Stock = () => {
       data.push({
         date: date.toISOString(),
         price: parseFloat(currentPrice.toFixed(2)),
+        open: parseFloat(open.toFixed(2)),
+        high: parseFloat(high.toFixed(2)),
+        low: parseFloat(low.toFixed(2)),
+        volume,
         displayDate,
       });
     }
     
     // Ensure last point matches current price
-    if (data.length > 0 && stockData?.price) {
-      data[data.length - 1].price = parseFloat(stockData.price);
+    if (data.length > 0 && stockData?.price && stockData.price !== "—") {
+      const lastPoint = data[data.length - 1];
+      lastPoint.price = parseFloat(stockData.price);
+      lastPoint.high = Math.max(lastPoint.high, lastPoint.price);
+      lastPoint.low = Math.min(lastPoint.low, lastPoint.price);
     }
     
     setHistoricalData(data);
@@ -227,10 +327,29 @@ const Stock = () => {
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-          <p className="text-foreground font-semibold">${payload[0].value.toFixed(2)}</p>
-          <p className="text-muted-foreground text-sm">{payload[0].payload.displayDate}</p>
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg min-w-[160px]">
+          <p className="text-muted-foreground text-xs mb-1">{data.displayDate}</p>
+          <p className="text-foreground font-bold text-lg">${data.price.toFixed(2)}</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Open</span>
+              <span className="text-foreground">${data.open?.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">High</span>
+              <span className="text-success">${data.high?.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Low</span>
+              <span className="text-destructive">${data.low?.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Vol</span>
+              <span className="text-foreground">{data.volume?.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
       );
     }
