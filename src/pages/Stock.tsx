@@ -607,11 +607,7 @@ const Stock = () => {
         </div>
 
         {/* Stock Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="glass-card p-4">
-            <p className="text-sm text-muted-foreground mb-1">Volume</p>
-            <p className="text-lg font-semibold text-foreground">{stockData.volume}</p>
-          </div>
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="glass-card p-4">
             <p className="text-sm text-muted-foreground mb-1">Day Change</p>
             <p className={cn(
