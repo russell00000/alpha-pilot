@@ -407,26 +407,13 @@ const Stock = () => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg min-w-[160px]">
-          <p className="text-muted-foreground text-xs mb-1">{data.displayDate}</p>
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-2.5 shadow-lg">
+          <p className="text-muted-foreground text-xs">{data.displayDate}</p>
           <p className="text-foreground font-bold text-lg">${data.price.toFixed(2)}</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Open</span>
-              <span className="text-foreground">${data.open?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">High</span>
-              <span className="text-success">${data.high?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Low</span>
-              <span className="text-destructive">${data.low?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Vol</span>
-              <span className="text-foreground">{data.volume?.toLocaleString()}</span>
-            </div>
+          <div className="flex gap-3 mt-1.5 text-xs">
+            <span><span className="text-muted-foreground">O</span> ${data.open?.toFixed(2)}</span>
+            <span><span className="text-success">H</span> ${data.high?.toFixed(2)}</span>
+            <span><span className="text-destructive">L</span> ${data.low?.toFixed(2)}</span>
           </div>
         </div>
       );
@@ -521,7 +508,7 @@ const Stock = () => {
         </div>
 
         {/* Chart Section */}
-        <div className="glass-card p-6 mb-6">
+        <div className="glass-card p-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Price Chart</h2>
@@ -555,7 +542,7 @@ const Stock = () => {
           </div>
 
           {/* Time Range Selector */}
-          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6 overflow-x-auto">
+          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-4 overflow-x-auto">
             {timeRanges.map((range) => (
               <button
                 key={range.id}
@@ -573,14 +560,14 @@ const Stock = () => {
           </div>
 
           {/* Chart */}
-          <div className="h-[400px] w-full">
+          <div className="h-[350px] w-full -mx-2">
             {isLoadingChart ? (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={historicalData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={historicalData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
@@ -599,9 +586,9 @@ const Stock = () => {
                     domain={['dataMin', 'dataMax']}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     tickFormatter={(value) => `$${value.toFixed(0)}`}
-                    width={60}
+                    width={50}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
