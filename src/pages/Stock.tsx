@@ -129,8 +129,11 @@ const Stock = () => {
 
       if (error) throw error;
 
-      if (data?.data && Array.isArray(data.data)) {
+      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
         setHistoricalData(data.data);
+      } else {
+        // Generate mock data if API returns empty results
+        generateMockHistoricalData(range);
       }
     } catch (err) {
       console.error("Error fetching historical data:", err);
