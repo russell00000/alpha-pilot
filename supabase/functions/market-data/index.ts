@@ -496,6 +496,53 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
   }
 }
 
+// Fetch stock details including 52-week high/low from Yahoo Finance
+async function fetchStockDetails(symbol: string): Promise<{ week52High: number; week52Low: number; marketCap: number; peRatio: number; eps: number; dividend: number; avgVolume: number } | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+    console.log(`Fetching 52-week data for ${symbol}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+      console.log(`No Yahoo Finance details for ${symbol}`);
+      return null;
+    }
+    
+    const result = data.chart.result[0];
+    const meta = result.meta || {};
+    const quote = result.indicators?.quote?.[0] || {};
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    
+    // Calculate 52-week high and low from the data
+    const validHighs = highs.filter((h: number | null) => h !== null && h !== undefined);
+    const validLows = lows.filter((l: number | null) => l !== null && l !== undefined);
+    
+    const week52High = validHighs.length > 0 ? Math.max(...validHighs) : meta.fiftyTwoWeekHigh || 0;
+    const week52Low = validLows.length > 0 ? Math.min(...validLows) : meta.fiftyTwoWeekLow || 0;
+    
+    return {
+      week52High: parseFloat(week52High.toFixed(2)),
+      week52Low: parseFloat(week52Low.toFixed(2)),
+      marketCap: meta.marketCap || 0,
+      peRatio: meta.trailingPE || 0,
+      eps: meta.epsTrailingTwelveMonths || 0,
+      dividend: meta.dividendYield || 0,
+      avgVolume: meta.averageDailyVolume10Day || 0,
+    };
+  } catch (error) {
+    console.error(`Error fetching stock details for ${symbol}:`, error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -509,7 +556,7 @@ serve(async (req) => {
       throw new Error("FINNHUB_API_KEY is not configured");
     }
 
-    let body: { type?: string; search?: string; symbols?: string[]; historical?: boolean; symbol?: string; range?: string } = {};
+    let body: { type?: string; search?: string; symbols?: string[]; historical?: boolean; symbol?: string; range?: string; details?: boolean } = {};
     try {
       const text = await req.text();
       if (text) {
@@ -519,8 +566,18 @@ serve(async (req) => {
       console.log("Failed to parse body:", e);
     }
     
-    const { type = "all", search, symbols, historical, symbol, range } = body;
-    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "historical:", historical);
+    const { type = "all", search, symbols, historical, symbol, range, details } = body;
+    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "historical:", historical, "details:", details);
+
+    // Handle stock details request (52-week high/low, etc.)
+    if (details && symbol) {
+      console.log(`Fetching details for ${symbol}`);
+      const stockDetails = await fetchStockDetails(symbol.toUpperCase());
+      return new Response(
+        JSON.stringify({ data: stockDetails }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Handle historical data requests
     if (historical && symbol && range) {
