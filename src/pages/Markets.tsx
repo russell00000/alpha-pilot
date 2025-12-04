@@ -113,17 +113,17 @@ const Markets = () => {
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  // Auto-load prices when tab changes
+  // Auto-load prices when tab changes (limit to 10 to avoid rate limits)
   useEffect(() => {
     const loadTabPrices = async () => {
       let symbols: string[] = [];
       
       if (activeTab === "stocks") {
-        symbols = top100Stocks.map(s => s.symbol).slice(0, 30);
+        symbols = top100Stocks.map(s => s.symbol).slice(0, 10);
       } else if (activeTab === "etf") {
-        symbols = topETFs.map(e => e.symbol);
+        symbols = topETFs.map(e => e.symbol).slice(0, 10);
       } else if (activeTab === "mutual_fund") {
-        symbols = topMutualFunds.map(m => m.symbol);
+        symbols = topMutualFunds.map(m => m.symbol).slice(0, 10);
       }
       
       if (symbols.length > 0) {

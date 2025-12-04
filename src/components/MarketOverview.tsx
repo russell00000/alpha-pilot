@@ -81,10 +81,10 @@ const MarketOverview = () => {
     };
     loadData();
 
-    // Refresh every 30 seconds for crypto (CoinGecko has no strict limits)
+    // Refresh every 60 seconds (edge function has caching)
     const interval = setInterval(() => {
       fetchMarketData();
-    }, 30000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [fetchMarketData]);
