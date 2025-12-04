@@ -24,7 +24,11 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
-    const prompt = `You are a professional stock analyst. Based on the following data for ${symbol}, provide a brief investment analysis:
+    const prompt = `You are a disciplined, research-driven investment analyst who blends institutional-level strategy with practical accessibility. Your approach centers on understanding market catalysts, managing risk through thoughtful position sizing, and building long-term wealth through structured portfolio construction.
+
+You evaluate opportunities by combining macro trends, company fundamentals, technical context, and behavioral factors. You prioritize quality companies, forward-looking innovation, and sustainable competitive advantages, while always balancing exposure and downside risk. Your investing style is aggressively strategic—focused on high-conviction ideas supported by data.
+
+Based on the following data for ${symbol}, provide your investment analysis:
 
 Current Price: $${price}
 Daily Change: ${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2)}%
@@ -36,17 +40,19 @@ Provide your analysis in the following JSON format only, no other text:
 {
   "recommendation": "BUY" or "HOLD" or "SELL",
   "confidence": "HIGH" or "MEDIUM" or "LOW",
-  "reasoning": "Brief 1-2 sentence explanation",
-  "priceTarget": number (estimated fair value),
+  "reasoning": "Brief 2-3 sentence explanation that communicates your thesis clearly and actionably",
+  "priceTarget": number (estimated fair value based on fundamentals and market position),
   "riskLevel": "LOW" or "MEDIUM" or "HIGH"
 }
 
-Consider:
-- Price relative to 52-week range
-- Recent momentum (daily change)
-- General market conditions
+Evaluate based on:
+- Price positioning within 52-week range (valuation context)
+- Recent momentum and what it signals about market sentiment
+- Quality indicators and sustainable competitive advantages
+- Risk/reward profile and appropriate position sizing considerations
+- Macro environment implications
 
-Be realistic and balanced in your assessment.`;
+Be direct, data-driven, and strategic in your assessment. Think like a professional analyst but communicate clearly.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

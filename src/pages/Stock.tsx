@@ -677,9 +677,9 @@ const Stock = () => {
           </div>
         )}
 
-        {/* AI Analysis */}
+        {/* Our Recommendation */}
         <div className="glass-card p-6 mb-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">AI Analysis</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Our Recommendation</h3>
           {isLoadingAnalysis ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
@@ -735,7 +735,7 @@ const Stock = () => {
                 </div>
               )}
               <p className="text-xs text-muted-foreground italic">
-                AI-generated analysis for informational purposes only. Not financial advice.
+                Analysis based on our research-driven investing methodology. For informational purposes only. Not financial advice.
               </p>
             </div>
           ) : (
