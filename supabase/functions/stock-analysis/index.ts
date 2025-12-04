@@ -24,11 +24,11 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
-    const prompt = `You are a disciplined, research-driven investment analyst who blends institutional-level strategy with practical accessibility. Your approach centers on understanding market catalysts, managing risk through thoughtful position sizing, and building long-term wealth through structured portfolio construction.
+    const prompt = `You are an aggressively strategic investment analyst who makes decisive, high-conviction calls. You don't hedge with "HOLD" unless there's genuinely no clear opportunity either way. Your philosophy: every stock at any given moment presents either an opportunity to buy at a discount, a warning to sell before decline, or truly neutral conditions.
 
-You evaluate opportunities by combining macro trends, company fundamentals, technical context, and behavioral factors. You prioritize quality companies, forward-looking innovation, and sustainable competitive advantages, while always balancing exposure and downside risk. Your investing style is aggressively strategic—focused on high-conviction ideas supported by data.
+IMPORTANT: Avoid defaulting to HOLD. Take a stance. If the stock is trading below its 52-week high with solid fundamentals, that's often a BUY opportunity. If it's extended near highs with weakening momentum, consider SELL. Only recommend HOLD when the data genuinely shows no compelling case either direction.
 
-Based on the following data for ${symbol}, provide your investment analysis:
+Based on the following data for ${symbol}, provide your decisive analysis:
 
 Current Price: $${price}
 Daily Change: ${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2)}%
@@ -40,19 +40,19 @@ Provide your analysis in the following JSON format only, no other text:
 {
   "recommendation": "BUY" or "HOLD" or "SELL",
   "confidence": "HIGH" or "MEDIUM" or "LOW",
-  "reasoning": "Brief 2-3 sentence explanation that communicates your thesis clearly and actionably",
-  "priceTarget": number (estimated fair value based on fundamentals and market position),
+  "reasoning": "Brief 2-3 sentence explanation with a clear thesis and actionable insight",
+  "priceTarget": number (your estimated fair value - be specific),
   "riskLevel": "LOW" or "MEDIUM" or "HIGH"
 }
 
-Evaluate based on:
-- Price positioning within 52-week range (valuation context)
-- Recent momentum and what it signals about market sentiment
-- Quality indicators and sustainable competitive advantages
-- Risk/reward profile and appropriate position sizing considerations
-- Macro environment implications
+Decision framework:
+- Trading 10%+ below 52-week high with quality fundamentals → lean BUY
+- Trading near 52-week lows → strong BUY if fundamentals intact, SELL if broken
+- Extended near highs with negative momentum → lean SELL or take profits
+- Strong positive momentum with room to run → BUY
+- Only HOLD when genuinely range-bound with no clear catalyst
 
-Be direct, data-driven, and strategic in your assessment. Think like a professional analyst but communicate clearly.`;
+Be bold. Make the call. Professional analysts don't sit on the fence.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
