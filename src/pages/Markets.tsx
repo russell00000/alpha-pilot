@@ -53,6 +53,28 @@ const Markets = () => {
   // Map to store fetched prices
   const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
 
+  // Batch fetch prices for multiple symbols
+  const batchFetchPrices = useCallback(async (symbols: string[]) => {
+    const uncached = symbols.filter(s => !priceCache[s]);
+    if (uncached.length === 0) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("market-data", {
+        body: { symbols: uncached },
+      });
+
+      if (!error && data?.data) {
+        const cache: Record<string, MarketData> = {};
+        data.data.forEach((item: MarketData) => {
+          cache[item.symbol] = item;
+        });
+        setPriceCache(prev => ({ ...prev, ...cache }));
+      }
+    } catch (err) {
+      console.error("Error batch fetching:", err);
+    }
+  }, [priceCache]);
+
   const fetchMarketData = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke("market-data", {
@@ -85,9 +107,32 @@ const Markets = () => {
     };
     loadData();
 
-    const interval = setInterval(fetchMarketData, 30000);
+    const interval = setInterval(fetchMarketData, 60000);
     return () => clearInterval(interval);
   }, [fetchMarketData]);
+
+  // Auto-load prices when tab changes
+  useEffect(() => {
+    const loadTabPrices = async () => {
+      let symbols: string[] = [];
+      
+      if (activeTab === "stocks") {
+        symbols = top100Stocks.map(s => s.symbol).slice(0, 30);
+      } else if (activeTab === "etf") {
+        symbols = topETFs.map(e => e.symbol);
+      } else if (activeTab === "mutual_fund") {
+        symbols = topMutualFunds.map(m => m.symbol);
+      }
+      
+      if (symbols.length > 0) {
+        setIsRefreshing(true);
+        await batchFetchPrices(symbols);
+        setIsRefreshing(false);
+      }
+    };
+    
+    loadTabPrices();
+  }, [activeTab, batchFetchPrices]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -576,8 +621,8 @@ const Markets = () => {
           <h3 className="font-semibold text-foreground mb-2">About Market Data</h3>
           <p className="text-sm text-muted-foreground">
             Browse the top 100 US stocks by market cap, popular ETFs, and major cryptocurrencies. 
-            Click "Load Price" on any row to fetch real-time data, or use the search bar to find any publicly traded asset. 
-            Data provided by Alpha Vantage and CoinGecko.
+            Prices update automatically when you switch tabs. Use the search bar to find any publicly traded asset. 
+            Real-time data provided by Finnhub and CoinGecko.
           </p>
         </div>
 
@@ -587,7 +632,7 @@ const Markets = () => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
           </span>
-          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 30s</span>
+          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 60s</span>
         </div>
       </main>
     </div>
