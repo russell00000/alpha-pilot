@@ -16,6 +16,15 @@ interface MarketData {
   type: "stock" | "crypto" | "etf" | "mutual_fund";
 }
 
+// In-memory cache with TTL
+const cache: Map<string, { data: MarketData; timestamp: number }> = new Map();
+const CACHE_TTL = 60000; // 1 minute cache for stocks
+const CRYPTO_CACHE_TTL = 30000; // 30 seconds for crypto
+
+// Rate limit tracking
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 100; // Minimum 100ms between Finnhub requests
+
 // Extended stock database with names and types
 const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mutual_fund" }> = {
   // Top 100 Stocks by market cap
@@ -116,7 +125,6 @@ const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mut
   MU: { name: "Micron Technology", type: "stock" },
   ITW: { name: "Illinois Tool Works", type: "stock" },
   PYPL: { name: "PayPal Holdings", type: "stock" },
-  ATVI: { name: "Activision Blizzard", type: "stock" },
   NOW: { name: "ServiceNow Inc.", type: "stock" },
   // ETFs
   SPY: { name: "SPDR S&P 500 ETF", type: "etf" },
@@ -152,21 +160,63 @@ const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mut
   VBTLX: { name: "Vanguard Total Bond Market", type: "mutual_fund" },
 };
 
-// Fetch stock quote from Finnhub (60 calls/minute)
+// Check cache for valid data
+function getCachedData(symbol: string): MarketData | null {
+  const cached = cache.get(symbol);
+  if (cached) {
+    const ttl = symbol.startsWith("crypto_") ? CRYPTO_CACHE_TTL : CACHE_TTL;
+    if (Date.now() - cached.timestamp < ttl) {
+      return cached.data;
+    }
+  }
+  return null;
+}
+
+// Set cache data
+function setCacheData(symbol: string, data: MarketData) {
+  cache.set(symbol, { data, timestamp: Date.now() });
+}
+
+// Rate-limited fetch with retry
+async function rateLimitedFetch(url: string): Promise<Response> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  
+  lastRequestTime = Date.now();
+  return fetch(url);
+}
+
+// Fetch stock quote from Finnhub with caching
 async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
+  // Check cache first
+  const cached = getCachedData(symbol);
+  if (cached) {
+    console.log(`Using cached data for ${symbol}`);
+    return cached;
+  }
+
   try {
     const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
-    console.log(`Fetching quote for ${symbol}`);
+    console.log(`Fetching fresh quote for ${symbol}`);
     
-    const response = await fetch(url);
+    const response = await rateLimitedFetch(url);
     const data = await response.json();
     
     if (data.error) {
       console.error(`Finnhub error for ${symbol}:`, data.error);
+      // Return stale cache if available
+      const staleCache = cache.get(symbol);
+      if (staleCache) {
+        console.log(`Returning stale cache for ${symbol}`);
+        return staleCache.data;
+      }
       return null;
     }
     
-    // c = current price, d = change, dp = percent change, v = volume
     if (!data.c || data.c === 0) {
       console.warn(`No price data for ${symbol}`);
       return null;
@@ -174,7 +224,7 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
     
     const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "stock" };
     
-    return {
+    const result: MarketData = {
       symbol: symbol.toUpperCase(),
       name: assetInfo.name,
       price: data.c.toFixed(2),
@@ -183,8 +233,16 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
       volume: formatVolume(data.v || 0),
       type: assetInfo.type,
     };
+    
+    // Cache the result
+    setCacheData(symbol, result);
+    
+    return result;
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);
+    // Return stale cache if available
+    const staleCache = cache.get(symbol);
+    if (staleCache) return staleCache.data;
     return null;
   }
 }
@@ -229,16 +287,23 @@ async function fetchCryptoData(): Promise<MarketData[]> {
       polygon: "MATIC",
     };
     
-    return data.map((coin: any) => ({
-      symbol: symbolMap[coin.id] || coin.symbol.toUpperCase(),
-      name: coin.name,
-      price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
-      change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
-      changePercent: coin.price_change_percentage_24h_in_currency || 0,
-      volume: formatVolume(coin.total_volume),
-      sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
-      type: "crypto" as const,
-    }));
+    const results = data.map((coin: any) => {
+      const result: MarketData = {
+        symbol: symbolMap[coin.id] || coin.symbol.toUpperCase(),
+        name: coin.name,
+        price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
+        change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
+        changePercent: coin.price_change_percentage_24h_in_currency || 0,
+        volume: formatVolume(coin.total_volume),
+        sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
+        type: "crypto" as const,
+      };
+      // Cache crypto data
+      setCacheData(`crypto_${result.symbol}`, result);
+      return result;
+    });
+    
+    return results;
   } catch (error) {
     console.error("Error fetching crypto data:", error);
     return [];
@@ -258,7 +323,7 @@ async function searchStock(query: string, apiKey: string): Promise<MarketData[]>
     
     // Use Finnhub symbol search
     const searchUrl = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${apiKey}`;
-    const searchResponse = await fetch(searchUrl);
+    const searchResponse = await rateLimitedFetch(searchUrl);
     const searchData = await searchResponse.json();
     
     if (!searchData.result || searchData.result.length === 0) {
@@ -267,10 +332,9 @@ async function searchStock(query: string, apiKey: string): Promise<MarketData[]>
     
     const results: MarketData[] = [];
     
-    // Fetch quotes for top 5 matches (Finnhub allows 60/min)
-    for (const match of searchData.result.slice(0, 5)) {
+    // Fetch quotes for top 3 matches only
+    for (const match of searchData.result.slice(0, 3)) {
       const symbol = match.symbol;
-      // Skip non-US symbols
       if (symbol.includes('.') || symbol.includes(':')) continue;
       
       const result = await fetchStockQuote(symbol, apiKey);
@@ -278,7 +342,6 @@ async function searchStock(query: string, apiKey: string): Promise<MarketData[]>
         result.name = match.description || result.name;
         results.push(result);
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     return results;
@@ -307,15 +370,15 @@ async function fetchHistoricalData(symbol: string, range: string, apiKey: string
     switch (range) {
       case "1D":
         from = now - 86400;
-        resolution = "15"; // 15 min intervals
+        resolution = "15";
         break;
       case "1W":
         from = now - 604800;
-        resolution = "60"; // 1 hour intervals
+        resolution = "60";
         break;
       case "1M":
         from = now - 2592000;
-        resolution = "D"; // Daily
+        resolution = "D";
         break;
       case "3M":
         from = now - 7776000;
@@ -327,22 +390,22 @@ async function fetchHistoricalData(symbol: string, range: string, apiKey: string
         break;
       case "1Y":
         from = now - 31536000;
-        resolution = "W"; // Weekly
+        resolution = "W";
         break;
       case "5Y":
         from = now - 157680000;
         resolution = "W";
         break;
-      default: // ALL
-        from = now - 315360000; // 10 years
-        resolution = "M"; // Monthly
+      default:
+        from = now - 315360000;
+        resolution = "M";
         break;
     }
     
     const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${apiKey}`;
     console.log(`Fetching historical data for ${symbol}, range: ${range}`);
     
-    const response = await fetch(url);
+    const response = await rateLimitedFetch(url);
     const data = await response.json();
     
     if (data.s === "no_data" || !data.c || data.c.length === 0) {
@@ -394,7 +457,7 @@ serve(async (req) => {
       throw new Error("FINNHUB_API_KEY is not configured");
     }
 
-    let body: { type?: string; search?: string; symbols?: string[]; batch?: boolean; historical?: boolean; symbol?: string; range?: string } = {};
+    let body: { type?: string; search?: string; symbols?: string[]; historical?: boolean; symbol?: string; range?: string } = {};
     try {
       const text = await req.text();
       if (text) {
@@ -404,7 +467,7 @@ serve(async (req) => {
       console.log("Failed to parse body:", e);
     }
     
-    const { type = "all", search, symbols, batch = false, historical, symbol, range } = body;
+    const { type = "all", search, symbols, historical, symbol, range } = body;
     console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "historical:", historical);
 
     // Handle historical data requests
@@ -430,11 +493,9 @@ serve(async (req) => {
     // Handle specific symbol requests
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
-      // Finnhub allows 60/min, so we can fetch more
-      for (const sym of symbols.slice(0, 30)) {
+      for (const sym of symbols.slice(0, 10)) { // Limit to 10 symbols
         const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 50));
       }
       return new Response(
         JSON.stringify({ data: results }),
@@ -452,42 +513,38 @@ serve(async (req) => {
 
     const results: MarketData[] = [];
 
-    // Fetch crypto data (free, no rate limit concerns)
+    // Fetch crypto data first (free, no rate limit concerns)
     if (type === "all" || type === "crypto") {
       const cryptoData = await fetchCryptoData();
       results.push(...cryptoData);
     }
 
-    // Fetch top stocks with real prices (Finnhub allows 60/min)
+    // Fetch only top 10 stocks to stay within rate limits
     if (type === "all" || type === "stocks") {
-      const topStocks = [
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM",
-        "WMT", "MA", "JNJ", "PG", "HD", "AVGO", "ORCL", "CVX", "MRK", "ABBV"
-      ];
+      const topStocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM"];
       
-      for (const symbol of topStocks) {
-        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
+      for (const sym of topStocks) {
+        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
 
-    // Fetch ETFs
+    // Fetch ETFs (limit to 3)
     if (type === "all" || type === "etf") {
-      const topETFs = ["SPY", "QQQ", "VOO", "VTI", "IWM"];
-      for (const symbol of topETFs) {
-        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
+      const topETFs = ["SPY", "QQQ", "VOO"];
+      for (const sym of topETFs) {
+        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
-        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
     
-    console.log(`Successfully fetched ${results.length} quotes`);
+    console.log(`Successfully returned ${results.length} quotes`);
 
     return new Response(
       JSON.stringify({ 
         data: results,
-        availableAssets: getAssetList()
+        availableAssets: getAssetList(),
+        cached: cache.size > 0
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
