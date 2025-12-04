@@ -385,63 +385,85 @@ function getAssetList(): { symbol: string; name: string; type: string }[] {
   }));
 }
 
-// Fetch historical candle data from Finnhub
-async function fetchHistoricalData(symbol: string, range: string, apiKey: string): Promise<{ date: string; price: number; displayDate: string }[]> {
+// Fetch historical candle data from Yahoo Finance
+async function fetchHistoricalData(symbol: string, range: string, _apiKey: string): Promise<{ date: string; price: number; open: number; high: number; low: number; volume: number; displayDate: string }[]> {
   try {
-    const now = Math.floor(Date.now() / 1000);
-    let from: number;
-    let resolution: string;
+    // Map our range to Yahoo Finance parameters
+    let yahooRange: string;
+    let interval: string;
     
     switch (range) {
       case "1D":
-        from = now - 86400;
-        resolution = "15";
+        yahooRange = "1d";
+        interval = "5m";
         break;
       case "1W":
-        from = now - 604800;
-        resolution = "60";
+        yahooRange = "5d";
+        interval = "15m";
         break;
       case "1M":
-        from = now - 2592000;
-        resolution = "D";
+        yahooRange = "1mo";
+        interval = "1d";
         break;
       case "3M":
-        from = now - 7776000;
-        resolution = "D";
+        yahooRange = "3mo";
+        interval = "1d";
         break;
       case "6M":
-        from = now - 15552000;
-        resolution = "D";
+        yahooRange = "6mo";
+        interval = "1d";
         break;
       case "1Y":
-        from = now - 31536000;
-        resolution = "W";
+        yahooRange = "1y";
+        interval = "1d";
         break;
       case "5Y":
-        from = now - 157680000;
-        resolution = "W";
+        yahooRange = "5y";
+        interval = "1wk";
         break;
       default:
-        from = now - 315360000;
-        resolution = "M";
+        yahooRange = "max";
+        interval = "1mo";
         break;
     }
     
-    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${apiKey}`;
-    console.log(`Fetching historical data for ${symbol}, range: ${range}`);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${yahooRange}`;
+    console.log(`Fetching Yahoo Finance historical data for ${symbol}, range: ${range}, url: ${url}`);
     
-    const response = await rateLimitedFetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
     const data = await response.json();
     
-    if (data.s === "no_data" || !data.c || data.c.length === 0) {
-      console.log(`No historical data for ${symbol}`);
+    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+      console.log(`No Yahoo Finance data for ${symbol}`);
       return [];
     }
     
-    const results: { date: string; price: number; displayDate: string }[] = [];
+    const result = data.chart.result[0];
+    const timestamps = result.timestamp || [];
+    const quote = result.indicators?.quote?.[0] || {};
+    const closes = quote.close || [];
+    const opens = quote.open || [];
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    const volumes = quote.volume || [];
     
-    for (let i = 0; i < data.c.length; i++) {
-      const timestamp = data.t[i] * 1000;
+    if (timestamps.length === 0 || closes.length === 0) {
+      console.log(`Empty data arrays for ${symbol}`);
+      return [];
+    }
+    
+    const results: { date: string; price: number; open: number; high: number; low: number; volume: number; displayDate: string }[] = [];
+    
+    for (let i = 0; i < timestamps.length; i++) {
+      // Skip null values
+      if (closes[i] === null || closes[i] === undefined) continue;
+      
+      const timestamp = timestamps[i] * 1000;
       const date = new Date(timestamp);
       
       let displayDate: string;
@@ -457,14 +479,19 @@ async function fetchHistoricalData(symbol: string, range: string, apiKey: string
       
       results.push({
         date: date.toISOString(),
-        price: parseFloat(data.c[i].toFixed(2)),
+        price: parseFloat((closes[i] || 0).toFixed(2)),
+        open: parseFloat((opens[i] || closes[i] || 0).toFixed(2)),
+        high: parseFloat((highs[i] || closes[i] || 0).toFixed(2)),
+        low: parseFloat((lows[i] || closes[i] || 0).toFixed(2)),
+        volume: volumes[i] || 0,
         displayDate,
       });
     }
     
+    console.log(`Yahoo Finance returned ${results.length} data points for ${symbol}`);
     return results;
   } catch (error) {
-    console.error(`Error fetching historical data for ${symbol}:`, error);
+    console.error(`Error fetching Yahoo Finance historical data for ${symbol}:`, error);
     return [];
   }
 }
