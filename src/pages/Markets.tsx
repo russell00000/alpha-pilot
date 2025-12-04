@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ const popularSearches = [
 ];
 
 const Markets = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
   const [liveData, setLiveData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -534,7 +536,7 @@ const Markets = () => {
                       <tr 
                         key={item.symbol} 
                         className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
-                        onClick={() => !hasPrice && fetchSingleStock(item.symbol)}
+                        onClick={() => navigate(`/stock/${item.symbol}`)}
                       >
                         <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
                         <td className="p-4">

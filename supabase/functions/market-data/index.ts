@@ -297,6 +297,90 @@ function getAssetList(): { symbol: string; name: string; type: string }[] {
   }));
 }
 
+// Fetch historical candle data from Finnhub
+async function fetchHistoricalData(symbol: string, range: string, apiKey: string): Promise<{ date: string; price: number; displayDate: string }[]> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    let from: number;
+    let resolution: string;
+    
+    switch (range) {
+      case "1D":
+        from = now - 86400;
+        resolution = "15"; // 15 min intervals
+        break;
+      case "1W":
+        from = now - 604800;
+        resolution = "60"; // 1 hour intervals
+        break;
+      case "1M":
+        from = now - 2592000;
+        resolution = "D"; // Daily
+        break;
+      case "3M":
+        from = now - 7776000;
+        resolution = "D";
+        break;
+      case "6M":
+        from = now - 15552000;
+        resolution = "D";
+        break;
+      case "1Y":
+        from = now - 31536000;
+        resolution = "W"; // Weekly
+        break;
+      case "5Y":
+        from = now - 157680000;
+        resolution = "W";
+        break;
+      default: // ALL
+        from = now - 315360000; // 10 years
+        resolution = "M"; // Monthly
+        break;
+    }
+    
+    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${now}&token=${apiKey}`;
+    console.log(`Fetching historical data for ${symbol}, range: ${range}`);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.s === "no_data" || !data.c || data.c.length === 0) {
+      console.log(`No historical data for ${symbol}`);
+      return [];
+    }
+    
+    const results: { date: string; price: number; displayDate: string }[] = [];
+    
+    for (let i = 0; i < data.c.length; i++) {
+      const timestamp = data.t[i] * 1000;
+      const date = new Date(timestamp);
+      
+      let displayDate: string;
+      if (range === "1D") {
+        displayDate = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (range === "1W") {
+        displayDate = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      } else if (["1M", "3M"].includes(range)) {
+        displayDate = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } else {
+        displayDate = date.toLocaleDateString([], { month: 'short', year: '2-digit' });
+      }
+      
+      results.push({
+        date: date.toISOString(),
+        price: parseFloat(data.c[i].toFixed(2)),
+        displayDate,
+      });
+    }
+    
+    return results;
+  } catch (error) {
+    console.error(`Error fetching historical data for ${symbol}:`, error);
+    return [];
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -310,7 +394,7 @@ serve(async (req) => {
       throw new Error("FINNHUB_API_KEY is not configured");
     }
 
-    let body: { type?: string; search?: string; symbols?: string[]; batch?: boolean } = {};
+    let body: { type?: string; search?: string; symbols?: string[]; batch?: boolean; historical?: boolean; symbol?: string; range?: string } = {};
     try {
       const text = await req.text();
       if (text) {
@@ -320,8 +404,18 @@ serve(async (req) => {
       console.log("Failed to parse body:", e);
     }
     
-    const { type = "all", search, symbols, batch = false } = body;
-    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "batch:", batch);
+    const { type = "all", search, symbols, batch = false, historical, symbol, range } = body;
+    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "historical:", historical);
+
+    // Handle historical data requests
+    if (historical && symbol && range) {
+      console.log(`Fetching historical data for ${symbol}, range: ${range}`);
+      const historicalData = await fetchHistoricalData(symbol.toUpperCase(), range, FINNHUB_API_KEY);
+      return new Response(
+        JSON.stringify({ data: historicalData }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Handle search queries
     if (search) {
@@ -337,8 +431,8 @@ serve(async (req) => {
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
       // Finnhub allows 60/min, so we can fetch more
-      for (const symbol of symbols.slice(0, 30)) {
-        const result = await fetchStockQuote(symbol, FINNHUB_API_KEY);
+      for (const sym of symbols.slice(0, 30)) {
+        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
         await new Promise(resolve => setTimeout(resolve, 50));
       }
