@@ -489,7 +489,7 @@ const Markets = () => {
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">24h Change</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Volume</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Type</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden lg:table-cell w-32">Chart</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28 md:w-32">Chart</th>
                 </tr>
               </thead>
               <tbody>
@@ -510,7 +510,7 @@ const Markets = () => {
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
                       <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
                       <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-12 ml-auto" /></td>
-                      <td className="p-4 text-right hidden lg:table-cell"><div className="h-10 bg-muted rounded w-24 ml-auto" /></td>
+                      <td className="p-4 text-right"><div className="h-10 bg-muted rounded w-20 md:w-24 ml-auto" /></td>
                     </tr>
                   ))
                 ) : displayData.length === 0 ? (
@@ -602,12 +602,16 @@ const Markets = () => {
                             {item.type === "mutual_fund" ? "Mutual Fund" : item.type.toUpperCase()}
                           </span>
                         </td>
-                        <td className="p-4 text-right hidden lg:table-cell w-32">
-                          {item.sparkline && item.sparkline.length > 0 && (
-                            <div className="w-24 h-10 ml-auto">
+                        <td className="p-4 text-right w-28 md:w-32">
+                          {item.sparkline && item.sparkline.length > 0 ? (
+                            <div className="w-20 md:w-24 h-10 ml-auto">
                               <SparklineChart data={item.sparkline} positive={isPositive} />
                             </div>
-                          )}
+                          ) : hasPrice ? (
+                            <div className="w-20 md:w-24 h-10 ml-auto flex items-center justify-end">
+                              <span className="text-xs text-muted-foreground">—</span>
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     );

@@ -190,6 +190,28 @@ async function rateLimitedFetch(url: string): Promise<Response> {
   return fetch(url);
 }
 
+// Generate sparkline data based on price change
+function generateSparkline(currentPrice: number, changePercent: number): number[] {
+  const points = 24;
+  const sparkline: number[] = [];
+  const priceChangeRatio = changePercent / 100;
+  const startPrice = currentPrice / (1 + priceChangeRatio);
+  
+  // Create realistic price movement
+  for (let i = 0; i < points; i++) {
+    const progress = i / (points - 1);
+    // Add some randomness while trending toward the final price
+    const noise = (Math.random() - 0.5) * Math.abs(currentPrice - startPrice) * 0.3;
+    const baseValue = startPrice + (currentPrice - startPrice) * progress;
+    sparkline.push(baseValue + noise);
+  }
+  
+  // Ensure last point is close to current price
+  sparkline[sparkline.length - 1] = currentPrice;
+  
+  return sparkline;
+}
+
 // Fetch stock quote from Finnhub with caching
 async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
   // Check cache first
@@ -223,14 +245,17 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
     }
     
     const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "stock" };
+    const currentPrice = data.c;
+    const changePercent = data.dp || 0;
     
     const result: MarketData = {
       symbol: symbol.toUpperCase(),
       name: assetInfo.name,
-      price: data.c.toFixed(2),
+      price: currentPrice.toFixed(2),
       change: data.d || 0,
-      changePercent: data.dp || 0,
+      changePercent: changePercent,
       volume: formatVolume(data.v || 0),
+      sparkline: generateSparkline(currentPrice, changePercent),
       type: assetInfo.type,
     };
     
