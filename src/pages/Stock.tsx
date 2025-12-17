@@ -534,74 +534,104 @@ const Stock = () => {
         </div>
 
         {/* Chart Section */}
-        <div className="glass-card p-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Price Chart</h2>
-              <p className="text-sm text-muted-foreground">
-                {activeRange === "1D" ? "Today" : 
-                 activeRange === "1W" ? "Past week" :
-                 activeRange === "1M" ? "Past month" :
-                 activeRange === "3M" ? "Past 3 months" :
-                 activeRange === "6M" ? "Past 6 months" :
-                 activeRange === "1Y" ? "Past year" :
-                 activeRange === "5Y" ? "Past 5 years" : "All time"}
-                {historicalData.length > 1 && (
-                  <span className={cn(
-                    "ml-2",
-                    priceChangePercent >= 0 ? "text-success" : "text-destructive"
-                  )}>
-                    {priceChangePercent >= 0 ? "+" : ""}{priceChangePercent.toFixed(2)}%
+        <div className="glass-card p-3 sm:p-4 mb-6">
+          {/* Compact Header with Time Range */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {activeRange === "1D" ? "Today" : 
+                     activeRange === "1W" ? "Past week" :
+                     activeRange === "1M" ? "Past month" :
+                     activeRange === "3M" ? "Past 3 months" :
+                     activeRange === "6M" ? "Past 6 months" :
+                     activeRange === "1Y" ? "Past year" :
+                     activeRange === "5Y" ? "Past 5 years" : "All time"}
                   </span>
-                )}
-              </p>
+                  {historicalData.length > 1 && (
+                    <span className={cn(
+                      "text-sm font-semibold px-2 py-0.5 rounded",
+                      priceChangePercent >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                    )}>
+                      {priceChangePercent >= 0 ? "+" : ""}{priceChangePercent.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")} />
-              Refresh
-            </Button>
-          </div>
-
-          {/* Time Range Selector */}
-          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-4 overflow-x-auto">
-            {timeRanges.map((range) => (
-              <button
-                key={range.id}
-                onClick={() => handleRangeChange(range.id)}
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap",
-                  activeRange === range.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
+            
+            {/* Time Range Selector - Compact */}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-0.5 p-0.5 bg-secondary/50 rounded-lg">
+                {timeRanges.map((range) => (
+                  <button
+                    key={range.id}
+                    onClick={() => handleRangeChange(range.id)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded text-xs font-medium transition-all",
+                      activeRange === range.id
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
               >
-                {range.label}
-              </button>
-            ))}
+                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              </Button>
+            </div>
           </div>
 
-          {/* Chart */}
-          <div className="h-[380px] w-full">
+          {/* Price Stats Bar */}
+          <div className="flex items-center gap-4 mb-2 px-1 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-success" />
+              <span className="text-muted-foreground">High:</span>
+              <span className="text-success font-medium">${periodHigh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-destructive" />
+              <span className="text-muted-foreground">Low:</span>
+              <span className="text-destructive font-medium">${periodLow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+              <span className="text-muted-foreground">Open:</span>
+              <span className="text-foreground font-medium">${openingPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          {/* Chart - Maximized */}
+          <div className="h-[450px] sm:h-[500px] w-full -mx-1">
             {isLoadingChart ? (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={historicalData} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
+                <AreaChart data={historicalData} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartColor} stopOpacity={0.25} />
-                      <stop offset="50%" stopColor={chartColor} stopOpacity={0.1} />
-                      <stop offset="100%" stopColor={chartColor} stopOpacity={0} />
+                      <stop offset="0%" stopColor={chartColor} stopOpacity={0.35} />
+                      <stop offset="40%" stopColor={chartColor} stopOpacity={0.15} />
+                      <stop offset="100%" stopColor={chartColor} stopOpacity={0.02} />
                     </linearGradient>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <linearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={chartColor} stopOpacity={0.6} />
+                      <stop offset="50%" stopColor={chartColor} stopOpacity={1} />
+                      <stop offset="100%" stopColor={chartColor} stopOpacity={0.8} />
+                    </linearGradient>
+                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                       <feMerge>
                         <feMergeNode in="coloredBlur"/>
                         <feMergeNode in="SourceGraphic"/>
@@ -609,108 +639,74 @@ const Stock = () => {
                     </filter>
                   </defs>
                   <CartesianGrid 
-                    strokeDasharray="3 3" 
+                    strokeDasharray="1 4" 
                     stroke="hsl(var(--border))" 
-                    strokeOpacity={0.4}
+                    strokeOpacity={0.3}
                     vertical={false}
                   />
                   <XAxis 
                     dataKey="displayDate" 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     interval="preserveStartEnd"
-                    minTickGap={60}
-                    dy={10}
+                    minTickGap={80}
+                    dy={8}
                   />
                   <YAxis 
                     domain={['auto', 'auto']}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickFormatter={(value) => `$${value.toLocaleString()}`}
-                    width={70}
-                    dx={-5}
+                    width={65}
+                    tickCount={8}
                   />
                   {/* Opening price reference line */}
-                  {openingPrice > 0 && (
+                  <ReferenceLine 
+                    y={openingPrice} 
+                    stroke="hsl(var(--muted-foreground))" 
+                    strokeDasharray="6 4"
+                    strokeOpacity={0.4}
+                    strokeWidth={1}
+                  />
+                  {/* Current price line */}
+                  {historicalData.length > 0 && (
                     <ReferenceLine 
-                      y={openingPrice} 
-                      stroke="hsl(var(--muted-foreground))" 
-                      strokeDasharray="5 5"
-                      strokeOpacity={0.5}
-                      label={{ 
-                        value: 'Open', 
-                        position: 'right', 
-                        fill: 'hsl(var(--muted-foreground))', 
-                        fontSize: 10,
-                        dx: 5
-                      }}
-                    />
-                  )}
-                  {/* Period high reference */}
-                  {periodHigh > 0 && periodHigh !== openingPrice && (
-                    <ReferenceLine 
-                      y={periodHigh} 
-                      stroke="hsl(var(--success))" 
-                      strokeDasharray="2 4"
-                      strokeOpacity={0.4}
-                    />
-                  )}
-                  {/* Period low reference */}
-                  {periodLow > 0 && periodLow !== openingPrice && (
-                    <ReferenceLine 
-                      y={periodLow} 
-                      stroke="hsl(var(--destructive))" 
-                      strokeDasharray="2 4"
-                      strokeOpacity={0.4}
+                      y={historicalData[historicalData.length - 1].price} 
+                      stroke={chartColor}
+                      strokeWidth={1}
+                      strokeOpacity={0.6}
                     />
                   )}
                   <Tooltip 
                     content={<CustomTooltip />} 
                     cursor={{ 
-                      stroke: 'hsl(var(--muted-foreground))', 
+                      stroke: 'hsl(var(--foreground))', 
                       strokeWidth: 1, 
-                      strokeDasharray: '4 4',
-                      strokeOpacity: 0.5
+                      strokeOpacity: 0.15
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="price"
-                    stroke={chartColor}
-                    strokeWidth={2.5}
+                    stroke="url(#strokeGradient)"
+                    strokeWidth={2}
                     fill="url(#colorPrice)"
                     dot={false}
                     activeDot={{ 
-                      r: 6, 
+                      r: 5, 
                       fill: chartColor, 
                       stroke: 'hsl(var(--background))', 
-                      strokeWidth: 3,
+                      strokeWidth: 2,
                       filter: 'url(#glow)'
                     }}
-                    animationDuration={750}
+                    animationDuration={600}
                     animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             )}
-          </div>
-          
-          {/* Chart Legend */}
-          <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-border/30">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-muted-foreground/50" style={{ borderStyle: 'dashed' }} />
-              <span className="text-xs text-muted-foreground">Opening Price</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-success/40" />
-              <span className="text-xs text-muted-foreground">Period High</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive/40" />
-              <span className="text-xs text-muted-foreground">Period Low</span>
-            </div>
           </div>
         </div>
 
