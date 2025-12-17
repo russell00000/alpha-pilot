@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,7 @@ const Stock = () => {
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [activeRange, setActiveRange] = useState("1M");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [insiderView, setInsiderView] = useState(false);
 
   // Fallback stock names
   const stockNames: Record<string, string> = {
@@ -611,8 +613,24 @@ const Stock = () => {
               </div>
             </div>
             
-            {/* Time Range Selector - Compact */}
-            <div className="flex items-center gap-2">
+            {/* Insider View Toggle & Time Range Selector */}
+            <div className="flex items-center gap-3">
+              {/* Insider View Toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <Checkbox 
+                  id="insider-view"
+                  checked={insiderView}
+                  onCheckedChange={(checked) => setInsiderView(checked === true)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+                <div className="flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Insider View</span>
+                </div>
+              </label>
+              
+              <div className="w-px h-6 bg-border/50" />
+              
               <div className="flex gap-0.5 p-0.5 bg-secondary/50 rounded-lg">
                 {timeRanges.map((range) => (
                   <button
@@ -717,16 +735,18 @@ const Stock = () => {
                     width={65}
                     tickCount={8}
                   />
-                  {/* Opening price reference line */}
-                  <ReferenceLine 
-                    y={openingPrice} 
-                    stroke="hsl(var(--muted-foreground))" 
-                    strokeDasharray="6 4"
-                    strokeOpacity={0.4}
-                    strokeWidth={1}
-                  />
-                  {/* Current price line */}
-                  {historicalData.length > 0 && (
+                  {/* Opening price reference line - Insider View only */}
+                  {insiderView && (
+                    <ReferenceLine 
+                      y={openingPrice} 
+                      stroke="hsl(var(--muted-foreground))" 
+                      strokeDasharray="6 4"
+                      strokeOpacity={0.4}
+                      strokeWidth={1}
+                    />
+                  )}
+                  {/* Current price line - Insider View only */}
+                  {insiderView && historicalData.length > 0 && (
                     <ReferenceLine 
                       y={historicalData[historicalData.length - 1].price} 
                       stroke={chartColor}
@@ -742,16 +762,18 @@ const Stock = () => {
                       strokeOpacity: 0.15
                     }}
                   />
-                  {/* High-Low range band */}
-                  <Area
-                    type="monotone"
-                    dataKey="highLow"
-                    stroke="none"
-                    fill="url(#highLowGradient)"
-                    dot={false}
-                    activeDot={false}
-                    animationDuration={600}
-                  />
+                  {/* High-Low range band - Insider View only */}
+                  {insiderView && (
+                    <Area
+                      type="monotone"
+                      dataKey="highLow"
+                      stroke="none"
+                      fill="url(#highLowGradient)"
+                      dot={false}
+                      activeDot={false}
+                      animationDuration={600}
+                    />
+                  )}
                   {/* Main price line with gradient fill */}
                   <Area
                     type="monotone"
@@ -770,39 +792,43 @@ const Stock = () => {
                     animationDuration={600}
                     animationEasing="ease-out"
                   />
-                  {/* Moving Average line */}
-                  <Line
-                    type="monotone"
-                    dataKey="ma"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 2"
-                    strokeOpacity={0.7}
-                    dot={false}
-                    activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
-                    animationDuration={800}
-                    connectNulls={false}
-                  />
+                  {/* Moving Average line - Insider View only */}
+                  {insiderView && (
+                    <Line
+                      type="monotone"
+                      dataKey="ma"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 2"
+                      strokeOpacity={0.7}
+                      dot={false}
+                      activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
+                      animationDuration={800}
+                      connectNulls={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
           
-          {/* Chart Legend */}
-          <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-border/20">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
-              <span className="text-[10px] text-muted-foreground">Price</span>
+          {/* Chart Legend - Full legend only in Insider View */}
+          {insiderView && (
+            <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-border/20">
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
+                <span className="text-[10px] text-muted-foreground">Price</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
+                <span className="text-[10px] text-muted-foreground">MA{maWindow}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded opacity-20" style={{ background: chartColor }} />
+                <span className="text-[10px] text-muted-foreground">H/L Range</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
-              <span className="text-[10px] text-muted-foreground">MA{maWindow}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded opacity-20" style={{ background: chartColor }} />
-              <span className="text-[10px] text-muted-foreground">H/L Range</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Stock Stats */}
