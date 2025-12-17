@@ -177,6 +177,9 @@ const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mut
   VBTLX: { name: "Vanguard Total Bond Market", type: "mutual_fund" },
 };
 
+// Known mutual fund symbols - these need Yahoo Finance instead of Finnhub
+const MUTUAL_FUND_SYMBOLS = new Set(["VFIAX", "FXAIX", "VTSAX", "SWPPX", "VGTSX", "VTSMX", "VFINX", "FSKAX", "SWTSX", "VBTLX"]);
+
 // Check cache for valid data
 function getCachedData(symbol: string): MarketData | null {
   const cached = cache.get(symbol);
@@ -284,6 +287,78 @@ async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketDa
     console.error(`Error fetching ${symbol}:`, error);
     // Return stale cache if available
     const staleCache = cache.get(symbol);
+    if (staleCache) return staleCache.data;
+    return null;
+  }
+}
+
+// Fetch mutual fund quote from Yahoo Finance (Finnhub doesn't support mutual funds)
+async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> {
+  // Check cache first
+  const cached = getCachedData(`mf_${symbol}`);
+  if (cached) {
+    console.log(`Using cached data for mutual fund ${symbol}`);
+    return cached;
+  }
+
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    console.log(`Fetching Yahoo Finance quote for mutual fund ${symbol}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+      console.log(`No Yahoo Finance data for mutual fund ${symbol}`);
+      return null;
+    }
+    
+    const result = data.chart.result[0];
+    const meta = result.meta || {};
+    const quote = result.indicators?.quote?.[0] || {};
+    const closes = quote.close || [];
+    const volumes = quote.volume || [];
+    
+    const currentPrice = meta.regularMarketPrice || closes[closes.length - 1];
+    const previousClose = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2];
+    
+    if (!currentPrice) {
+      console.warn(`No price data for mutual fund ${symbol}`);
+      return null;
+    }
+    
+    const change = currentPrice - previousClose;
+    const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+    const totalVolume = volumes.reduce((sum: number, v: number) => sum + (v || 0), 0);
+    
+    const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "mutual_fund" };
+    
+    // Generate sparkline from recent closes
+    const sparkline = closes.filter((c: number | null) => c !== null).slice(-24);
+    
+    const marketData: MarketData = {
+      symbol: symbol.toUpperCase(),
+      name: assetInfo.name,
+      price: currentPrice.toFixed(2),
+      change: change,
+      changePercent: changePercent,
+      volume: formatVolume(totalVolume),
+      sparkline: sparkline.length >= 2 ? sparkline : generateSparkline(currentPrice, changePercent),
+      type: "mutual_fund",
+    };
+    
+    // Cache the result
+    setCacheData(`mf_${symbol}`, marketData);
+    
+    return marketData;
+  } catch (error) {
+    console.error(`Error fetching mutual fund ${symbol}:`, error);
+    const staleCache = cache.get(`mf_${symbol}`);
     if (staleCache) return staleCache.data;
     return null;
   }
@@ -646,12 +721,15 @@ serve(async (req) => {
       const results: MarketData[] = [];
       const cryptoSymbols: string[] = [];
       const stockSymbols: string[] = [];
+      const mutualFundSymbols: string[] = [];
       
-      // Separate crypto and stock symbols
+      // Separate crypto, mutual fund, and stock symbols
       for (const sym of symbols.slice(0, 10)) {
         const upperSym = sym.toUpperCase();
         if (CRYPTO_SYMBOLS.has(upperSym)) {
           cryptoSymbols.push(upperSym);
+        } else if (MUTUAL_FUND_SYMBOLS.has(upperSym)) {
+          mutualFundSymbols.push(upperSym);
         } else {
           stockSymbols.push(upperSym);
         }
@@ -688,7 +766,13 @@ serve(async (req) => {
         }
       }
       
-      // Fetch stock data from Finnhub
+      // Fetch mutual fund data from Yahoo Finance
+      for (const sym of mutualFundSymbols) {
+        const result = await fetchMutualFundQuote(sym);
+        if (result) results.push(result);
+      }
+      
+      // Fetch stock/ETF data from Finnhub
       for (const sym of stockSymbols) {
         const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
@@ -731,6 +815,15 @@ serve(async (req) => {
       const topETFs = ["SPY", "QQQ", "VOO"];
       for (const sym of topETFs) {
         const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
+        if (result) results.push(result);
+      }
+    }
+
+    // Fetch Mutual Funds from Yahoo Finance (limit to 3)
+    if (type === "all" || type === "mutual_fund") {
+      const topMutualFunds = ["VFIAX", "FXAIX", "VTSAX"];
+      for (const sym of topMutualFunds) {
+        const result = await fetchMutualFundQuote(sym);
         if (result) results.push(result);
       }
     }
