@@ -7,14 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   Area,
   AreaChart,
+  CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 
 interface StockData {
@@ -403,17 +403,43 @@ const Stock = () => {
     ? ((priceChange / historicalData[0].price) * 100) 
     : 0;
 
+  // Calculate period stats for reference lines
+  const periodHigh = historicalData.length > 0 ? Math.max(...historicalData.map(d => d.high || d.price)) : 0;
+  const periodLow = historicalData.length > 0 ? Math.min(...historicalData.map(d => d.low || d.price)) : 0;
+  const openingPrice = historicalData.length > 0 ? historicalData[0].price : 0;
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const changeFromOpen = data.price - openingPrice;
+      const changePercentFromOpen = openingPrice > 0 ? (changeFromOpen / openingPrice) * 100 : 0;
+      const isUp = changeFromOpen >= 0;
+      
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-2.5 shadow-lg">
-          <p className="text-muted-foreground text-xs">{data.displayDate}</p>
-          <p className="text-foreground font-bold text-lg">${data.price.toFixed(2)}</p>
-          <div className="flex gap-3 mt-1.5 text-xs">
-            <span><span className="text-muted-foreground">O</span> ${data.open?.toFixed(2)}</span>
-            <span><span className="text-success">H</span> ${data.high?.toFixed(2)}</span>
-            <span><span className="text-destructive">L</span> ${data.low?.toFixed(2)}</span>
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl min-w-[180px]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-muted-foreground text-xs font-medium">{data.displayDate}</p>
+            <span className={cn(
+              "text-xs font-medium px-1.5 py-0.5 rounded",
+              isUp ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+            )}>
+              {isUp ? "+" : ""}{changePercentFromOpen.toFixed(2)}%
+            </span>
+          </div>
+          <p className="text-foreground font-bold text-2xl tracking-tight">${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-2 border-t border-border/50">
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Open</p>
+              <p className="text-xs font-medium text-foreground">${data.open?.toFixed(2)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-success uppercase tracking-wide">High</p>
+              <p className="text-xs font-medium text-success">${data.high?.toFixed(2)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-destructive uppercase tracking-wide">Low</p>
+              <p className="text-xs font-medium text-destructive">${data.low?.toFixed(2)}</p>
+            </div>
           </div>
         </div>
       );
@@ -560,49 +586,131 @@ const Stock = () => {
           </div>
 
           {/* Chart */}
-          <div className="h-[350px] w-full -mx-2">
+          <div className="h-[380px] w-full">
             {isLoadingChart ? (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={historicalData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <AreaChart data={historicalData} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                      <stop offset="0%" stopColor={chartColor} stopOpacity={0.25} />
+                      <stop offset="50%" stopColor={chartColor} stopOpacity={0.1} />
+                      <stop offset="100%" stopColor={chartColor} stopOpacity={0} />
                     </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
                   </defs>
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke="hsl(var(--border))" 
+                    strokeOpacity={0.4}
+                    vertical={false}
+                  />
                   <XAxis 
                     dataKey="displayDate" 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     interval="preserveStartEnd"
-                    minTickGap={50}
+                    minTickGap={60}
+                    dy={10}
                   />
                   <YAxis 
-                    domain={['dataMin', 'dataMax']}
+                    domain={['auto', 'auto']}
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                    tickFormatter={(value) => `$${value.toFixed(0)}`}
-                    width={50}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    width={70}
+                    dx={-5}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  {/* Opening price reference line */}
+                  {openingPrice > 0 && (
+                    <ReferenceLine 
+                      y={openingPrice} 
+                      stroke="hsl(var(--muted-foreground))" 
+                      strokeDasharray="5 5"
+                      strokeOpacity={0.5}
+                      label={{ 
+                        value: 'Open', 
+                        position: 'right', 
+                        fill: 'hsl(var(--muted-foreground))', 
+                        fontSize: 10,
+                        dx: 5
+                      }}
+                    />
+                  )}
+                  {/* Period high reference */}
+                  {periodHigh > 0 && periodHigh !== openingPrice && (
+                    <ReferenceLine 
+                      y={periodHigh} 
+                      stroke="hsl(var(--success))" 
+                      strokeDasharray="2 4"
+                      strokeOpacity={0.4}
+                    />
+                  )}
+                  {/* Period low reference */}
+                  {periodLow > 0 && periodLow !== openingPrice && (
+                    <ReferenceLine 
+                      y={periodLow} 
+                      stroke="hsl(var(--destructive))" 
+                      strokeDasharray="2 4"
+                      strokeOpacity={0.4}
+                    />
+                  )}
+                  <Tooltip 
+                    content={<CustomTooltip />} 
+                    cursor={{ 
+                      stroke: 'hsl(var(--muted-foreground))', 
+                      strokeWidth: 1, 
+                      strokeDasharray: '4 4',
+                      strokeOpacity: 0.5
+                    }}
+                  />
                   <Area
                     type="monotone"
                     dataKey="price"
                     stroke={chartColor}
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     fill="url(#colorPrice)"
                     dot={false}
-                    activeDot={{ r: 6, fill: chartColor, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+                    activeDot={{ 
+                      r: 6, 
+                      fill: chartColor, 
+                      stroke: 'hsl(var(--background))', 
+                      strokeWidth: 3,
+                      filter: 'url(#glow)'
+                    }}
+                    animationDuration={750}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             )}
+          </div>
+          
+          {/* Chart Legend */}
+          <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-border/30">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-muted-foreground/50" style={{ borderStyle: 'dashed' }} />
+              <span className="text-xs text-muted-foreground">Opening Price</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-success/40" />
+              <span className="text-xs text-muted-foreground">Period High</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-destructive/40" />
+              <span className="text-xs text-muted-foreground">Period Low</span>
+            </div>
           </div>
         </div>
 
