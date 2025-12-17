@@ -427,7 +427,7 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
     switch (range) {
       case "1D":
         yahooRange = "1d";
-        interval = "5m";  // 5-minute intervals for intraday
+        interval = "2m";  // 2-minute intervals for highly detailed intraday view
         break;
       case "1W":
         yahooRange = "5d";
