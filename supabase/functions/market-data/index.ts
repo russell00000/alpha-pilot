@@ -25,6 +25,23 @@ const CRYPTO_CACHE_TTL = 30000; // 30 seconds for crypto
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // Minimum 100ms between Finnhub requests
 
+// Known crypto symbols - these should NOT be looked up via Finnhub
+const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC"]);
+
+// Crypto symbol to CoinGecko ID mapping
+const CRYPTO_ID_MAP: Record<string, string> = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  SOL: "solana",
+  XRP: "ripple",
+  ADA: "cardano",
+  DOGE: "dogecoin",
+  DOT: "polkadot",
+  AVAX: "avalanche-2",
+  LINK: "chainlink",
+  MATIC: "polygon",
+};
+
 // Extended stock database with names and types
 const assetDatabase: Record<string, { name: string; type: "stock" | "etf" | "mutual_fund" }> = {
   // Top 100 Stocks by market cap
@@ -312,6 +329,20 @@ async function fetchCryptoData(): Promise<MarketData[]> {
       polygon: "MATIC",
     };
     
+    // Also create reverse map for lookups
+    const reverseSymbolMap: Record<string, string> = {
+      BTC: "bitcoin",
+      ETH: "ethereum",
+      SOL: "solana",
+      XRP: "ripple",
+      ADA: "cardano",
+      DOGE: "dogecoin",
+      DOT: "polkadot",
+      AVAX: "avalanche-2",
+      LINK: "chainlink",
+      MATIC: "polygon",
+    };
+    
     const results = data.map((coin: any) => {
       const result: MarketData = {
         symbol: symbolMap[coin.id] || coin.symbol.toUpperCase(),
@@ -427,8 +458,13 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
         break;
     }
     
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${yahooRange}`;
-    console.log(`Fetching Yahoo Finance historical data for ${symbol}, range: ${range}, url: ${url}`);
+    // For crypto symbols, Yahoo Finance uses format like "BTC-USD"
+    const yahooSymbol = CRYPTO_SYMBOLS.has(symbol.toUpperCase()) 
+      ? `${symbol.toUpperCase()}-USD` 
+      : symbol;
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${yahooRange}`;
+    console.log(`Fetching Yahoo Finance historical data for ${symbol} (${yahooSymbol}), range: ${range}, url: ${url}`);
     
     const response = await fetch(url, {
       headers: {
@@ -499,8 +535,13 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
 // Fetch stock details including 52-week high/low from Yahoo Finance
 async function fetchStockDetails(symbol: string): Promise<{ week52High: number; week52Low: number; marketCap: number; peRatio: number; eps: number; dividend: number; avgVolume: number } | null> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
-    console.log(`Fetching 52-week data for ${symbol}`);
+    // For crypto symbols, Yahoo Finance uses format like "BTC-USD"
+    const yahooSymbol = CRYPTO_SYMBOLS.has(symbol.toUpperCase()) 
+      ? `${symbol.toUpperCase()}-USD` 
+      : symbol;
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1y`;
+    console.log(`Fetching 52-week data for ${symbol} (${yahooSymbol})`);
     
     const response = await fetch(url, {
       headers: {
@@ -602,10 +643,56 @@ serve(async (req) => {
     // Handle specific symbol requests
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
-      for (const sym of symbols.slice(0, 10)) { // Limit to 10 symbols
+      const cryptoSymbols: string[] = [];
+      const stockSymbols: string[] = [];
+      
+      // Separate crypto and stock symbols
+      for (const sym of symbols.slice(0, 10)) {
+        const upperSym = sym.toUpperCase();
+        if (CRYPTO_SYMBOLS.has(upperSym)) {
+          cryptoSymbols.push(upperSym);
+        } else {
+          stockSymbols.push(upperSym);
+        }
+      }
+      
+      // Fetch crypto data from CoinGecko
+      if (cryptoSymbols.length > 0) {
+        const cryptoIds = cryptoSymbols.map(s => CRYPTO_ID_MAP[s]).filter(Boolean).join(',');
+        if (cryptoIds) {
+          try {
+            const response = await fetch(
+              `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${cryptoIds}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
+            );
+            const data = await response.json();
+            
+            if (Array.isArray(data)) {
+              for (const coin of data) {
+                const symbol = Object.entries(CRYPTO_ID_MAP).find(([_, id]) => id === coin.id)?.[0] || coin.symbol.toUpperCase();
+                results.push({
+                  symbol,
+                  name: coin.name,
+                  price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
+                  change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
+                  changePercent: coin.price_change_percentage_24h_in_currency || 0,
+                  volume: formatVolume(coin.total_volume),
+                  sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
+                  type: "crypto" as const,
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Error fetching crypto data:", err);
+          }
+        }
+      }
+      
+      // Fetch stock data from Finnhub
+      for (const sym of stockSymbols) {
         const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
         if (result) results.push(result);
       }
+      
       return new Response(
         JSON.stringify({ data: results }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
