@@ -420,41 +420,42 @@ function getAssetList(): { symbol: string; name: string; type: string }[] {
 async function fetchHistoricalData(symbol: string, range: string, _apiKey: string): Promise<{ date: string; price: number; open: number; high: number; low: number; volume: number; displayDate: string }[]> {
   try {
     // Map our range to Yahoo Finance parameters
+    // Using more granular intervals for detailed charts (similar to 1W view)
     let yahooRange: string;
     let interval: string;
     
     switch (range) {
       case "1D":
         yahooRange = "1d";
-        interval = "5m";
+        interval = "5m";  // 5-minute intervals for intraday
         break;
       case "1W":
         yahooRange = "5d";
-        interval = "15m";
+        interval = "15m"; // 15-minute intervals
         break;
       case "1M":
         yahooRange = "1mo";
-        interval = "1d";
+        interval = "30m"; // 30-minute intervals for granular monthly view
         break;
       case "3M":
         yahooRange = "3mo";
-        interval = "1d";
+        interval = "60m"; // Hourly intervals for 3 months
         break;
       case "6M":
         yahooRange = "6mo";
-        interval = "1d";
+        interval = "60m"; // Hourly intervals for 6 months (within Yahoo's 730 day limit)
         break;
       case "1Y":
         yahooRange = "1y";
-        interval = "1d";
+        interval = "60m"; // Hourly intervals for 1 year (within Yahoo's 730 day limit)
         break;
       case "5Y":
         yahooRange = "5y";
-        interval = "1wk";
+        interval = "1d";  // Daily intervals for 5 years (60m only goes back 2 years)
         break;
       default:
         yahooRange = "max";
-        interval = "1mo";
+        interval = "1d";  // Daily intervals for all time
         break;
     }
     
