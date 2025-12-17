@@ -411,8 +411,101 @@ const Stock = () => {
   const periodLow = historicalData.length > 0 ? Math.min(...historicalData.map(d => d.low || d.price)) : 0;
   const openingPrice = historicalData.length > 0 ? historicalData[0].price : 0;
 
-  // Calculate moving average and enhanced chart data
+  // Calculate moving averages and technical indicators
   const maWindow = activeRange === '1D' ? 10 : activeRange === '1W' ? 5 : activeRange === '1M' ? 7 : 20;
+  const emaWindow = Math.floor(maWindow * 1.5);
+  const rsiPeriod = 14;
+  const bbPeriod = 20;
+  const bbStdDev = 2;
+
+  // Calculate RSI
+  const calculateRSI = (prices: number[], period: number): (number | null)[] => {
+    const rsi: (number | null)[] = [];
+    for (let i = 0; i < prices.length; i++) {
+      if (i < period) {
+        rsi.push(null);
+        continue;
+      }
+      let gains = 0, losses = 0;
+      for (let j = i - period + 1; j <= i; j++) {
+        const change = prices[j] - prices[j - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+      }
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      rsi.push(parseFloat((100 - (100 / (1 + rs))).toFixed(1)));
+    }
+    return rsi;
+  };
+
+  // Calculate EMA
+  const calculateEMA = (prices: number[], period: number): (number | null)[] => {
+    const ema: (number | null)[] = [];
+    const multiplier = 2 / (period + 1);
+    for (let i = 0; i < prices.length; i++) {
+      if (i < period - 1) {
+        ema.push(null);
+      } else if (i === period - 1) {
+        const sum = prices.slice(0, period).reduce((a, b) => a + b, 0);
+        ema.push(parseFloat((sum / period).toFixed(2)));
+      } else {
+        const prevEma = ema[i - 1] as number;
+        ema.push(parseFloat((((prices[i] - prevEma) * multiplier) + prevEma).toFixed(2)));
+      }
+    }
+    return ema;
+  };
+
+  // Calculate Bollinger Bands
+  const calculateBollingerBands = (prices: number[], period: number, stdDev: number) => {
+    const bands: { upper: number | null; middle: number | null; lower: number | null }[] = [];
+    for (let i = 0; i < prices.length; i++) {
+      if (i < period - 1) {
+        bands.push({ upper: null, middle: null, lower: null });
+      } else {
+        const slice = prices.slice(i - period + 1, i + 1);
+        const mean = slice.reduce((a, b) => a + b, 0) / period;
+        const variance = slice.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / period;
+        const std = Math.sqrt(variance);
+        bands.push({
+          upper: parseFloat((mean + stdDev * std).toFixed(2)),
+          middle: parseFloat(mean.toFixed(2)),
+          lower: parseFloat((mean - stdDev * std).toFixed(2)),
+        });
+      }
+    }
+    return bands;
+  };
+
+  // Calculate VWAP
+  const calculateVWAP = (data: HistoricalDataPoint[]): (number | null)[] => {
+    const vwap: (number | null)[] = [];
+    let cumulativeTPV = 0;
+    let cumulativeVolume = 0;
+    for (let i = 0; i < data.length; i++) {
+      const typicalPrice = (data[i].high + data[i].low + data[i].price) / 3;
+      cumulativeTPV += typicalPrice * data[i].volume;
+      cumulativeVolume += data[i].volume;
+      if (cumulativeVolume === 0) {
+        vwap.push(null);
+      } else {
+        vwap.push(parseFloat((cumulativeTPV / cumulativeVolume).toFixed(2)));
+      }
+    }
+    return vwap;
+  };
+
+  const prices = historicalData.map(d => d.price);
+  const rsiValues = calculateRSI(prices, rsiPeriod);
+  const emaValues = calculateEMA(prices, emaWindow);
+  const bbValues = calculateBollingerBands(prices, bbPeriod, bbStdDev);
+  const vwapValues = calculateVWAP(historicalData);
+
+  // Calculate max volume for scaling
+  const maxVolume = Math.max(...historicalData.map(d => d.volume || 0));
+
   const chartDataWithMA = historicalData.map((point, index) => {
     // Calculate simple moving average
     const start = Math.max(0, index - maWindow + 1);
@@ -422,10 +515,29 @@ const Stock = () => {
     return {
       ...point,
       ma: index >= maWindow - 1 ? parseFloat(ma.toFixed(2)) : null,
-      // High-low range for the band
+      ema: emaValues[index],
+      rsi: rsiValues[index],
+      bbUpper: bbValues[index].upper,
+      bbMiddle: bbValues[index].middle,
+      bbLower: bbValues[index].lower,
+      vwap: vwapValues[index],
+      volumeScaled: maxVolume > 0 ? (point.volume / maxVolume) * 100 : 0,
       highLow: [point.low, point.high],
+      bbBand: bbValues[index].upper && bbValues[index].lower ? [bbValues[index].lower, bbValues[index].upper] : null,
     };
   });
+
+  // Current technical indicators
+  const latestData = chartDataWithMA[chartDataWithMA.length - 1];
+  const currentRSI = latestData?.rsi;
+  const currentVWAP = latestData?.vwap;
+  const priceVsVWAP = currentVWAP && latestData ? ((latestData.price - currentVWAP) / currentVWAP * 100).toFixed(2) : null;
+  const rsiSignal = currentRSI ? (currentRSI > 70 ? 'Overbought' : currentRSI < 30 ? 'Oversold' : 'Neutral') : null;
+
+  // Support and Resistance levels (simple calculation based on recent highs/lows)
+  const recentData = historicalData.slice(-Math.min(50, historicalData.length));
+  const resistance = Math.max(...recentData.map(d => d.high));
+  const support = Math.min(...recentData.map(d => d.low));
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -435,7 +547,10 @@ const Stock = () => {
       const isUp = changeFromOpen >= 0;
       
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl min-w-[200px]">
+        <div className={cn(
+          "bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl",
+          insiderView ? "min-w-[280px]" : "min-w-[200px]"
+        )}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-muted-foreground text-xs font-medium">{data.displayDate}</p>
             <span className={cn(
@@ -462,10 +577,67 @@ const Stock = () => {
               <p className="text-xs font-medium text-destructive">${data.low?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-primary uppercase tracking-wide">MA{maWindow}</p>
-              <p className="text-xs font-medium text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Vol</p>
+              <p className="text-xs font-medium text-foreground">{data.volume?.toLocaleString()}</p>
             </div>
           </div>
+          
+          {/* Extended Technical Indicators - Insider View Only */}
+          {insiderView && (
+            <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-border/30">
+              <div className="text-center">
+                <p className="text-[9px] text-primary uppercase tracking-wide">SMA{maWindow}</p>
+                <p className="text-xs font-medium text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-amber-500 uppercase tracking-wide">EMA{emaWindow}</p>
+                <p className="text-xs font-medium text-amber-500">{data.ema ? `$${data.ema.toFixed(2)}` : '—'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-violet-500 uppercase tracking-wide">VWAP</p>
+                <p className="text-xs font-medium text-violet-500">{data.vwap ? `$${data.vwap.toFixed(2)}` : '—'}</p>
+              </div>
+            </div>
+          )}
+          
+          {/* RSI & Bollinger - Insider View Only */}
+          {insiderView && (
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/30">
+              <div>
+                <p className="text-[9px] text-cyan-500 uppercase tracking-wide mb-1">RSI ({rsiPeriod})</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        data.rsi > 70 ? "bg-destructive" : data.rsi < 30 ? "bg-success" : "bg-cyan-500"
+                      )}
+                      style={{ width: `${data.rsi || 0}%` }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "text-xs font-medium",
+                    data.rsi > 70 ? "text-destructive" : data.rsi < 30 ? "text-success" : "text-cyan-500"
+                  )}>
+                    {data.rsi?.toFixed(0) || '—'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[9px] text-pink-500 uppercase tracking-wide mb-1">Bollinger</p>
+                <div className="text-[10px] space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Upper</span>
+                    <span className="text-pink-500">{data.bbUpper ? `$${data.bbUpper.toFixed(2)}` : '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Lower</span>
+                    <span className="text-pink-500">{data.bbLower ? `$${data.bbLower.toFixed(2)}` : '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Range indicator */}
           <div className="mt-2 pt-2 border-t border-border/30">
@@ -703,6 +875,11 @@ const Stock = () => {
                       <stop offset="50%" stopColor={chartColor} stopOpacity={1} />
                       <stop offset="100%" stopColor={chartColor} stopOpacity={0.8} />
                     </linearGradient>
+                    <linearGradient id="bbGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ec4899" stopOpacity={0.15} />
+                      <stop offset="50%" stopColor="#ec4899" stopOpacity={0.05} />
+                      <stop offset="100%" stopColor="#ec4899" stopOpacity={0.15} />
+                    </linearGradient>
                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                       <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                       <feMerge>
@@ -745,6 +922,28 @@ const Stock = () => {
                       strokeWidth={1}
                     />
                   )}
+                  {/* Support level - Insider View only */}
+                  {insiderView && support > 0 && (
+                    <ReferenceLine 
+                      y={support} 
+                      stroke="#22c55e"
+                      strokeDasharray="8 4"
+                      strokeOpacity={0.5}
+                      strokeWidth={1}
+                      label={{ value: 'Support', fill: '#22c55e', fontSize: 9, position: 'insideTopRight' }}
+                    />
+                  )}
+                  {/* Resistance level - Insider View only */}
+                  {insiderView && resistance > 0 && (
+                    <ReferenceLine 
+                      y={resistance} 
+                      stroke="#ef4444"
+                      strokeDasharray="8 4"
+                      strokeOpacity={0.5}
+                      strokeWidth={1}
+                      label={{ value: 'Resistance', fill: '#ef4444', fontSize: 9, position: 'insideBottomRight' }}
+                    />
+                  )}
                   {/* Current price line - Insider View only */}
                   {insiderView && historicalData.length > 0 && (
                     <ReferenceLine 
@@ -762,6 +961,18 @@ const Stock = () => {
                       strokeOpacity: 0.15
                     }}
                   />
+                  {/* Bollinger Bands - Insider View only */}
+                  {insiderView && (
+                    <Area
+                      type="monotone"
+                      dataKey="bbBand"
+                      stroke="none"
+                      fill="url(#bbGradient)"
+                      dot={false}
+                      activeDot={false}
+                      animationDuration={600}
+                    />
+                  )}
                   {/* High-Low range band - Insider View only */}
                   {insiderView && (
                     <Area
@@ -792,7 +1003,7 @@ const Stock = () => {
                     animationDuration={600}
                     animationEasing="ease-out"
                   />
-                  {/* Moving Average line - Insider View only */}
+                  {/* Moving Average (SMA) line - Insider View only */}
                   {insiderView && (
                     <Line
                       type="monotone"
@@ -807,6 +1018,62 @@ const Stock = () => {
                       connectNulls={false}
                     />
                   )}
+                  {/* EMA line - Insider View only */}
+                  {insiderView && (
+                    <Line
+                      type="monotone"
+                      dataKey="ema"
+                      stroke="#f59e0b"
+                      strokeWidth={1.5}
+                      strokeOpacity={0.7}
+                      dot={false}
+                      activeDot={{ r: 3, fill: '#f59e0b' }}
+                      animationDuration={800}
+                      connectNulls={false}
+                    />
+                  )}
+                  {/* VWAP line - Insider View only */}
+                  {insiderView && (
+                    <Line
+                      type="monotone"
+                      dataKey="vwap"
+                      stroke="#8b5cf6"
+                      strokeWidth={1.5}
+                      strokeOpacity={0.6}
+                      dot={false}
+                      activeDot={{ r: 3, fill: '#8b5cf6' }}
+                      animationDuration={800}
+                      connectNulls={false}
+                    />
+                  )}
+                  {/* Bollinger Upper Band - Insider View only */}
+                  {insiderView && (
+                    <Line
+                      type="monotone"
+                      dataKey="bbUpper"
+                      stroke="#ec4899"
+                      strokeWidth={1}
+                      strokeOpacity={0.5}
+                      strokeDasharray="3 3"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                  {/* Bollinger Lower Band - Insider View only */}
+                  {insiderView && (
+                    <Line
+                      type="monotone"
+                      dataKey="bbLower"
+                      stroke="#ec4899"
+                      strokeWidth={1}
+                      strokeOpacity={0.5}
+                      strokeDasharray="3 3"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             )}
@@ -814,18 +1081,138 @@ const Stock = () => {
           
           {/* Chart Legend - Full legend only in Insider View */}
           {insiderView && (
-            <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-border/20">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 pt-2 border-t border-border/20">
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
                 <span className="text-[10px] text-muted-foreground">Price</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
-                <span className="text-[10px] text-muted-foreground">MA{maWindow}</span>
+                <span className="text-[10px] text-muted-foreground">SMA{maWindow}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded opacity-20" style={{ background: chartColor }} />
-                <span className="text-[10px] text-muted-foreground">H/L Range</span>
+                <div className="w-4 h-0.5 rounded bg-amber-500" />
+                <span className="text-[10px] text-muted-foreground">EMA{emaWindow}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded bg-violet-500" />
+                <span className="text-[10px] text-muted-foreground">VWAP</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded bg-pink-500" style={{ opacity: 0.5 }} />
+                <span className="text-[10px] text-muted-foreground">BB</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded opacity-15 bg-pink-500" />
+                <span className="text-[10px] text-muted-foreground">BB Band</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Technical Indicators Panel - Insider View only */}
+          {insiderView && latestData && (
+            <div className="mt-4 pt-4 border-t border-border/30">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Technical Indicators</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* RSI */}
+                <div className="bg-secondary/30 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">RSI ({rsiPeriod})</span>
+                    <span className={cn(
+                      "text-xs px-1.5 py-0.5 rounded font-medium",
+                      currentRSI && currentRSI > 70 ? "bg-destructive/10 text-destructive" :
+                      currentRSI && currentRSI < 30 ? "bg-success/10 text-success" :
+                      "bg-secondary text-muted-foreground"
+                    )}>
+                      {rsiSignal}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          currentRSI && currentRSI > 70 ? "bg-destructive" :
+                          currentRSI && currentRSI < 30 ? "bg-success" :
+                          "bg-cyan-500"
+                        )}
+                        style={{ width: `${currentRSI || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-foreground min-w-[32px] text-right">{currentRSI?.toFixed(0) || '—'}</span>
+                  </div>
+                  <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                    <span>30</span>
+                    <span>70</span>
+                  </div>
+                </div>
+                
+                {/* VWAP vs Price */}
+                <div className="bg-secondary/30 rounded-lg p-3">
+                  <span className="text-xs text-muted-foreground">VWAP Position</span>
+                  <div className="mt-2">
+                    <div className="text-lg font-bold text-foreground">${currentVWAP?.toFixed(2) || '—'}</div>
+                    <div className={cn(
+                      "text-xs font-medium mt-1",
+                      priceVsVWAP && parseFloat(priceVsVWAP) > 0 ? "text-success" : "text-destructive"
+                    )}>
+                      {priceVsVWAP ? `${parseFloat(priceVsVWAP) > 0 ? '+' : ''}${priceVsVWAP}% vs price` : '—'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Support Level */}
+                <div className="bg-secondary/30 rounded-lg p-3">
+                  <span className="text-xs text-muted-foreground">Support Level</span>
+                  <div className="mt-2">
+                    <div className="text-lg font-bold text-success">${support.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {latestData.price > support ? `${((latestData.price - support) / support * 100).toFixed(1)}% above` : 'At support'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Resistance Level */}
+                <div className="bg-secondary/30 rounded-lg p-3">
+                  <span className="text-xs text-muted-foreground">Resistance Level</span>
+                  <div className="mt-2">
+                    <div className="text-lg font-bold text-destructive">${resistance.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {latestData.price < resistance ? `${((resistance - latestData.price) / latestData.price * 100).toFixed(1)}% below` : 'At resistance'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Moving Averages Summary */}
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="bg-secondary/20 rounded-lg p-2 text-center">
+                  <span className="text-[10px] text-primary uppercase">SMA{maWindow}</span>
+                  <div className="text-sm font-semibold text-foreground">${latestData.ma?.toFixed(2) || '—'}</div>
+                  {latestData.ma && (
+                    <span className={cn("text-[10px]", latestData.price > latestData.ma ? "text-success" : "text-destructive")}>
+                      {latestData.price > latestData.ma ? 'Above' : 'Below'}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-secondary/20 rounded-lg p-2 text-center">
+                  <span className="text-[10px] text-amber-500 uppercase">EMA{emaWindow}</span>
+                  <div className="text-sm font-semibold text-foreground">${latestData.ema?.toFixed(2) || '—'}</div>
+                  {latestData.ema && (
+                    <span className={cn("text-[10px]", latestData.price > latestData.ema ? "text-success" : "text-destructive")}>
+                      {latestData.price > latestData.ema ? 'Above' : 'Below'}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-secondary/20 rounded-lg p-2 text-center">
+                  <span className="text-[10px] text-pink-500 uppercase">BB Width</span>
+                  <div className="text-sm font-semibold text-foreground">
+                    {latestData.bbUpper && latestData.bbLower ? `$${(latestData.bbUpper - latestData.bbLower).toFixed(2)}` : '—'}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {latestData.bbUpper && latestData.bbLower ? `${((latestData.bbUpper - latestData.bbLower) / latestData.price * 100).toFixed(1)}%` : ''}
+                  </span>
+                </div>
               </div>
             </div>
           )}
