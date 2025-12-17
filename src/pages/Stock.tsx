@@ -12,9 +12,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Area,
-  AreaChart,
+  ComposedChart,
   CartesianGrid,
   ReferenceLine,
+  Line,
 } from "recharts";
 
 interface StockData {
@@ -408,6 +409,22 @@ const Stock = () => {
   const periodLow = historicalData.length > 0 ? Math.min(...historicalData.map(d => d.low || d.price)) : 0;
   const openingPrice = historicalData.length > 0 ? historicalData[0].price : 0;
 
+  // Calculate moving average and enhanced chart data
+  const maWindow = activeRange === '1D' ? 10 : activeRange === '1W' ? 5 : activeRange === '1M' ? 7 : 20;
+  const chartDataWithMA = historicalData.map((point, index) => {
+    // Calculate simple moving average
+    const start = Math.max(0, index - maWindow + 1);
+    const windowData = historicalData.slice(start, index + 1);
+    const ma = windowData.reduce((sum, p) => sum + p.price, 0) / windowData.length;
+    
+    return {
+      ...point,
+      ma: index >= maWindow - 1 ? parseFloat(ma.toFixed(2)) : null,
+      // High-low range for the band
+      highLow: [point.low, point.high],
+    };
+  });
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -416,7 +433,7 @@ const Stock = () => {
       const isUp = changeFromOpen >= 0;
       
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl min-w-[180px]">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl min-w-[200px]">
           <div className="flex items-center justify-between mb-2">
             <p className="text-muted-foreground text-xs font-medium">{data.displayDate}</p>
             <span className={cn(
@@ -427,18 +444,51 @@ const Stock = () => {
             </span>
           </div>
           <p className="text-foreground font-bold text-2xl tracking-tight">${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-2 border-t border-border/50">
+          
+          {/* OHLC Grid */}
+          <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-border/50">
             <div className="text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Open</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Open</p>
               <p className="text-xs font-medium text-foreground">${data.open?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] text-success uppercase tracking-wide">High</p>
+              <p className="text-[9px] text-success uppercase tracking-wide">High</p>
               <p className="text-xs font-medium text-success">${data.high?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] text-destructive uppercase tracking-wide">Low</p>
+              <p className="text-[9px] text-destructive uppercase tracking-wide">Low</p>
               <p className="text-xs font-medium text-destructive">${data.low?.toFixed(2)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[9px] text-primary uppercase tracking-wide">MA{maWindow}</p>
+              <p className="text-xs font-medium text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
+            </div>
+          </div>
+          
+          {/* Range indicator */}
+          <div className="mt-2 pt-2 border-t border-border/30">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+              <span>${data.low?.toFixed(2)}</span>
+              <span>Day Range</span>
+              <span>${data.high?.toFixed(2)}</span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full relative overflow-hidden">
+              <div 
+                className="absolute inset-y-0 bg-gradient-to-r from-destructive/60 via-foreground/40 to-success/60 rounded-full"
+                style={{
+                  left: '0%',
+                  right: '0%',
+                }}
+              />
+              {data.high !== data.low && (
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-foreground rounded-full border border-background shadow-sm"
+                  style={{
+                    left: `${((data.price - data.low) / (data.high - data.low)) * 100}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -618,12 +668,17 @@ const Stock = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={historicalData} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                <ComposedChart data={chartDataWithMA} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={chartColor} stopOpacity={0.35} />
                       <stop offset="40%" stopColor={chartColor} stopOpacity={0.15} />
                       <stop offset="100%" stopColor={chartColor} stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="highLowGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={chartColor} stopOpacity={0.08} />
+                      <stop offset="50%" stopColor={chartColor} stopOpacity={0.04} />
+                      <stop offset="100%" stopColor={chartColor} stopOpacity={0.08} />
                     </linearGradient>
                     <linearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stopColor={chartColor} stopOpacity={0.6} />
@@ -687,26 +742,66 @@ const Stock = () => {
                       strokeOpacity: 0.15
                     }}
                   />
+                  {/* High-Low range band */}
+                  <Area
+                    type="monotone"
+                    dataKey="highLow"
+                    stroke="none"
+                    fill="url(#highLowGradient)"
+                    dot={false}
+                    activeDot={false}
+                    animationDuration={600}
+                  />
+                  {/* Main price line with gradient fill */}
                   <Area
                     type="monotone"
                     dataKey="price"
                     stroke="url(#strokeGradient)"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     fill="url(#colorPrice)"
                     dot={false}
                     activeDot={{ 
-                      r: 5, 
+                      r: 6, 
                       fill: chartColor, 
                       stroke: 'hsl(var(--background))', 
-                      strokeWidth: 2,
+                      strokeWidth: 3,
                       filter: 'url(#glow)'
                     }}
                     animationDuration={600}
                     animationEasing="ease-out"
                   />
-                </AreaChart>
+                  {/* Moving Average line */}
+                  <Line
+                    type="monotone"
+                    dataKey="ma"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 2"
+                    strokeOpacity={0.7}
+                    dot={false}
+                    activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
+                    animationDuration={800}
+                    connectNulls={false}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             )}
+          </div>
+          
+          {/* Chart Legend */}
+          <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-border/20">
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
+              <span className="text-[10px] text-muted-foreground">Price</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
+              <span className="text-[10px] text-muted-foreground">MA{maWindow}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded opacity-20" style={{ background: chartColor }} />
+              <span className="text-[10px] text-muted-foreground">H/L Range</span>
+            </div>
           </div>
         </div>
 
