@@ -14,7 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      investment_assessments: {
+        Row: {
+          created_at: string
+          date_of_birth: string
+          id: string
+          income_stability: string
+          investment_amount: number
+          investment_experience: string
+          investment_goal: string
+          investment_timeline: string
+          recurring_amount: number | null
+          recurring_frequency: string | null
+          recurring_investment: boolean
+          risk_tolerance: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth: string
+          id?: string
+          income_stability: string
+          investment_amount: number
+          investment_experience: string
+          investment_goal: string
+          investment_timeline: string
+          recurring_amount?: number | null
+          recurring_frequency?: string | null
+          recurring_investment?: boolean
+          risk_tolerance: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string
+          id?: string
+          income_stability?: string
+          investment_amount?: number
+          investment_experience?: string
+          investment_goal?: string
+          investment_timeline?: string
+          recurring_amount?: number | null
+          recurring_frequency?: string | null
+          recurring_investment?: boolean
+          risk_tolerance?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      portfolio_recommendations: {
+        Row: {
+          allocation_alternatives: number
+          allocation_bonds: number
+          allocation_cash: number
+          allocation_etfs: number
+          allocation_stocks: number
+          assessment_id: string
+          created_at: string
+          id: string
+          rationale: string | null
+          recommended_funds: Json
+          user_id: string
+        }
+        Insert: {
+          allocation_alternatives?: number
+          allocation_bonds: number
+          allocation_cash: number
+          allocation_etfs: number
+          allocation_stocks: number
+          assessment_id: string
+          created_at?: string
+          id?: string
+          rationale?: string | null
+          recommended_funds: Json
+          user_id: string
+        }
+        Update: {
+          allocation_alternatives?: number
+          allocation_bonds?: number
+          allocation_cash?: number
+          allocation_etfs?: number
+          allocation_stocks?: number
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          rationale?: string | null
+          recommended_funds?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_recommendations_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "investment_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
