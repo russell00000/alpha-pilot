@@ -69,11 +69,19 @@ ${philosophy.philosophy_text}
 ## RISK GUIDANCE PRINCIPLES
 ${philosophy.risk_guidance}
 
-## ASSET ALLOCATION RULES
+## ASSET ALLOCATION RULES - CRITICAL: FOLLOW THESE EXACTLY
 ${philosophy.asset_allocation_rules}
 
 ## COMMUNICATION STYLE
 ${philosophy.market_insights_style}
+
+## CRITICAL RULES YOU MUST FOLLOW:
+1. **INDIVIDUAL STOCKS vs ETFs ARE DIFFERENT** - The allocation rules specify INDIVIDUAL STOCKS (like AAPL, NVDA, MSFT, GOOGL) separately from ETFs (like SPY, QQQ, VTI).
+2. For AGGRESSIVE profiles: You MUST recommend 50-70% in INDIVIDUAL STOCK TICKERS (not ETFs). ETFs should only be 10-30% max.
+3. For MODERATE profiles: Individual stocks 25-45%, ETFs 35-55%.
+4. For CONSERVATIVE profiles: Individual stocks 0-15%, ETFs 50-70%.
+5. **DO NOT substitute ETFs for individual stocks** - They are NOT interchangeable. If the rules say "individual stocks", you must recommend actual company stock tickers.
+6. Always include the "type" field to distinguish between "stock" (individual company) and "etf".
 
 You must respond with ONLY valid JSON matching this exact structure (no markdown, no code blocks, just raw JSON):
 {
@@ -83,14 +91,15 @@ You must respond with ONLY valid JSON matching this exact structure (no markdown
     "cash": <number 0-100>,
     "alternatives": <number 0-100>
   },
-  "funds": [
+  "holdings": [
     {
       "symbol": "<ticker>",
-      "name": "<full fund name>",
-      "category": "<Stock|Bond|Cash|Alternative>",
+      "name": "<full name>",
+      "type": "<stock|etf|bond|cash|alternative>",
+      "category": "<Stock|ETF|Bond|Cash|Alternative>",
       "allocation": <number 0-100>,
-      "expenseRatio": "<e.g. 0.03%>",
-      "description": "<brief description>"
+      "expenseRatio": "<e.g. 0.03% for ETFs, N/A for stocks>",
+      "description": "<brief description of why this pick>"
     }
   ],
   "rationale": "<2-3 paragraphs explaining why this portfolio fits the user>",
@@ -98,7 +107,8 @@ You must respond with ONLY valid JSON matching this exact structure (no markdown
   "riskAnalysis": "<analysis of their risk profile and what it means for their investments>"
 }
 
-The allocation percentages must sum to 100. Fund allocations must also sum to 100. Use real ETF/fund tickers that exist.`;
+The allocation percentages must sum to 100. Holdings allocations must also sum to 100. Use real tickers that exist.
+REMEMBER: Individual stocks (AAPL, NVDA, MSFT, etc.) are NOT the same as ETFs (SPY, QQQ, etc.). Follow the allocation rules precisely.`;
 
     const userPrompt = `Generate a personalized portfolio recommendation for this investor:
 
@@ -174,9 +184,14 @@ Based on the creator's investing philosophy, provide a tailored portfolio alloca
       throw new Error("Invalid AI response format");
     }
 
-    // Validate the response structure
-    if (!recommendation.allocation || !recommendation.funds || !recommendation.rationale) {
+    // Validate the response structure - support both "holdings" and legacy "funds"
+    if (!recommendation.allocation || (!recommendation.holdings && !recommendation.funds) || !recommendation.rationale) {
       throw new Error("Incomplete AI response");
+    }
+    
+    // Normalize to "funds" for backward compatibility with frontend
+    if (recommendation.holdings && !recommendation.funds) {
+      recommendation.funds = recommendation.holdings;
     }
 
     console.log("Generated recommendation:", recommendation);
