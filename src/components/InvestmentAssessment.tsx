@@ -185,7 +185,17 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
               step="100"
               placeholder="1,000"
               value={formData.investmentAmount || ""}
-              onChange={(e) => setFormData({ ...formData, investmentAmount: Number(e.target.value) })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const normalized = raw.replace(/,/g, "");
+                const next = normalized === "" ? 0 : Number(normalized);
+                setFormData({ ...formData, investmentAmount: next });
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy.investmentAmount;
+                  return copy;
+                });
+              }}
               className="pl-8"
             />
           </div>
@@ -196,7 +206,25 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
           <Checkbox
             id="recurring"
             checked={formData.recurringInvestment}
-            onCheckedChange={(checked) => setFormData({ ...formData, recurringInvestment: checked === true })}
+            onCheckedChange={(checked) => {
+              const enabled = checked === true;
+              setFormData({
+                ...formData,
+                recurringInvestment: enabled,
+                ...(enabled
+                  ? {}
+                  : {
+                      recurringAmount: undefined,
+                      recurringFrequency: undefined,
+                    }),
+              });
+              setErrors((prev) => {
+                const copy = { ...prev };
+                delete copy.recurringAmount;
+                delete copy.recurringFrequency;
+                return copy;
+              });
+            }}
           />
           <Label htmlFor="recurring" className="cursor-pointer">I want to make recurring investments</Label>
         </div>
@@ -214,7 +242,17 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
                   step="25"
                   placeholder="100"
                   value={formData.recurringAmount || ""}
-                  onChange={(e) => setFormData({ ...formData, recurringAmount: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const normalized = raw.replace(/,/g, "");
+                    const next = normalized === "" ? 0 : Number(normalized);
+                    setFormData({ ...formData, recurringAmount: next });
+                    setErrors((prev) => {
+                      const copy = { ...prev };
+                      delete copy.recurringAmount;
+                      return copy;
+                    });
+                  }}
                   className="pl-8"
                 />
               </div>
@@ -224,7 +262,14 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
               <Label>Frequency</Label>
               <RadioGroup
                 value={formData.recurringFrequency || ""}
-                onValueChange={(value) => setFormData({ ...formData, recurringFrequency: value })}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, recurringFrequency: value });
+                  setErrors((prev) => {
+                    const copy = { ...prev };
+                    delete copy.recurringFrequency;
+                    return copy;
+                  });
+                }}
                 className="grid grid-cols-2 gap-2"
               >
                 {[
