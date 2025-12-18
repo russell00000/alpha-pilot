@@ -11,6 +11,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Stock from "./pages/Stock";
 import Auth from "./pages/Auth";
+import AdminPhilosophy from "./pages/AdminPhilosophy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/stock/:symbol" element={<Stock />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin/philosophy" element={<AdminPhilosophy />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

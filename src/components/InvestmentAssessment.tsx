@@ -509,7 +509,7 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
           Back
         </Button>
         <Button onClick={handleNext} disabled={loading} className="gap-2">
-          {loading ? "Generating..." : step === totalSteps ? "Get My Portfolio" : "Continue"}
+          {loading ? "AI is analyzing..." : step === totalSteps ? "Generate AI Portfolio" : "Continue"}
           {step !== totalSteps && <ChevronRight className="w-4 h-4" />}
         </Button>
       </div>

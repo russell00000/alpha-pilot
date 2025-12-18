@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import InvestmentAssessment, { AssessmentData } from "@/components/InvestmentAssessment";
 import PortfolioRecommendation from "@/components/PortfolioRecommendation";
-import { generatePortfolioRecommendation } from "@/lib/portfolioGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +31,8 @@ interface SavedRecommendation {
   allocation_alternatives: number;
   recommended_funds: any;
   rationale: string;
+  market_insights?: string;
+  risk_analysis?: string;
 }
 
 const Portfolio = () => {
@@ -104,8 +105,21 @@ const Portfolio = () => {
 
     setGenerating(true);
     try {
-      // Generate portfolio recommendation
-      const recommendation = generatePortfolioRecommendation(data);
+      // Call AI edge function to generate portfolio
+      const { data: aiResponse, error: aiError } = await supabase.functions.invoke("generate-portfolio", {
+        body: { assessment: data },
+      });
+
+      if (aiError) {
+        console.error("AI generation error:", aiError);
+        throw new Error(aiError.message || "Failed to generate portfolio");
+      }
+
+      if (aiResponse?.error) {
+        throw new Error(aiResponse.error);
+      }
+
+      const recommendation = aiResponse;
 
       // Save assessment to database
       const { data: savedAssess, error: assessError } = await supabase
@@ -136,11 +150,11 @@ const Portfolio = () => {
           user_id: user.id,
           allocation_stocks: recommendation.allocation.stocks,
           allocation_bonds: recommendation.allocation.bonds,
-          allocation_etfs: 0, // Legacy field, no longer used
+          allocation_etfs: 0,
           allocation_cash: recommendation.allocation.cash,
           allocation_alternatives: recommendation.allocation.alternatives,
           recommended_funds: recommendation.funds as any,
-          rationale: recommendation.rationale,
+          rationale: `${recommendation.rationale}\n\n**Market Insights:**\n${recommendation.marketInsights || ""}\n\n**Risk Analysis:**\n${recommendation.riskAnalysis || ""}`,
         } as any)
         .select()
         .single();
@@ -152,14 +166,14 @@ const Portfolio = () => {
       setShowAssessment(false);
 
       toast({
-        title: "Portfolio Generated!",
+        title: "AI Portfolio Generated!",
         description: "Your personalized portfolio recommendation is ready.",
       });
     } catch (error: any) {
       console.error("Error saving assessment:", error);
       toast({
         title: "Error",
-        description: "Failed to save your assessment. Please try again.",
+        description: error.message || "Failed to generate your portfolio. Please try again.",
         variant: "destructive",
       });
     } finally {
