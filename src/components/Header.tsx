@@ -1,4 +1,4 @@
-import { TrendingUp, Bell, User, Menu } from "lucide-react";
+import { TrendingUp, Bell, User, Menu, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,12 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { label: "Dashboard", href: "/" },
@@ -55,9 +61,28 @@ const Header = () => {
             <Bell className="w-5 h-5" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
           </Button>
-          <Button variant="secondary" size="icon">
-            <User className="w-5 h-5" />
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon">
+                <User className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to="/admin/philosophy" className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  AI Philosophy Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/auth" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Account
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -85,6 +110,21 @@ const Header = () => {
                     </Button>
                   </Link>
                 ))}
+                <Link 
+                  to="/admin/philosophy"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-muted-foreground hover:text-foreground",
+                      location.pathname === "/admin/philosophy" && "text-foreground bg-secondary"
+                    )}
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    AI Settings
+                  </Button>
+                </Link>
               </nav>
             </SheetContent>
           </Sheet>

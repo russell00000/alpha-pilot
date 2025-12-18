@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      investing_philosophy: {
+        Row: {
+          asset_allocation_rules: string | null
+          id: string
+          market_insights_style: string | null
+          philosophy_text: string
+          risk_guidance: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          asset_allocation_rules?: string | null
+          id?: string
+          market_insights_style?: string | null
+          philosophy_text: string
+          risk_guidance?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          asset_allocation_rules?: string | null
+          id?: string
+          market_insights_style?: string | null
+          philosophy_text?: string
+          risk_guidance?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       investment_assessments: {
         Row: {
           created_at: string
