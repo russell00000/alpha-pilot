@@ -12,7 +12,6 @@ interface FundRecommendation {
 interface PortfolioAllocation {
   stocks: number;
   bonds: number;
-  etfs: number;
   cash: number;
   alternatives: number;
 }
@@ -123,23 +122,23 @@ export function generatePortfolioRecommendation(data: AssessmentData): Portfolio
 
   if (riskScore <= 2) {
     // Very Conservative
-    allocation = { stocks: 15, bonds: 55, etfs: 0, cash: 25, alternatives: 5 };
+    allocation = { stocks: 15, bonds: 55, cash: 25, alternatives: 5 };
     rationale = `Based on your ${formatRiskTolerance(data.riskTolerance)} risk tolerance, ${formatTimeline(data.investmentTimeline)} investment timeline, and ${formatGoal(data.investmentGoal)} goal, we recommend a very conservative portfolio. At ${age} years old with ${formatStability(data.incomeStability)} income, this allocation prioritizes capital preservation with minimal volatility. The heavy bond allocation provides steady income while the small stock position offers some growth potential.`;
   } else if (riskScore <= 4) {
     // Conservative
-    allocation = { stocks: 30, bonds: 45, etfs: 0, cash: 15, alternatives: 10 };
+    allocation = { stocks: 30, bonds: 45, cash: 15, alternatives: 10 };
     rationale = `Your ${formatRiskTolerance(data.riskTolerance)} approach combined with a ${formatTimeline(data.investmentTimeline)} timeline suggests a conservative portfolio. At ${age}, this balanced approach emphasizes stability while still participating in market growth. The bond-heavy allocation reduces volatility while providing income, ideal for your ${formatGoal(data.investmentGoal)} objective.`;
   } else if (riskScore <= 6) {
     // Moderate
-    allocation = { stocks: 50, bonds: 30, etfs: 0, cash: 10, alternatives: 10 };
+    allocation = { stocks: 50, bonds: 30, cash: 10, alternatives: 10 };
     rationale = `With a ${formatRiskTolerance(data.riskTolerance)} risk profile and ${formatTimeline(data.investmentTimeline)} horizon, a balanced portfolio suits your needs. At ${age} with ${formatStability(data.incomeStability)} income, you can handle moderate market fluctuations. This 50/30 stock-to-bond split balances growth potential with stability, supporting your ${formatGoal(data.investmentGoal)} goal.`;
   } else if (riskScore <= 8) {
     // Aggressive
-    allocation = { stocks: 70, bonds: 15, etfs: 0, cash: 5, alternatives: 10 };
+    allocation = { stocks: 70, bonds: 15, cash: 5, alternatives: 10 };
     rationale = `Your ${formatRiskTolerance(data.riskTolerance)} stance and ${formatTimeline(data.investmentTimeline)} timeline allow for growth-focused investing. At ${age}, you have time to recover from market downturns. This stock-heavy portfolio maximizes long-term growth potential while maintaining some bond allocation for stability, aligned with your ${formatGoal(data.investmentGoal)} objective.`;
   } else {
     // Very Aggressive
-    allocation = { stocks: 85, bonds: 5, etfs: 0, cash: 2, alternatives: 8 };
+    allocation = { stocks: 85, bonds: 5, cash: 2, alternatives: 8 };
     rationale = `Given your ${formatRiskTolerance(data.riskTolerance)} risk tolerance, ${formatTimeline(data.investmentTimeline)} investment horizon, and ${formatGoal(data.investmentGoal)} focus, we recommend an aggressive growth portfolio. At ${age} with ${formatStability(data.incomeStability)} income, you can maximize equity exposure for long-term wealth building. This allocation accepts higher volatility in pursuit of superior returns.`;
   }
 

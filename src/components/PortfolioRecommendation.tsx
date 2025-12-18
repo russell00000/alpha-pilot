@@ -15,7 +15,6 @@ interface FundRecommendation {
 interface PortfolioAllocation {
   stocks: number;
   bonds: number;
-  etfs: number;
   cash: number;
   alternatives: number;
 }
@@ -34,7 +33,6 @@ interface RecommendationProps {
 const COLORS = {
   stocks: "hsl(var(--primary))",
   bonds: "hsl(var(--chart-2))",
-  etfs: "hsl(var(--chart-3))",
   cash: "hsl(var(--chart-4))",
   alternatives: "hsl(var(--chart-5))",
 };
@@ -52,7 +50,6 @@ const PortfolioRecommendation = ({
   const pieData = [
     { name: "Stocks", value: allocation.stocks, color: COLORS.stocks },
     { name: "Bonds", value: allocation.bonds, color: COLORS.bonds },
-    { name: "ETFs", value: allocation.etfs, color: COLORS.etfs },
     { name: "Cash", value: allocation.cash, color: COLORS.cash },
     { name: "Alternatives", value: allocation.alternatives, color: COLORS.alternatives },
   ].filter((item) => item.value > 0);

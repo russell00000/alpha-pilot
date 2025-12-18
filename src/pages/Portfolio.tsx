@@ -136,7 +136,7 @@ const Portfolio = () => {
           user_id: user.id,
           allocation_stocks: recommendation.allocation.stocks,
           allocation_bonds: recommendation.allocation.bonds,
-          allocation_etfs: recommendation.allocation.etfs,
+          allocation_etfs: 0, // Legacy field, no longer used
           allocation_cash: recommendation.allocation.cash,
           allocation_alternatives: recommendation.allocation.alternatives,
           recommended_funds: recommendation.funds as any,
@@ -204,7 +204,6 @@ const Portfolio = () => {
             allocation={{
               stocks: Number(savedRecommendation.allocation_stocks),
               bonds: Number(savedRecommendation.allocation_bonds),
-              etfs: Number(savedRecommendation.allocation_etfs),
               cash: Number(savedRecommendation.allocation_cash),
               alternatives: Number(savedRecommendation.allocation_alternatives),
             }}
