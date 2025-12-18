@@ -63,14 +63,16 @@ const InvestmentAssessment = ({ onComplete, loading }: InvestmentAssessmentProps
         }
         break;
       case 2:
-        if (!formData.investmentAmount || formData.investmentAmount < 100) {
+        if (formData.investmentAmount === undefined || formData.investmentAmount === null || formData.investmentAmount < 100) {
           newErrors.investmentAmount = "Minimum investment is $100";
         }
-        if (formData.recurringInvestment && (!formData.recurringAmount || formData.recurringAmount < 25)) {
-          newErrors.recurringAmount = "Minimum recurring investment is $25";
-        }
-        if (formData.recurringInvestment && !formData.recurringFrequency) {
-          newErrors.recurringFrequency = "Please select a frequency";
+        if (formData.recurringInvestment) {
+          if (!formData.recurringAmount || formData.recurringAmount < 25) {
+            newErrors.recurringAmount = "Minimum recurring investment is $25";
+          }
+          if (!formData.recurringFrequency) {
+            newErrors.recurringFrequency = "Please select a frequency (Weekly, Bi-weekly, Monthly, or Quarterly)";
+          }
         }
         break;
       case 3:
