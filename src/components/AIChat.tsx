@@ -21,7 +21,7 @@ const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "What's up! I'm your investing copilot. Ask me about any stock, what's moving the markets, or get my take on your portfolio ideas. Let's talk money 💰",
+      content: "I'm your AI investing copilot. Ask me about market trends, stock analysis, or portfolio strategies.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -74,7 +74,10 @@ const AIChat = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    e.stopPropagation();
+    if (input.trim()) {
+      sendMessage(input);
+    }
   };
 
   return (
