@@ -21,7 +21,7 @@ const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey! I'm your AI investing copilot. Ask me about market trends, stock analysis, portfolio strategies, or any investing question you have. 📈",
+      content: "What's up! I'm your investing copilot. Ask me about any stock, what's moving the markets, or get my take on your portfolio ideas. Let's talk money 💰",
     },
   ]);
   const [input, setInput] = useState("");
