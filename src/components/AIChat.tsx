@@ -80,8 +80,8 @@ const AIChat = () => {
   return (
     <div className="glass-card flex flex-col h-[600px]">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border/50">
-        <div className="p-2 rounded-lg bg-primary/10 glow-primary">
+      <div className="flex items-center gap-3 p-5 border-b border-border/30">
+        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
           <Sparkles className="w-5 h-5 text-primary" />
         </div>
         <div>
@@ -91,7 +91,7 @@ const AIChat = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -102,10 +102,10 @@ const AIChat = () => {
           >
             <div
               className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0",
                 message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground"
+                  ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
+                  : "bg-secondary border border-border/30 text-foreground"
               )}
             >
               {message.role === "user" ? (
@@ -118,8 +118,8 @@ const AIChat = () => {
               className={cn(
                 "max-w-[80%] rounded-2xl px-4 py-3",
                 message.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-tr-md"
-                  : "bg-secondary text-foreground rounded-tl-md"
+                  ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-md"
+                  : "bg-secondary/50 border border-border/30 text-foreground rounded-tl-md"
               )}
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -128,11 +128,14 @@ const AIChat = () => {
         ))}
         {isLoading && (
           <div className="flex gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-secondary border border-border/30 flex items-center justify-center">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="bg-secondary rounded-2xl rounded-tl-md px-4 py-3">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <div className="bg-secondary/50 border border-border/30 rounded-2xl rounded-tl-md px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Thinking...</span>
+              </div>
             </div>
           </div>
         )}
@@ -141,14 +144,14 @@ const AIChat = () => {
 
       {/* Suggested Prompts */}
       {messages.length === 1 && (
-        <div className="px-4 pb-2">
-          <p className="text-xs text-muted-foreground mb-2">Try asking:</p>
+        <div className="px-5 pb-3">
+          <p className="text-xs text-muted-foreground mb-2.5">Try asking:</p>
           <div className="flex flex-wrap gap-2">
             {suggestedPrompts.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => sendMessage(prompt)}
-                className="text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs px-3 py-2 rounded-xl bg-secondary/50 hover:bg-secondary border border-border/30 hover:border-primary/30 text-muted-foreground hover:text-foreground transition-all duration-200"
               >
                 {prompt}
               </button>
@@ -158,16 +161,20 @@ const AIChat = () => {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border/50">
+      <form onSubmit={handleSubmit} className="p-5 border-t border-border/30">
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about stocks, markets, strategies..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 bg-secondary/30 border-border/30 focus:border-primary/50 transition-colors duration-200"
           />
-          <Button type="submit" disabled={isLoading || !input.trim()} variant="premium">
+          <Button 
+            type="submit" 
+            disabled={isLoading || !input.trim()} 
+            className="btn-hover-lift"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>

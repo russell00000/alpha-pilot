@@ -81,7 +81,6 @@ const MarketOverview = () => {
     };
     loadData();
 
-    // Refresh every 60 seconds (edge function has caching)
     const interval = setInterval(() => {
       fetchMarketData();
     }, 60000);
@@ -95,23 +94,20 @@ const MarketOverview = () => {
     setIsRefreshing(false);
   };
 
-  // Filter data based on active tab
   const filteredData = marketData.filter((item) => {
     if (activeTab === "crypto") return item.type === "crypto";
     if (activeTab === "stocks") return item.type === "stock";
     if (activeTab === "etf") return item.type === "etf";
-    // Trending: show top movers by absolute change percent
     return true;
   });
 
-  // Sort trending by absolute change
   const displayData = activeTab === "trending" 
     ? [...filteredData].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 6)
     : filteredData;
 
   return (
-    <div className="glass-card p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="glass-card p-5">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Market Overview</h2>
           <p className="text-sm text-muted-foreground">
@@ -126,20 +122,20 @@ const MarketOverview = () => {
           size="icon" 
           onClick={handleRefresh}
           disabled={isRefreshing || isLoading}
-          className="text-muted-foreground"
+          className="text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors duration-200"
         >
           <RefreshCw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
         </Button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 p-1 bg-secondary/50 rounded-lg">
+      <div className="flex gap-1 mb-5 p-1 bg-secondary/30 rounded-xl border border-border/30">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all",
+              "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
               activeTab === tab.id
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -153,7 +149,7 @@ const MarketOverview = () => {
 
       {/* Error State */}
       {error && (
-        <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive">
+        <div className="flex items-center justify-between gap-2 p-4 mb-5 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm">{error}</span>
@@ -163,7 +159,7 @@ const MarketOverview = () => {
             size="sm" 
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-destructive border-destructive/50 hover:bg-destructive/10"
+            className="text-destructive border-destructive/30 hover:bg-destructive/10"
           >
             Retry
           </Button>
@@ -172,13 +168,13 @@ const MarketOverview = () => {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="glass-card p-4 animate-pulse">
-              <div className="h-4 bg-muted rounded w-16 mb-2" />
-              <div className="h-3 bg-muted rounded w-24 mb-4" />
-              <div className="h-10 bg-muted rounded w-full mb-2" />
-              <div className="h-8 bg-muted rounded w-20" />
+            <div key={i} className="glass-card p-4">
+              <div className="h-4 bg-muted rounded-lg w-16 mb-2 shimmer" />
+              <div className="h-3 bg-muted rounded-lg w-24 mb-4 shimmer" />
+              <div className="h-8 bg-muted rounded-lg w-full mb-2 shimmer" />
+              <div className="h-6 bg-muted rounded-lg w-20 shimmer" />
             </div>
           ))}
         </div>
@@ -186,12 +182,10 @@ const MarketOverview = () => {
 
       {/* Market Cards Grid */}
       {!isLoading && displayData.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          {displayData.map((item, index) => (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 animate-stagger">
+          {displayData.map((item) => (
             <div
               key={item.symbol}
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 50}ms` }}
               onClick={() => navigate(`/stock/${item.symbol}`)}
             >
               <MarketCard {...item} />
@@ -202,18 +196,18 @@ const MarketOverview = () => {
 
       {/* Empty State */}
       {!isLoading && !error && displayData.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
+        <div className="text-center py-12 text-muted-foreground">
           <p>No data available for this category</p>
         </div>
       )}
 
       {/* Live indicator */}
-      <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-border/50">
+      <div className="flex items-center justify-center gap-2 mt-5 pt-5 border-t border-border/30">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
         </span>
-        <span className="text-xs text-muted-foreground">Live • Updates every 30s</span>
+        <span className="text-xs text-muted-foreground">Live • Updates every 60s</span>
       </div>
     </div>
   );

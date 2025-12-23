@@ -34,26 +34,30 @@ const stats = [
 
 const PortfolioSummary = () => {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((stat, index) => (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
+      {stats.map((stat) => (
         <div 
           key={stat.label}
-          className="glass-card p-4 animate-fade-in"
-          style={{ animationDelay: `${index * 100}ms` }}
+          className="glass-card p-5 card-hover group"
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-lg bg-primary/10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 group-hover:border-primary/30 transition-colors duration-300">
               <stat.icon className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-sm text-muted-foreground">{stat.label}</span>
+            <span className="text-sm text-muted-foreground font-medium">{stat.label}</span>
           </div>
-          <p className="text-2xl font-bold text-foreground mb-1">{stat.value}</p>
-          <p className={cn(
-            "text-sm font-medium",
-            stat.positive ? "text-success" : "text-destructive"
-          )}>
-            {stat.change} this month
-          </p>
+          <p className="text-2xl md:text-3xl font-bold text-foreground mb-2 tracking-tight">{stat.value}</p>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "text-sm font-semibold px-2 py-0.5 rounded-md",
+              stat.positive 
+                ? "text-success bg-success/10" 
+                : "text-destructive bg-destructive/10"
+            )}>
+              {stat.change}
+            </span>
+            <span className="text-xs text-muted-foreground">this month</span>
+          </div>
         </div>
       ))}
     </div>

@@ -14,17 +14,19 @@ const MarketCard = ({ symbol, name, price, change, changePercent, volume }: Mark
   const isPositive = change >= 0;
 
   return (
-    <div className="glass-card p-4 hover:border-primary/30 transition-all duration-300 group cursor-pointer">
+    <div className="glass-card p-4 card-hover group cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="font-bold text-foreground group-hover:text-primary transition-colors">
+          <p className="font-bold text-foreground group-hover:text-primary transition-colors duration-200">
             {symbol}
           </p>
           <p className="text-xs text-muted-foreground truncate max-w-[100px]">{name}</p>
         </div>
         <div className={cn(
-          "flex items-center gap-0.5 px-2 py-1 rounded-md text-xs font-medium",
-          isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+          "flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200",
+          isPositive 
+            ? "bg-success/10 text-success border border-success/20" 
+            : "bg-destructive/10 text-destructive border border-destructive/20"
         )}>
           {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {Math.abs(changePercent).toFixed(2)}%
@@ -32,7 +34,7 @@ const MarketCard = ({ symbol, name, price, change, changePercent, volume }: Mark
       </div>
       
       <div className="space-y-1">
-        <p className="text-2xl font-bold text-foreground">${price}</p>
+        <p className="text-2xl font-bold text-foreground tracking-tight">${price}</p>
         <p className={cn(
           "text-sm font-medium",
           isPositive ? "text-success" : "text-destructive"
@@ -42,7 +44,7 @@ const MarketCard = ({ symbol, name, price, change, changePercent, volume }: Mark
       </div>
 
       {volume && (
-        <div className="mt-3 pt-3 border-t border-border/50">
+        <div className="mt-3 pt-3 border-t border-border/30">
           <p className="text-xs text-muted-foreground">
             Vol: <span className="text-foreground font-medium">{volume}</span>
           </p>
