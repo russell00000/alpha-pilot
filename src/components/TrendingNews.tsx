@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Clock, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ interface NewsItem {
   url: string;
 }
 
-// Curated financial news - in production, this would come from a news API
 const curatedNews: NewsItem[] = [
   {
     title: "Fed signals potential rate cuts in 2024 amid cooling inflation",
@@ -56,7 +55,6 @@ const TrendingNews = () => {
 
   const refreshNews = () => {
     setIsLoading(true);
-    // Simulate refresh - in production, fetch from news API
     setTimeout(() => {
       setNews([...curatedNews].sort(() => Math.random() - 0.5));
       setIsLoading(false);
@@ -68,10 +66,10 @@ const TrendingNews = () => {
   };
 
   return (
-    <div className="glass-card p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="glass-card p-5">
+      <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
             <Newspaper className="w-4 h-4 text-primary" />
           </div>
           <div>
@@ -84,7 +82,7 @@ const TrendingNews = () => {
           size="icon"
           onClick={refreshNews}
           disabled={isLoading}
-          className="text-muted-foreground"
+          className="text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors duration-200"
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
         </Button>
@@ -95,18 +93,15 @@ const TrendingNews = () => {
           <div
             key={index}
             onClick={() => handleNewsClick(item.url)}
-            className={cn(
-              "p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all cursor-pointer group animate-fade-in"
-            )}
-            style={{ animationDelay: `${index * 100}ms` }}
+            className="p-4 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/30 transition-all duration-200 cursor-pointer group"
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200 leading-relaxed">
                   {item.title}
                 </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium">
                     {item.category}
                   </span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -116,13 +111,13 @@ const TrendingNews = () => {
                   <span className="text-xs text-muted-foreground">• {item.source}</span>
                 </div>
               </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 flex-shrink-0 mt-1" />
             </div>
           </div>
         ))}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-4">
+      <p className="text-xs text-muted-foreground text-center mt-5 pt-4 border-t border-border/30">
         Click any article to read more on the source website
       </p>
     </div>
