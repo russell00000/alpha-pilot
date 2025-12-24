@@ -102,7 +102,7 @@ You must respond with ONLY valid JSON matching this exact structure (no markdown
       "description": "<brief description of why this pick>"
     }
   ],
-  "rationale": "<2-3 paragraphs explaining why this portfolio fits the user>",
+  "rationale": "<2-3 sentences max: brief summary of why this portfolio fits the user>",
   "marketInsights": "<current market context and educational content>",
   "riskAnalysis": "<analysis of their risk profile and what it means for their investments>"
 }
