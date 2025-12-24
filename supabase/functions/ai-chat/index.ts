@@ -5,6 +5,52 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Fetch real-time market data for context
+async function fetchMarketData(): Promise<string> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.log("Supabase credentials not available for market data");
+      return "";
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/market-data?type=all`, {
+      headers: {
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      console.log("Failed to fetch market data:", response.status);
+      return "";
+    }
+
+    const data = await response.json();
+    
+    if (!data.quotes || data.quotes.length === 0) {
+      return "";
+    }
+
+    // Format market data for the AI context
+    const marketSummary = data.quotes
+      .filter((q: any) => q.price && q.symbol)
+      .map((q: any) => {
+        const changeStr = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
+        return `${q.symbol}: $${q.price.toFixed(2)} (${changeStr})`;
+      })
+      .join(", ");
+
+    const timestamp = new Date().toISOString();
+    return `\n\nCURRENT MARKET DATA (as of ${timestamp}):\n${marketSummary}`;
+  } catch (error) {
+    console.error("Error fetching market data:", error);
+    return "";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,24 +67,31 @@ serve(async (req) => {
 
     console.log("Processing chat request with", messages.length, "messages");
 
+    // Fetch real-time market data
+    const marketData = await fetchMarketData();
+    console.log("Fetched market data context:", marketData ? "success" : "none");
+
     const systemPrompt = `You are InvestAI, a professional yet approachable AI investing analyst. You provide clear, actionable market insights in a concise manner.
+
+IMPORTANT: You have access to REAL-TIME market data provided below. When discussing specific stocks or securities, ALWAYS use the current prices from this data. If a security is not in the data, acknowledge that you don't have current pricing for it.
 
 Guidelines:
 - Be direct and professional—skip unnecessary fluff
 - Keep responses brief: 2-3 sentences for simple questions, 1 short paragraph for complex topics
+- ALWAYS use the real-time prices provided when discussing specific securities
 - Provide specific insights with relevant data points when discussing stocks or markets
 - Focus on what matters: key metrics, catalysts, risks, and opportunities
 - Use professional language without being overly formal
 - No emojis—maintain a clean, professional tone
-- When discussing specific tickers, include relevant fundamentals or technical context
+- When discussing specific tickers, include the current price from the data provided
 
 What you cover:
-- Stock analysis with key metrics (P/E, revenue growth, margins)
+- Stock analysis with current prices and key metrics
 - Market trends and sector movements
 - Portfolio strategy and diversification
 - Risk assessment and market dynamics
 
-End with a brief, practical takeaway when relevant. Keep it sharp.`;
+End with a brief, practical takeaway when relevant. Keep it sharp.${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
