@@ -1,9 +1,35 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Fetch the investing philosophy from the database
+async function fetchPhilosophy() {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: philosophy, error } = await supabase
+      .from("investing_philosophy")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (error || !philosophy) {
+      console.log("Failed to fetch philosophy:", error);
+      return null;
+    }
+
+    return philosophy;
+  } catch (error) {
+    console.error("Error fetching philosophy:", error);
+    return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,11 +50,32 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
-    const prompt = `You are an aggressively strategic investment analyst who makes decisive, high-conviction calls. You don't hedge with "HOLD" unless there's genuinely no clear opportunity either way. Your philosophy: every stock at any given moment presents either an opportunity to buy at a discount, a warning to sell before decline, or truly neutral conditions.
+    // Fetch the investing philosophy
+    const philosophy = await fetchPhilosophy();
+    console.log("Fetched philosophy:", philosophy ? "success" : "none");
 
-IMPORTANT: Avoid defaulting to HOLD. Take a stance. If the stock is trading below its 52-week high with solid fundamentals, that's often a BUY opportunity. If it's extended near highs with weakening momentum, consider SELL. Only recommend HOLD when the data genuinely shows no compelling case either direction.
+    const systemPrompt = `You are an expert investment analyst following a specific investing philosophy.
 
-Based on the following data for ${symbol}, provide your decisive analysis:
+## YOUR INVESTING PHILOSOPHY
+${philosophy?.philosophy_text || "Focus on capital preservation and growth through research-driven analysis."}
+
+## RISK GUIDANCE
+${philosophy?.risk_guidance || "Risk should be balanced with reward potential. Ideal risk to reward ratio is 1:3."}
+
+## ANALYSIS REQUIREMENTS
+When providing analysis on a company:
+1. Use historical data combined with future outlook and market sentiment to determine an ideal target price
+2. Provide 4-5 sentences of analysis as a stock analyst would, covering:
+   - Current standpoint and trajectory
+   - Key financial metrics and valuation
+   - Advanced metrics that help with forecasting
+   - Clear explanation of why this is a good price target to buy or sell
+3. Be decisive - take a clear stance based on the data
+
+## COMMUNICATION STYLE
+${philosophy?.market_insights_style || "Be helpful and informative, communicating at a level that beginners can understand. Be concise and professional."}`;
+
+    const userPrompt = `Analyze ${symbol} and provide your recommendation:
 
 Current Price: $${price}
 Daily Change: ${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2)}%
@@ -40,19 +87,12 @@ Provide your analysis in the following JSON format only, no other text:
 {
   "recommendation": "BUY" or "HOLD" or "SELL",
   "confidence": "HIGH" or "MEDIUM" or "LOW",
-  "reasoning": "Brief 2-3 sentence explanation with a clear thesis and actionable insight",
-  "priceTarget": number (your estimated fair value - be specific),
+  "reasoning": "4-5 sentences of detailed analysis covering current standpoint, trajectory, key metrics, and why this price target makes sense. Include specific insights about valuation and growth potential.",
+  "priceTarget": number (your estimated fair value based on analysis),
   "riskLevel": "LOW" or "MEDIUM" or "HIGH"
 }
 
-Decision framework:
-- Trading 10%+ below 52-week high with quality fundamentals → lean BUY
-- Trading near 52-week lows → strong BUY if fundamentals intact, SELL if broken
-- Extended near highs with negative momentum → lean SELL or take profits
-- Strong positive momentum with room to run → BUY
-- Only HOLD when genuinely range-bound with no clear catalyst
-
-Be bold. Make the call. Professional analysts don't sit on the fence.`;
+Be decisive and provide actionable insights based on the investing philosophy.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -63,8 +103,10 @@ Be bold. Make the call. Professional analysts don't sit on the fence.`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "user", content: prompt }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
         ],
+        max_tokens: 1000,
       }),
     });
 
