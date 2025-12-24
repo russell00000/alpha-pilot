@@ -524,7 +524,6 @@ const Markets = () => {
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Asset</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">24h Change</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Volume</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Type</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28 md:w-32">Chart</th>
                 </tr>
@@ -545,14 +544,13 @@ const Markets = () => {
                       </td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
-                      <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
                       <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-12 ml-auto" /></td>
                       <td className="p-4 text-right"><div className="h-10 bg-muted rounded w-20 md:w-24 ml-auto" /></td>
                     </tr>
                   ))
                 ) : displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center">
+                    <td colSpan={6} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-12 h-12 text-muted-foreground/50" />
                         <p className="text-muted-foreground">
@@ -624,9 +622,6 @@ const Markets = () => {
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
-                        </td>
-                        <td className="p-4 text-right hidden md:table-cell">
-                          <p className="text-muted-foreground">{item.volume}</p>
                         </td>
                         <td className="p-4 text-right hidden md:table-cell">
                           <span className={cn(
