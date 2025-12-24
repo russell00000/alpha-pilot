@@ -7,10 +7,9 @@ interface MarketCardProps {
   price: string;
   change: number;
   changePercent: number;
-  volume?: string;
 }
 
-const MarketCard = ({ symbol, name, price, change, changePercent, volume }: MarketCardProps) => {
+const MarketCard = ({ symbol, name, price, change, changePercent }: MarketCardProps) => {
   const isPositive = change >= 0;
 
   return (
@@ -43,13 +42,6 @@ const MarketCard = ({ symbol, name, price, change, changePercent, volume }: Mark
         </p>
       </div>
 
-      {volume && (
-        <div className="mt-3 pt-3 border-t border-border/30">
-          <p className="text-xs text-muted-foreground">
-            Vol: <span className="text-foreground font-medium">{volume}</span>
-          </p>
-        </div>
-      )}
     </div>
   );
 };
