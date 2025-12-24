@@ -40,46 +40,49 @@ ${philosophy.market_insights_style}
   }
 }
 
-// Fetch real-time market data for context
+// Fetch real-time market data directly from Yahoo Finance
 async function fetchMarketData(): Promise<string> {
+  const symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'JPM', 'V', 'UNH', 'SPY', 'QQQ', 'VOO', 'BTC-USD', 'ETH-USD'];
+  
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const quotes: string[] = [];
     
-    if (!supabaseUrl || !supabaseKey) {
-      console.log("Supabase credentials not available for market data");
-      return "";
+    for (const symbol of symbols) {
+      try {
+        const response = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const result = data.chart?.result?.[0];
+          if (result) {
+            const meta = result.meta;
+            const price = meta.regularMarketPrice || meta.previousClose;
+            const previousClose = meta.chartPreviousClose || meta.previousClose;
+            const change = price && previousClose ? ((price - previousClose) / previousClose) * 100 : 0;
+            const changeStr = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
+            quotes.push(`${symbol}: $${price?.toFixed(2)} (${changeStr})`);
+          }
+        }
+      } catch (e) {
+        console.log(`Failed to fetch ${symbol}:`, e);
+      }
     }
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/market-data?type=all`, {
-      headers: {
-        "Authorization": `Bearer ${supabaseKey}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      console.log("Failed to fetch market data:", response.status);
-      return "";
-    }
-
-    const data = await response.json();
     
-    if (!data.quotes || data.quotes.length === 0) {
+    if (quotes.length === 0) {
+      console.log("No market data fetched");
       return "";
     }
-
-    // Format market data for the AI context
-    const marketSummary = data.quotes
-      .filter((q: any) => q.price && q.symbol)
-      .map((q: any) => {
-        const changeStr = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
-        return `${q.symbol}: $${q.price.toFixed(2)} (${changeStr})`;
-      })
-      .join(", ");
 
     const timestamp = new Date().toISOString();
-    return `\n\nCURRENT MARKET DATA (as of ${timestamp}):\n${marketSummary}`;
+    console.log(`Fetched ${quotes.length} market quotes`);
+    return `\n\nCURRENT REAL-TIME MARKET DATA (as of ${timestamp}):\n${quotes.join(", ")}`;
   } catch (error) {
     console.error("Error fetching market data:", error);
     return "";
