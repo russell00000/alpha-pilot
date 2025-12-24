@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3 } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -22,11 +22,10 @@ interface MarketData {
 }
 
 const tabs = [
-  { id: "all", label: "All" },
-  { id: "stocks", label: "Stocks" },
-  { id: "crypto", label: "Crypto" },
-  { id: "etf", label: "ETFs" },
-  { id: "mutual_fund", label: "Mutual Funds" },
+  { id: "stocks", label: "Stocks", icon: BarChart3, count: 100, description: "Top US equities" },
+  { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
+  { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
+  { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
 ];
 
 const popularSearches = [
@@ -40,7 +39,7 @@ const popularSearches = [
 
 const Markets = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("stocks");
   const [liveData, setLiveData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -309,25 +308,19 @@ const Markets = () => {
           return ensureSparkline(item);
         });
       default:
-        // All tab - show live data + unfetched stocks
-        const liveSymbols = new Set(liveData.map(d => d.symbol));
-        const additionalStocks = top100Stocks
-          .filter(s => !liveSymbols.has(s.symbol))
-          .slice(0, 20)
-          .map(stock => {
-            const cached = priceCache[stock.symbol];
-            const item = cached || {
-              symbol: stock.symbol,
-              name: stock.name,
-              price: "—",
-              change: 0,
-              changePercent: (Math.random() - 0.5) * 4,
-              volume: "—",
-              type: "stock" as const,
-            };
-            return ensureSparkline(item);
-          });
-        return [...liveData.map(ensureSparkline), ...additionalStocks];
+        return top100Stocks.map(stock => {
+          const cached = priceCache[stock.symbol];
+          const item = cached || {
+            symbol: stock.symbol,
+            name: stock.name,
+            price: "—",
+            change: 0,
+            changePercent: (Math.random() - 0.5) * 4,
+            volume: "—",
+            type: "stock" as const,
+          };
+          return ensureSparkline(item);
+        });
     }
   };
 
@@ -461,28 +454,63 @@ const Markets = () => {
           </div>
         )}
 
+        {/* Category Cards */}
+        {searchResults.length === 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "relative p-5 rounded-xl border-2 transition-all duration-300 text-left group",
+                    isActive
+                      ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                      : "border-border/50 bg-card hover:border-primary/50 hover:bg-primary/5"
+                  )}
+                >
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors",
+                    isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
+                  )}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <h3 className={cn(
+                    "font-semibold text-lg mb-1 transition-colors",
+                    isActive ? "text-primary" : "text-foreground"
+                  )}>
+                    {tab.label}
+                    {tab.count && <span className="text-sm font-normal text-muted-foreground ml-1">({tab.count})</span>}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{tab.description}</p>
+                  {isActive && (
+                    <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Section Header */}
         {searchResults.length === 0 && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">
+              <h2 className="text-xl font-semibold text-foreground">
                 {activeTab === "stocks" ? "Top 100 Stocks" :
                  activeTab === "crypto" ? "Cryptocurrencies" :
                  activeTab === "etf" ? "Top ETFs" :
-                 activeTab === "mutual_fund" ? "Top Mutual Funds" :
-                 "All Markets"}
+                 "Top Mutual Funds"}
               </h2>
-              <p className="text-muted-foreground">
-                {activeTab === "stocks" ? "Top US stocks by market capitalization" :
-                 activeTab === "crypto" ? "Live cryptocurrency prices" :
-                 activeTab === "etf" ? "Popular exchange-traded funds" :
-                 activeTab === "mutual_fund" ? "Top-rated mutual funds" :
-                 "Featured assets across all markets"}
-                {lastUpdated && ` • Updated ${lastUpdated.toLocaleTimeString()}`}
+              <p className="text-sm text-muted-foreground">
+                {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString()}`}
               </p>
             </div>
             <Button 
               variant="outline" 
+              size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="gap-2"
@@ -493,26 +521,6 @@ const Markets = () => {
           </div>
         )}
 
-        {/* Filter Tabs */}
-        {searchResults.length === 0 && (
-          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap",
-                  activeTab === tab.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab.label}
-                {tab.id === "stocks" && <span className="ml-1 text-xs text-muted-foreground">(100)</span>}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Market Table */}
         <div className="glass-card overflow-hidden">
