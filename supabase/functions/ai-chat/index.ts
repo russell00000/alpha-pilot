@@ -40,8 +40,9 @@ ${philosophy.market_insights_style}
   }
 }
 
-// All securities offered on the platform - Top 100 US Stocks by Market Cap
+// All securities offered on the platform - Top 100+ US Stocks
 const TOP_STOCKS = [
+  // Mega caps
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK.B', 'UNH', 'LLY',
   'JPM', 'V', 'XOM', 'JNJ', 'MA', 'PG', 'AVGO', 'HD', 'CVX', 'MRK',
   'ABBV', 'COST', 'PEP', 'KO', 'ADBE', 'WMT', 'CRM', 'MCD', 'BAC', 'CSCO',
@@ -51,13 +52,18 @@ const TOP_STOCKS = [
   'AMAT', 'GS', 'BKNG', 'ELV', 'BLK', 'ISRG', 'T', 'AXP', 'SBUX', 'MS',
   'MDT', 'TJX', 'ADP', 'PLD', 'MMC', 'GILD', 'LMT', 'DE', 'VRTX', 'SYK',
   'REGN', 'CVS', 'SCHW', 'LRCX', 'C', 'CB', 'AMT', 'MO', 'ZTS', 'SO',
-  'MDLZ', 'DUK', 'PGR', 'PANW', 'CI', 'BDX', 'SNPS', 'EOG', 'PYPL', 'CME'
+  'MDLZ', 'DUK', 'PGR', 'PANW', 'CI', 'BDX', 'SNPS', 'EOG', 'PYPL', 'CME',
+  // Additional popular stocks
+  'MU', 'MRVL', 'KLAC', 'ON', 'ASML', 'TSM', 'ARM', 'PLTR', 'COIN', 'HOOD',
+  'SOFI', 'RIVN', 'LCID', 'NIO', 'SNAP', 'UBER', 'LYFT', 'SQ', 'SHOP', 'ROKU',
+  'ZM', 'DOCU', 'CRWD', 'DDOG', 'NET', 'SNOW', 'RBLX', 'U', 'ABNB', 'DASH'
 ];
 
 // Top ETFs
 const TOP_ETFS = [
   'SPY', 'QQQ', 'VTI', 'VOO', 'IWM', 'VGT', 'ARKK', 'XLF', 'XLE', 'GLD',
-  'SLV', 'VNQ', 'BND', 'SCHD', 'VYM', 'EFA', 'VEA', 'VWO', 'AGG', 'XLK'
+  'SLV', 'VNQ', 'BND', 'SCHD', 'VYM', 'EFA', 'VEA', 'VWO', 'AGG', 'XLK',
+  'SOXX', 'SMH', 'SOXL', 'TQQQ', 'SQQQ'
 ];
 
 // Top Mutual Funds
@@ -66,7 +72,7 @@ const MUTUAL_FUNDS = [
 ];
 
 // Crypto
-const CRYPTO = ['BTC-USD', 'ETH-USD'];
+const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD'];
 
 interface QuoteData {
   symbol: string;
