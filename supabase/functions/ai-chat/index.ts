@@ -40,39 +40,85 @@ ${philosophy.market_insights_style}
   }
 }
 
-// Fetch real-time market data directly from Yahoo Finance
+// All securities offered on the platform
+const TOP_STOCKS = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK.B', 'UNH', 'LLY',
+  'JPM', 'V', 'XOM', 'JNJ', 'MA', 'PG', 'AVGO', 'HD', 'CVX', 'MRK',
+  'ABBV', 'COST', 'PEP', 'KO', 'ADBE', 'WMT', 'CRM', 'MCD', 'BAC', 'CSCO',
+  'TMO', 'ACN', 'NFLX', 'AMD', 'ABT', 'LIN', 'ORCL', 'DHR', 'TXN', 'NKE',
+  'DIS', 'PM', 'WFC', 'VZ', 'INTC', 'COP', 'INTU', 'CMCSA', 'AMGN', 'PFE'
+];
+
+const TOP_ETFS = ['SPY', 'QQQ', 'VTI', 'VOO', 'IWM', 'VGT', 'ARKK', 'XLF', 'XLE', 'GLD', 'SCHD', 'VYM'];
+
+const CRYPTO = ['BTC-USD', 'ETH-USD'];
+
+interface QuoteData {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  high52Week: number;
+  low52Week: number;
+  volume: number;
+  marketCap: number;
+}
+
+// Fetch detailed quote data from Yahoo Finance
+async function fetchQuote(symbol: string): Promise<QuoteData | null> {
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      }
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const result = data.chart?.result?.[0];
+    if (!result) return null;
+    
+    const meta = result.meta;
+    const price = meta.regularMarketPrice || meta.previousClose;
+    const previousClose = meta.chartPreviousClose || meta.previousClose;
+    const change = price - previousClose;
+    const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+    
+    return {
+      symbol,
+      name: meta.shortName || meta.longName || symbol,
+      price,
+      change,
+      changePercent,
+      high52Week: meta.fiftyTwoWeekHigh || 0,
+      low52Week: meta.fiftyTwoWeekLow || 0,
+      volume: meta.regularMarketVolume || 0,
+      marketCap: meta.marketCap || 0
+    };
+  } catch (e) {
+    console.log(`Failed to fetch ${symbol}:`, e);
+    return null;
+  }
+}
+
+// Fetch real-time market data for all platform securities
 async function fetchMarketData(): Promise<string> {
-  const symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'JPM', 'V', 'UNH', 'SPY', 'QQQ', 'VOO', 'BTC-USD', 'ETH-USD'];
+  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...CRYPTO];
   
   try {
-    const quotes: string[] = [];
+    // Fetch in parallel batches to avoid rate limiting
+    const batchSize = 10;
+    const quotes: QuoteData[] = [];
     
-    for (const symbol of symbols) {
-      try {
-        const response = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
-          {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-          }
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          const result = data.chart?.result?.[0];
-          if (result) {
-            const meta = result.meta;
-            const price = meta.regularMarketPrice || meta.previousClose;
-            const previousClose = meta.chartPreviousClose || meta.previousClose;
-            const change = price && previousClose ? ((price - previousClose) / previousClose) * 100 : 0;
-            const changeStr = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
-            quotes.push(`${symbol}: $${price?.toFixed(2)} (${changeStr})`);
-          }
-        }
-      } catch (e) {
-        console.log(`Failed to fetch ${symbol}:`, e);
-      }
+    for (let i = 0; i < allSymbols.length; i += batchSize) {
+      const batch = allSymbols.slice(i, i + batchSize);
+      const batchResults = await Promise.all(batch.map(fetchQuote));
+      quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
     }
     
     if (quotes.length === 0) {
@@ -82,7 +128,45 @@ async function fetchMarketData(): Promise<string> {
 
     const timestamp = new Date().toISOString();
     console.log(`Fetched ${quotes.length} market quotes`);
-    return `\n\nCURRENT REAL-TIME MARKET DATA (as of ${timestamp}):\n${quotes.join(", ")}`;
+    
+    // Format data in categories for better AI understanding
+    const stockQuotes = quotes.filter(q => TOP_STOCKS.includes(q.symbol));
+    const etfQuotes = quotes.filter(q => TOP_ETFS.includes(q.symbol));
+    const cryptoQuotes = quotes.filter(q => CRYPTO.includes(q.symbol));
+    
+    const formatQuote = (q: QuoteData) => {
+      const changeStr = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
+      const distFromHigh = q.high52Week ? ((q.price - q.high52Week) / q.high52Week * 100).toFixed(1) : 'N/A';
+      return `${q.symbol} (${q.name}): $${q.price.toFixed(2)} ${changeStr}, 52W High: $${q.high52Week?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${q.low52Week?.toFixed(2) || 'N/A'}`;
+    };
+    
+    let marketDataStr = `\n\n=== REAL-TIME MARKET DATA (${timestamp}) ===\n\n`;
+    
+    if (stockQuotes.length > 0) {
+      marketDataStr += `TOP STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
+    }
+    
+    if (etfQuotes.length > 0) {
+      marketDataStr += `ETFs:\n${etfQuotes.map(formatQuote).join('\n')}\n\n`;
+    }
+    
+    if (cryptoQuotes.length > 0) {
+      marketDataStr += `CRYPTO:\n${cryptoQuotes.map(formatQuote).join('\n')}\n\n`;
+    }
+    
+    // Add market summary
+    const sp500 = etfQuotes.find(q => q.symbol === 'SPY');
+    const nasdaq = etfQuotes.find(q => q.symbol === 'QQQ');
+    const btc = cryptoQuotes.find(q => q.symbol === 'BTC-USD');
+    
+    if (sp500 || nasdaq) {
+      marketDataStr += `MARKET SUMMARY:\n`;
+      if (sp500) marketDataStr += `S&P 500 (SPY): ${sp500.changePercent >= 0 ? '+' : ''}${sp500.changePercent.toFixed(2)}%\n`;
+      if (nasdaq) marketDataStr += `NASDAQ (QQQ): ${nasdaq.changePercent >= 0 ? '+' : ''}${nasdaq.changePercent.toFixed(2)}%\n`;
+      if (btc) marketDataStr += `Bitcoin: $${btc.price.toLocaleString()} (${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%)\n`;
+    }
+    
+    return marketDataStr;
   } catch (error) {
     console.error("Error fetching market data:", error);
     return "";
