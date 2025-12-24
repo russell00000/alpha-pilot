@@ -1,9 +1,44 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Fetch the investing philosophy from the database
+async function fetchPhilosophy(): Promise<string> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: philosophy, error } = await supabase
+      .from("investing_philosophy")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (error || !philosophy) {
+      console.log("Failed to fetch philosophy:", error);
+      return "";
+    }
+
+    return `
+## INVESTING PHILOSOPHY
+${philosophy.philosophy_text}
+
+## RISK GUIDANCE
+${philosophy.risk_guidance}
+
+## COMMUNICATION STYLE
+${philosophy.market_insights_style}
+`;
+  } catch (error) {
+    console.error("Error fetching philosophy:", error);
+    return "";
+  }
+}
 
 // Fetch real-time market data for context
 async function fetchMarketData(): Promise<string> {
@@ -67,31 +102,38 @@ serve(async (req) => {
 
     console.log("Processing chat request with", messages.length, "messages");
 
-    // Fetch real-time market data
-    const marketData = await fetchMarketData();
-    console.log("Fetched market data context:", marketData ? "success" : "none");
+    // Fetch philosophy and market data
+    const [philosophy, marketData] = await Promise.all([
+      fetchPhilosophy(),
+      fetchMarketData()
+    ]);
+    console.log("Fetched philosophy:", philosophy ? "success" : "none");
+    console.log("Fetched market data:", marketData ? "success" : "none");
 
-    const systemPrompt = `You are InvestAI, a professional yet approachable AI investing analyst. You provide clear, actionable market insights in a concise manner.
+    const systemPrompt = `You are InvestAI, a professional yet approachable AI investing analyst.
 
-IMPORTANT: You have access to REAL-TIME market data provided below. When discussing specific stocks or securities, ALWAYS use the current prices from this data. If a security is not in the data, acknowledge that you don't have current pricing for it.
+${philosophy}
 
-Guidelines:
+## STOCK ANALYSIS REQUIREMENTS
+When analyzing any specific company or stock:
+1. Use historical data combined with future outlook and market sentiment to determine an ideal target price
+2. Provide 4-5 sentences of analysis as a stock analyst would, covering:
+   - Current standpoint and trajectory
+   - Key financial metrics (P/E, revenue growth, margins)
+   - Advanced metrics that help with forecasting
+   - Clear explanation of why this is a good price target to buy or sell
+3. Always include a specific price target with buy/sell recommendation
+
+## REAL-TIME DATA
+You have access to real-time market data. ALWAYS use current prices when available.
+If a security is not in the data, acknowledge that you don't have current pricing.
+${marketData}
+
+## COMMUNICATION GUIDELINES
 - Be direct and professional—skip unnecessary fluff
-- Keep responses brief: 2-3 sentences for simple questions, 1 short paragraph for complex topics
-- ALWAYS use the real-time prices provided when discussing specific securities
-- Provide specific insights with relevant data points when discussing stocks or markets
-- Focus on what matters: key metrics, catalysts, risks, and opportunities
 - Use professional language without being overly formal
 - No emojis—maintain a clean, professional tone
-- When discussing specific tickers, include the current price from the data provided
-
-What you cover:
-- Stock analysis with current prices and key metrics
-- Market trends and sector movements
-- Portfolio strategy and diversification
-- Risk assessment and market dynamics
-
-End with a brief, practical takeaway when relevant. Keep it sharp.${marketData}`;
+- End with a brief, practical takeaway`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -108,7 +150,7 @@ End with a brief, practical takeaway when relevant. Keep it sharp.${marketData}`
             content: m.content,
           })),
         ],
-        max_tokens: 1024,
+        max_tokens: 1500,
       }),
     });
 
