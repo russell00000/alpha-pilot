@@ -40,39 +40,100 @@ ${philosophy.market_insights_style}
   }
 }
 
-// All securities offered on the platform - Top 100+ US Stocks
+// All securities - 250+ stocks covering all major sectors
 const TOP_STOCKS = [
-  // Mega caps
-  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK.B', 'UNH', 'LLY',
-  'JPM', 'V', 'XOM', 'JNJ', 'MA', 'PG', 'AVGO', 'HD', 'CVX', 'MRK',
-  'ABBV', 'COST', 'PEP', 'KO', 'ADBE', 'WMT', 'CRM', 'MCD', 'BAC', 'CSCO',
-  'TMO', 'ACN', 'NFLX', 'AMD', 'ABT', 'LIN', 'ORCL', 'DHR', 'TXN', 'NKE',
-  'DIS', 'PM', 'WFC', 'VZ', 'INTC', 'COP', 'INTU', 'CMCSA', 'AMGN', 'PFE',
-  'IBM', 'QCOM', 'UNP', 'CAT', 'NOW', 'SPGI', 'RTX', 'GE', 'HON', 'LOW',
-  'AMAT', 'GS', 'BKNG', 'ELV', 'BLK', 'ISRG', 'T', 'AXP', 'SBUX', 'MS',
-  'MDT', 'TJX', 'ADP', 'PLD', 'MMC', 'GILD', 'LMT', 'DE', 'VRTX', 'SYK',
-  'REGN', 'CVS', 'SCHW', 'LRCX', 'C', 'CB', 'AMT', 'MO', 'ZTS', 'SO',
-  'MDLZ', 'DUK', 'PGR', 'PANW', 'CI', 'BDX', 'SNPS', 'EOG', 'PYPL', 'CME',
-  // Additional popular stocks
-  'MU', 'MRVL', 'KLAC', 'ON', 'ASML', 'TSM', 'ARM', 'PLTR', 'COIN', 'HOOD',
-  'SOFI', 'RIVN', 'LCID', 'NIO', 'SNAP', 'UBER', 'LYFT', 'SQ', 'SHOP', 'ROKU',
-  'ZM', 'DOCU', 'CRWD', 'DDOG', 'NET', 'SNOW', 'RBLX', 'U', 'ABNB', 'DASH'
+  // Mega Cap Tech
+  'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA', 'AVGO', 'ORCL',
+  // Large Cap Tech
+  'CRM', 'ADBE', 'CSCO', 'ACN', 'IBM', 'INTC', 'AMD', 'QCOM', 'TXN', 'NOW',
+  'INTU', 'AMAT', 'MU', 'LRCX', 'SNPS', 'CDNS', 'KLAC', 'MRVL', 'ADI', 'NXPI',
+  'MCHP', 'ON', 'SWKS', 'MPWR', 'FTNT', 'PANW', 'CRWD', 'ZS', 'OKTA', 'DDOG',
+  // International Tech
+  'ASML', 'TSM', 'SAP', 'SONY', 'BABA', 'JD', 'PDD', 'BIDU', 'NIO', 'LI', 'XPEV',
+  // Growth Tech
+  'ARM', 'PLTR', 'SNOW', 'NET', 'SHOP', 'SQ', 'COIN', 'HOOD', 'SOFI', 'AFRM',
+  'RBLX', 'U', 'SNAP', 'PINS', 'SPOT', 'TTD', 'ROKU', 'ZM', 'DOCU', 'TWLO',
+  // Consumer Tech
+  'NFLX', 'DIS', 'WBD', 'PARA', 'CMCSA', 'CHTR', 'TMUS', 'VZ', 'T',
+  // Rideshare & Delivery
+  'UBER', 'LYFT', 'DASH', 'ABNB', 'BKNG', 'EXPE', 'MAR', 'HLT',
+  // EV & Auto
+  'RIVN', 'LCID', 'F', 'GM', 'TM', 'HMC', 'RACE',
+  // Healthcare & Pharma
+  'UNH', 'LLY', 'JNJ', 'MRK', 'ABBV', 'PFE', 'TMO', 'ABT', 'DHR', 'BMY',
+  'AMGN', 'GILD', 'VRTX', 'REGN', 'MRNA', 'BIIB', 'ILMN', 'DXCM', 'ISRG', 'SYK',
+  'MDT', 'BDX', 'ZBH', 'BSX', 'EW', 'ALGN', 'HOLX', 'IDXX', 'MTD', 'A',
+  'CI', 'ELV', 'HUM', 'CVS', 'MCK', 'CAH', 'ABC', 'VEEV', 'ZTS', 'IQV',
+  // Financials
+  'BRK.B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'C', 'GS', 'MS', 'SCHW',
+  'AXP', 'BLK', 'SPGI', 'CME', 'ICE', 'CB', 'MMC', 'AON', 'PGR', 'TRV',
+  'MET', 'AIG', 'PRU', 'AFL', 'ALL', 'USB', 'PNC', 'TFC', 'COF', 'DFS',
+  // Consumer Staples
+  'PG', 'KO', 'PEP', 'COST', 'WMT', 'PM', 'MO', 'MDLZ', 'CL', 'KMB',
+  'GIS', 'K', 'HSY', 'KHC', 'SJM', 'CPB', 'MKC', 'CHD', 'CLX', 'EL',
+  // Consumer Discretionary
+  'HD', 'MCD', 'NKE', 'SBUX', 'TJX', 'LOW', 'TGT', 'ROST', 'ORLY', 'AZO',
+  'BBY', 'DG', 'DLTR', 'ULTA', 'LULU', 'GPS', 'ANF', 'VFC', 'PVH', 'RL',
+  'CMG', 'DPZ', 'YUM', 'DARDEN', 'WEN', 'QSR',
+  // Industrials
+  'CAT', 'DE', 'HON', 'UNP', 'UPS', 'FDX', 'RTX', 'BA', 'LMT', 'NOC',
+  'GD', 'GE', 'MMM', 'EMR', 'ITW', 'PH', 'ROK', 'ETN', 'JCI', 'CARR',
+  'OTIS', 'TT', 'IR', 'CMI', 'PCAR', 'FAST', 'WM', 'RSG', 'VRSK', 'CPRT',
+  // Energy
+  'XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'DVN',
+  'HES', 'FANG', 'PXD', 'HAL', 'BKR', 'KMI', 'WMB', 'OKE', 'EP', 'TRGP',
+  // Utilities
+  'NEE', 'DUK', 'SO', 'D', 'AEP', 'EXC', 'SRE', 'XEL', 'ED', 'WEC',
+  'ES', 'AWK', 'DTE', 'PPL', 'FE', 'AES', 'NRG', 'EVRG', 'ATO', 'NI',
+  // REITs
+  'PLD', 'AMT', 'CCI', 'EQIX', 'PSA', 'O', 'WELL', 'DLR', 'SPG', 'VICI',
+  'AVB', 'EQR', 'VTR', 'ARE', 'MAA', 'UDR', 'ESS', 'INVH', 'SUI', 'ELS',
+  // Materials
+  'LIN', 'APD', 'SHW', 'ECL', 'DD', 'NEM', 'FCX', 'DOW', 'NUE', 'STLD',
+  'VMC', 'MLM', 'ALB', 'PPG', 'IFF', 'FMC', 'CE', 'EMN', 'CF', 'MOS',
+  // Telecom
+  'TMUS', 'VZ', 'T', 'LUMN', 'USM', 'SATS',
+  // Additional Popular
+  'PYPL', 'EBAY', 'ETSY', 'W', 'CHWY', 'PTON', 'GME', 'AMC', 'BBBY', 'BB',
+  'SPCE', 'RKLB', 'LUNR', 'ASTS', 'IONQ', 'QUBT', 'RGTI', 'AI', 'UPST', 'PATH'
 ];
 
-// Top ETFs
+// 60+ ETFs covering all major categories
 const TOP_ETFS = [
-  'SPY', 'QQQ', 'VTI', 'VOO', 'IWM', 'VGT', 'ARKK', 'XLF', 'XLE', 'GLD',
-  'SLV', 'VNQ', 'BND', 'SCHD', 'VYM', 'EFA', 'VEA', 'VWO', 'AGG', 'XLK',
-  'SOXX', 'SMH', 'SOXL', 'TQQQ', 'SQQQ'
+  // Major Index
+  'SPY', 'QQQ', 'DIA', 'IWM', 'IWF', 'IWD', 'VTI', 'VOO', 'VTV', 'VUG',
+  // Sector ETFs
+  'XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLY', 'XLP', 'XLB', 'XLU', 'XLRE',
+  'VGT', 'VFH', 'VHT', 'VIS', 'VCR', 'VDC', 'VAW', 'VPU', 'VNQ',
+  // Tech & Semiconductor
+  'SOXX', 'SMH', 'IGV', 'SKYY', 'HACK', 'BOTZ', 'ROBO', 'ARKK', 'ARKW', 'ARKG',
+  // Leveraged & Inverse
+  'TQQQ', 'SQQQ', 'SPXL', 'SPXS', 'SOXL', 'SOXS', 'UPRO', 'SDOW', 'UVXY', 'VXX',
+  // Fixed Income
+  'BND', 'AGG', 'LQD', 'HYG', 'TLT', 'IEF', 'SHY', 'TIP', 'VCSH', 'VCIT',
+  // International
+  'EFA', 'VEA', 'VWO', 'EEM', 'IEFA', 'IEMG', 'VT', 'VXUS', 'FXI', 'EWJ',
+  // Commodities
+  'GLD', 'SLV', 'GDX', 'GDXJ', 'USO', 'UNG', 'DBA', 'DBC', 'PDBC', 'CPER',
+  // Dividend
+  'SCHD', 'VYM', 'DVY', 'VIG', 'SDY', 'NOBL', 'DGRO', 'DGRW', 'HDV', 'SPYD',
+  // Thematic
+  'ICLN', 'TAN', 'QCLN', 'LIT', 'DRIV', 'JETS', 'KWEB', 'MCHI', 'XBI', 'IBB'
 ];
 
-// Top Mutual Funds
+// Mutual Funds
 const MUTUAL_FUNDS = [
-  'VFIAX', 'FXAIX', 'VTSAX', 'SWPPX', 'VBTLX', 'VXUS', 'FCNTX', 'FBALX', 'VWELX', 'VWINX'
+  'VFIAX', 'FXAIX', 'VTSAX', 'SWPPX', 'VBTLX', 'VXUS', 'FCNTX', 'FBALX', 'VWELX', 'VWINX',
+  'VTMGX', 'VTIAX', 'VIGAX', 'VVIAX', 'VGSLX', 'VGHCX', 'VWUAX', 'VMVAX', 'VSMAX', 'VEMAX',
+  'FSKAX', 'FSMAX', 'FSPSX', 'FEMKX', 'FXNAX', 'FBNDX', 'FTBFX', 'FXSTX', 'FSPTX', 'FSPHX'
 ];
 
-// Crypto
-const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD'];
+// Crypto - Top 20 by market cap
+const CRYPTO = [
+  'BTC-USD', 'ETH-USD', 'BNB-USD', 'XRP-USD', 'SOL-USD', 'ADA-USD', 'DOGE-USD', 'TRX-USD',
+  'TON11419-USD', 'LINK-USD', 'MATIC-USD', 'DOT-USD', 'LTC-USD', 'SHIB-USD', 'BCH-USD',
+  'AVAX-USD', 'XLM-USD', 'UNI7083-USD', 'ATOM-USD', 'FIL-USD'
+];
 
 interface QuoteData {
   symbol: string;
