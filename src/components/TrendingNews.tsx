@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Clock, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Clock, ExternalLink, Newspaper, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NewsItem {
   title: string;
@@ -9,57 +10,67 @@ interface NewsItem {
   time: string;
   category: string;
   url: string;
+  summary?: string;
 }
 
-const curatedNews: NewsItem[] = [
+const fallbackNews: NewsItem[] = [
   {
-    title: "Fed signals potential rate cuts in 2024 amid cooling inflation",
-    source: "Reuters",
-    time: "2h ago",
-    category: "Economy",
+    title: "Markets update: Check back for the latest financial news",
+    source: "InvestAI",
+    time: "Just now",
+    category: "Markets",
     url: "https://www.reuters.com/markets/",
-  },
-  {
-    title: "NVIDIA surpasses expectations with AI chip demand surge",
-    source: "Bloomberg",
-    time: "3h ago",
-    category: "Tech",
-    url: "https://www.bloomberg.com/technology",
-  },
-  {
-    title: "Bitcoin breaks $90K as institutional adoption accelerates",
-    source: "CoinDesk",
-    time: "4h ago",
-    category: "Crypto",
-    url: "https://www.coindesk.com/",
-  },
-  {
-    title: "Apple announces record-breaking services revenue growth",
-    source: "CNBC",
-    time: "5h ago",
-    category: "Tech",
-    url: "https://www.cnbc.com/technology/",
-  },
-  {
-    title: "Oil prices stabilize as OPEC+ considers production cuts",
-    source: "WSJ",
-    time: "6h ago",
-    category: "Commodities",
-    url: "https://www.wsj.com/news/markets/oil-gas-energy",
   },
 ];
 
 const TrendingNews = () => {
-  const [news, setNews] = useState<NewsItem[]>(curatedNews);
-  const [isLoading, setIsLoading] = useState(false);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const refreshNews = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setNews([...curatedNews].sort(() => Math.random() - 0.5));
+  const fetchNews = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error: fetchError } = await supabase.functions.invoke("market-news");
+      
+      if (fetchError) {
+        console.error("Error fetching news:", fetchError);
+        throw new Error("Failed to fetch news");
+      }
+      
+      if (data?.error) {
+        console.error("News API error:", data.error);
+        throw new Error(data.error);
+      }
+      
+      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+        setNews(data.data);
+        setLastUpdated(new Date());
+      } else {
+        setNews(fallbackNews);
+      }
+    } catch (err) {
+      console.error("Failed to fetch news:", err);
+      setError("Unable to load news");
+      setNews(fallbackNews);
+    } finally {
       setIsLoading(false);
-    }, 500);
-  };
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNews();
+    
+    // Refresh news every 5 minutes
+    const interval = setInterval(() => {
+      fetchNews(false);
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [fetchNews]);
 
   const handleNewsClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
@@ -74,13 +85,15 @@ const TrendingNews = () => {
           </div>
           <div>
             <h2 className="font-semibold text-foreground">Market News</h2>
-            <p className="text-xs text-muted-foreground">Latest updates</p>
+            <p className="text-xs text-muted-foreground">
+              {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Live updates"}
+            </p>
           </div>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          onClick={refreshNews}
+          onClick={() => fetchNews()}
           disabled={isLoading}
           className="text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors duration-200"
         >
@@ -88,37 +101,59 @@ const TrendingNews = () => {
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {news.map((item, index) => (
-          <div
-            key={index}
-            onClick={() => handleNewsClick(item.url)}
-            className="p-4 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/30 transition-all duration-200 cursor-pointer group"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200 leading-relaxed">
-                  {item.title}
-                </p>
-                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                  <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium">
-                    {item.category}
-                  </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {item.time}
-                  </span>
-                  <span className="text-xs text-muted-foreground">• {item.source}</span>
-                </div>
+      {error && (
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+          <AlertCircle className="w-4 h-4" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="p-4 rounded-xl bg-secondary/20 animate-pulse">
+              <div className="h-4 bg-muted rounded w-full mb-2" />
+              <div className="h-4 bg-muted rounded w-3/4 mb-3" />
+              <div className="flex gap-2">
+                <div className="h-5 bg-muted rounded w-16" />
+                <div className="h-5 bg-muted rounded w-12" />
               </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 flex-shrink-0 mt-1" />
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {news.map((item, index) => (
+            <div
+              key={index}
+              onClick={() => handleNewsClick(item.url)}
+              className="p-4 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/30 transition-all duration-200 cursor-pointer group"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200 leading-relaxed">
+                    {item.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                    <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium">
+                      {item.category}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {item.time}
+                    </span>
+                    <span className="text-xs text-muted-foreground">• {item.source}</span>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 flex-shrink-0 mt-1" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="text-xs text-muted-foreground text-center mt-5 pt-4 border-t border-border/30">
-        Click any article to read more on the source website
+        Click any article to read full story
       </p>
     </div>
   );
