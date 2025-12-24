@@ -40,17 +40,32 @@ ${philosophy.market_insights_style}
   }
 }
 
-// All securities offered on the platform
+// All securities offered on the platform - Top 100 US Stocks by Market Cap
 const TOP_STOCKS = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK.B', 'UNH', 'LLY',
   'JPM', 'V', 'XOM', 'JNJ', 'MA', 'PG', 'AVGO', 'HD', 'CVX', 'MRK',
   'ABBV', 'COST', 'PEP', 'KO', 'ADBE', 'WMT', 'CRM', 'MCD', 'BAC', 'CSCO',
   'TMO', 'ACN', 'NFLX', 'AMD', 'ABT', 'LIN', 'ORCL', 'DHR', 'TXN', 'NKE',
-  'DIS', 'PM', 'WFC', 'VZ', 'INTC', 'COP', 'INTU', 'CMCSA', 'AMGN', 'PFE'
+  'DIS', 'PM', 'WFC', 'VZ', 'INTC', 'COP', 'INTU', 'CMCSA', 'AMGN', 'PFE',
+  'IBM', 'QCOM', 'UNP', 'CAT', 'NOW', 'SPGI', 'RTX', 'GE', 'HON', 'LOW',
+  'AMAT', 'GS', 'BKNG', 'ELV', 'BLK', 'ISRG', 'T', 'AXP', 'SBUX', 'MS',
+  'MDT', 'TJX', 'ADP', 'PLD', 'MMC', 'GILD', 'LMT', 'DE', 'VRTX', 'SYK',
+  'REGN', 'CVS', 'SCHW', 'LRCX', 'C', 'CB', 'AMT', 'MO', 'ZTS', 'SO',
+  'MDLZ', 'DUK', 'PGR', 'PANW', 'CI', 'BDX', 'SNPS', 'EOG', 'PYPL', 'CME'
 ];
 
-const TOP_ETFS = ['SPY', 'QQQ', 'VTI', 'VOO', 'IWM', 'VGT', 'ARKK', 'XLF', 'XLE', 'GLD', 'SCHD', 'VYM'];
+// Top ETFs
+const TOP_ETFS = [
+  'SPY', 'QQQ', 'VTI', 'VOO', 'IWM', 'VGT', 'ARKK', 'XLF', 'XLE', 'GLD',
+  'SLV', 'VNQ', 'BND', 'SCHD', 'VYM', 'EFA', 'VEA', 'VWO', 'AGG', 'XLK'
+];
 
+// Top Mutual Funds
+const MUTUAL_FUNDS = [
+  'VFIAX', 'FXAIX', 'VTSAX', 'SWPPX', 'VBTLX', 'VXUS', 'FCNTX', 'FBALX', 'VWELX', 'VWINX'
+];
+
+// Crypto
 const CRYPTO = ['BTC-USD', 'ETH-USD'];
 
 interface QuoteData {
@@ -108,11 +123,11 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
 
 // Fetch real-time market data for all platform securities
 async function fetchMarketData(): Promise<string> {
-  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...CRYPTO];
+  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO];
   
   try {
     // Fetch in parallel batches to avoid rate limiting
-    const batchSize = 10;
+    const batchSize = 15;
     const quotes: QuoteData[] = [];
     
     for (let i = 0; i < allSymbols.length; i += batchSize) {
@@ -132,6 +147,7 @@ async function fetchMarketData(): Promise<string> {
     // Format data in categories for better AI understanding
     const stockQuotes = quotes.filter(q => TOP_STOCKS.includes(q.symbol));
     const etfQuotes = quotes.filter(q => TOP_ETFS.includes(q.symbol));
+    const mutualFundQuotes = quotes.filter(q => MUTUAL_FUNDS.includes(q.symbol));
     const cryptoQuotes = quotes.filter(q => CRYPTO.includes(q.symbol));
     
     const formatQuote = (q: QuoteData) => {
@@ -143,11 +159,15 @@ async function fetchMarketData(): Promise<string> {
     let marketDataStr = `\n\n=== REAL-TIME MARKET DATA (${timestamp}) ===\n\n`;
     
     if (stockQuotes.length > 0) {
-      marketDataStr += `TOP STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
+      marketDataStr += `TOP 100 STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
     }
     
     if (etfQuotes.length > 0) {
       marketDataStr += `ETFs:\n${etfQuotes.map(formatQuote).join('\n')}\n\n`;
+    }
+    
+    if (mutualFundQuotes.length > 0) {
+      marketDataStr += `MUTUAL FUNDS:\n${mutualFundQuotes.map(formatQuote).join('\n')}\n\n`;
     }
     
     if (cryptoQuotes.length > 0) {
