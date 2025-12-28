@@ -19,6 +19,8 @@ interface Philosophy {
   updated_at: string;
 }
 
+const ADMIN_EMAIL = "8russelld7@gmail.com";
+
 const AdminPhilosophy = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -26,11 +28,17 @@ const AdminPhilosophy = () => {
   const [saving, setSaving] = useState(false);
   const [philosophy, setPhilosophy] = useState<Philosophy | null>(null);
 
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
+    if (!authLoading) {
+      if (!user) {
+        navigate("/auth");
+      } else if (!isAdmin) {
+        navigate("/");
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isAdmin]);
 
   useEffect(() => {
     const fetchPhilosophy = async () => {
