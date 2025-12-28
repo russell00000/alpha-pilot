@@ -346,15 +346,18 @@ const Markets = () => {
     ...cryptoAssets,
   ];
 
-  const filteredSuggestions = searchQuery
+  const filteredSuggestions = searchQuery.trim()
     ? allAssets.filter(asset => {
-        const query = searchQuery.toLowerCase();
+        const query = searchQuery.toLowerCase().trim();
         return (
           asset.symbol.toLowerCase().includes(query) ||
           asset.name.toLowerCase().includes(query)
         );
       })
     : [];
+
+  // Debug logging
+  console.log("Search query:", searchQuery, "Suggestions count:", filteredSuggestions.length, "Show:", showSuggestions);
 
   return (
     <div className="min-h-screen bg-background">
