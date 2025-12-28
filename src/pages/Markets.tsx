@@ -370,9 +370,17 @@ const Markets = () => {
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowSuggestions(true);
+                // Clear previous search results when typing again
+                if (searchResults.length > 0) {
+                  setSearchResults([]);
+                }
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                // Delay hiding suggestions to allow click to register
+                setTimeout(() => setShowSuggestions(false), 200);
+              }}
               className="pl-12 pr-32 h-14 text-lg"
             />
             {searchQuery && (
@@ -393,7 +401,7 @@ const Markets = () => {
             </Button>
             
             {/* Search suggestions dropdown */}
-            {showSuggestions && searchQuery && filteredSuggestions.length > 0 && searchResults.length === 0 && (
+            {showSuggestions && searchQuery && filteredSuggestions.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto text-left">
                 <p className="px-4 py-2 text-xs text-muted-foreground border-b border-border">
                   Quick suggestions:
@@ -401,7 +409,10 @@ const Markets = () => {
                 {filteredSuggestions.map((asset) => (
                   <button
                     key={asset.symbol}
-                    onClick={() => handleQuickSearch(asset.symbol)}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent blur from firing before click
+                      handleQuickSearch(asset.symbol);
+                    }}
                     className="w-full px-4 py-3 text-left hover:bg-muted/50 flex items-center justify-between border-b border-border/50 last:border-b-0"
                   >
                     <div>
