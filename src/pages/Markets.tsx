@@ -326,11 +326,24 @@ const Markets = () => {
 
   const displayData = getDisplayData();
 
-  // Filter suggestions from all available assets
+  // Filter suggestions from all available assets including cryptos
+  const cryptoAssets = [
+    { symbol: "BTC", name: "Bitcoin", type: "crypto" },
+    { symbol: "ETH", name: "Ethereum", type: "crypto" },
+    { symbol: "XRP", name: "XRP", type: "crypto" },
+    { symbol: "SOL", name: "Solana", type: "crypto" },
+    { symbol: "DOGE", name: "Dogecoin", type: "crypto" },
+    { symbol: "ADA", name: "Cardano", type: "crypto" },
+    { symbol: "LINK", name: "Chainlink", type: "crypto" },
+    { symbol: "AVAX", name: "Avalanche", type: "crypto" },
+    { symbol: "DOT", name: "Polkadot", type: "crypto" },
+  ];
+
   const allAssets = [
     ...top100Stocks.map(s => ({ ...s, type: "stock" })),
     ...topETFs.map(e => ({ ...e, type: "etf" })),
     ...topMutualFunds.map(m => ({ ...m, type: "mutual_fund" })),
+    ...cryptoAssets,
   ];
 
   const filteredSuggestions = searchQuery
@@ -340,7 +353,7 @@ const Markets = () => {
           asset.symbol.toLowerCase().includes(query) ||
           asset.name.toLowerCase().includes(query)
         );
-      }).slice(0, 10)
+      })
     : [];
 
   return (
