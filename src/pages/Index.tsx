@@ -1,5 +1,5 @@
 import Header from "@/components/Header";
-import PortfolioSummary from "@/components/PortfolioSummary";
+import MarketSentiment from "@/components/MarketSentiment";
 import MarketOverview from "@/components/MarketOverview";
 import AIChat from "@/components/AIChat";
 import TrendingNews from "@/components/TrendingNews";
@@ -67,9 +67,9 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Portfolio Summary */}
+        {/* Market Sentiment */}
         <section className="animate-fade-in" style={{ animationDelay: "400ms" }}>
-          <PortfolioSummary />
+          <MarketSentiment />
         </section>
 
         {/* Main Content Grid */}
