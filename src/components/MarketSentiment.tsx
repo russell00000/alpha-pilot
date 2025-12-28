@@ -1,66 +1,52 @@
-import { TrendingUp, TrendingDown, Activity, Gauge, BarChart3, Scale } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Target, Lightbulb, BarChart3, BookOpen } from "lucide-react";
 
-const sentimentData = [
+const categories = [
   { 
-    label: "Fear & Greed", 
-    value: "67", 
-    status: "Greed",
-    description: "Market sentiment is bullish",
-    icon: Gauge,
-    color: "text-success"
+    label: "Strategy", 
+    items: ["Value Investing Core", "AI-Optimization", "Risk-Management Protocols"],
+    icon: Target,
   },
   { 
-    label: "VIX Volatility", 
-    value: "14.2", 
-    status: "Low",
-    description: "Markets are calm",
-    icon: Activity,
-    color: "text-success"
+    label: "Solutions", 
+    items: ["Beginner Foundations", "Intermediate Growth", "Retirement Planning"],
+    icon: Lightbulb,
   },
   { 
-    label: "Market Breadth", 
-    value: "62%", 
-    status: "Positive",
-    description: "Stocks above 50-day MA",
+    label: "Analysis", 
+    items: ["Weekly Market Signals", "Sector Research", "Fed Policy Updates"],
     icon: BarChart3,
-    color: "text-success"
   },
   { 
-    label: "Put/Call Ratio", 
-    value: "0.82", 
-    status: "Bullish",
-    description: "More calls than puts",
-    icon: Scale,
-    color: "text-success"
+    label: "Resources", 
+    items: ["Investing 101", "Platform FAQ", "Security Standards"],
+    icon: BookOpen,
   },
 ];
 
 const MarketSentiment = () => {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
-      {sentimentData.map((item) => (
+      {categories.map((category) => (
         <div 
-          key={item.label}
+          key={category.label}
           className="glass-card p-5 card-hover group"
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 group-hover:border-primary/30 transition-colors duration-300">
-              <item.icon className="w-4 h-4 text-primary" />
+              <category.icon className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-sm text-muted-foreground font-medium">{item.label}</span>
+            <span className="text-base font-semibold text-foreground">{category.label}</span>
           </div>
-          <p className="text-2xl md:text-3xl font-bold text-foreground mb-2 tracking-tight">{item.value}</p>
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "text-sm font-semibold px-2 py-0.5 rounded-md",
-              item.color,
-              item.color === "text-success" ? "bg-success/10" : "bg-destructive/10"
-            )}>
-              {item.status}
-            </span>
-            <span className="text-xs text-muted-foreground">{item.description}</span>
-          </div>
+          <ul className="space-y-2">
+            {category.items.map((item) => (
+              <li 
+                key={item}
+                className="text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors duration-200"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       ))}
     </div>
