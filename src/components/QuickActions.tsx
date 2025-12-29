@@ -1,27 +1,37 @@
-import { Plus, Search, LineChart, Bell, Wallet, FileText } from "lucide-react";
+import { Gamepad2, Search, LineChart, Bell, Wallet, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+
+interface QuickAction {
+  label: string;
+  icon: React.ElementType;
+  action?: () => void;
+  href?: string;
+}
 
 const QuickActions = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const showComingSoon = (feature: string) => {
-    toast({
-      title: "Coming Soon",
-      description: `${feature} feature will be available soon!`,
-    });
-  };
-
-  const actions = [
-    { label: "Add Trade", icon: Plus, action: () => showComingSoon("Trade tracking") },
+  const actions: QuickAction[] = [
+    { 
+      label: "Trade Game", 
+      icon: Gamepad2, 
+      href: "https://auth.investopedia.com/realms/investopedia/protocol/openid-connect/registrations?client_id=finance-simulator&redirect_uri=https%3A%2F%2Fwww.investopedia.com%2Fsimulator%2Fportfolio&state=2e788a37-4b3f-46a0-8e5c-2874afeaeee8&response_mode=fragment&response_type=code&scope=openid&nonce=79d63075-4037-4600-991a-277b5dcd715e&code_challenge=spzxiu4T1rpJYAMAyPsvTa_W5tb6NDaNnW8CIxPETOo&code_challenge_method=S256" 
+    },
     { label: "Research", icon: Search, action: () => navigate("/markets") },
     { label: "Analysis", icon: LineChart, action: () => navigate("/chat") },
-    { label: "Alerts", icon: Bell, action: () => showComingSoon("Price alerts") },
+    { label: "Alerts", icon: Bell, action: () => navigate("/alerts") },
     { label: "Portfolio", icon: Wallet, action: () => navigate("/portfolio") },
-    { label: "Reports", icon: FileText, action: () => showComingSoon("Reports") },
+    { label: "Reports", icon: FileText, action: () => navigate("/chat") },
   ];
+
+  const handleAction = (action: QuickAction) => {
+    if (action.href) {
+      window.open(action.href, "_blank", "noopener,noreferrer");
+    } else if (action.action) {
+      action.action();
+    }
+  };
 
   return (
     <div className="glass-card p-4">
@@ -31,7 +41,7 @@ const QuickActions = () => {
           <Button
             key={action.label}
             variant="ghost"
-            onClick={action.action}
+            onClick={() => handleAction(action)}
             className="flex flex-col items-center gap-2 h-auto py-3 hover:bg-secondary/60 transition-colors duration-200 group"
           >
             <div className="p-2 rounded-lg bg-secondary/60 group-hover:bg-secondary transition-colors duration-200">
