@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, Bitcoin, DollarSign, BarChart3, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MarketCard from "./MarketCard";
 import { cn } from "@/lib/utils";
@@ -18,16 +18,11 @@ interface MarketData {
   type: "stock" | "crypto" | "etf";
 }
 
-const tabs = [
-  { id: "stocks", label: "Stocks", icon: BarChart3 },
-  { id: "crypto", label: "Crypto", icon: Bitcoin },
-  { id: "etf", label: "ETFs", icon: DollarSign },
-  { id: "trending", label: "Trending", icon: TrendingUp },
-];
+// Removed tabs - now showing top 6 movers only
 
 const MarketOverview = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("stocks");
+  
   const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -94,22 +89,16 @@ const MarketOverview = () => {
     setIsRefreshing(false);
   };
 
-  const filteredData = marketData.filter((item) => {
-    if (activeTab === "crypto") return item.type === "crypto";
-    if (activeTab === "stocks") return item.type === "stock";
-    if (activeTab === "etf") return item.type === "etf";
-    return true;
-  });
-
-  const displayData = activeTab === "trending" 
-    ? [...filteredData].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 6)
-    : filteredData;
+  // Get top 6 daily movers sorted by absolute change percentage
+  const displayData = [...marketData]
+    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
+    .slice(0, 6);
 
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Market Overview</h2>
+          <h2 className="text-lg font-semibold text-foreground">Top Daily Movers</h2>
           <p className="text-sm text-muted-foreground">
             {lastUpdated 
               ? `Updated ${lastUpdated.toLocaleTimeString()}`
@@ -126,25 +115,6 @@ const MarketOverview = () => {
         >
           <RefreshCw className={cn("w-4 h-4", (isRefreshing || isLoading) && "animate-spin")} />
         </Button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 bg-secondary/30 rounded-xl border border-border/30">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              activeTab === tab.id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
       </div>
 
       {/* Error State */}
