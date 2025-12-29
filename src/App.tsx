@@ -12,6 +12,7 @@ import Privacy from "./pages/Privacy";
 import Stock from "./pages/Stock";
 import Auth from "./pages/Auth";
 import AdminPhilosophy from "./pages/AdminPhilosophy";
+import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/stock/:symbol" element={<Stock />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/philosophy" element={<AdminPhilosophy />} />
+          <Route path="/alerts" element={<Alerts />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
