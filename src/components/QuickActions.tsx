@@ -22,7 +22,7 @@ const QuickActions = () => {
     { label: "Analysis", icon: LineChart, action: () => navigate("/chat") },
     { label: "Alerts", icon: Bell, action: () => navigate("/alerts") },
     { label: "Portfolio", icon: Wallet, action: () => navigate("/portfolio") },
-    { label: "Reports", icon: FileText, action: () => navigate("/chat") },
+    { label: "Reports", icon: FileText, href: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent" },
   ];
 
   const handleAction = (action: QuickAction) => {
