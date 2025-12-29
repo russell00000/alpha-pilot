@@ -3,7 +3,7 @@ import { Target, Lightbulb, BarChart3, BookOpen } from "lucide-react";
 const categories = [
   { 
     label: "Strategy", 
-    items: ["Value Investing Core", "AI-Optimization", "Risk-Management Protocols"],
+    items: ["Value Investing Core", "AI-Optimization", "Risk-Management"],
     icon: Target,
   },
   { 
@@ -29,15 +29,15 @@ const MarketSentiment = () => {
       {categories.map((category) => (
         <div 
           key={category.label}
-          className="glass-card p-5 card-hover group"
+          className="glass-card p-4 card-hover group"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 group-hover:border-primary/30 transition-colors duration-300">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="p-2 rounded-lg bg-primary/8 group-hover:bg-primary/12 transition-colors duration-200">
               <category.icon className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-base font-semibold text-foreground">{category.label}</span>
+            <span className="text-sm font-medium text-foreground">{category.label}</span>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {category.items.map((item) => (
               <li 
                 key={item}

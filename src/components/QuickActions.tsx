@@ -15,27 +15,27 @@ const QuickActions = () => {
   };
 
   const actions = [
-    { label: "Add Trade", icon: Plus, color: "from-success/20 to-success/5 text-success border-success/20", action: () => showComingSoon("Trade tracking") },
-    { label: "Research", icon: Search, color: "from-primary/20 to-primary/5 text-primary border-primary/20", action: () => navigate("/markets") },
-    { label: "Analysis", icon: LineChart, color: "from-warning/20 to-warning/5 text-warning border-warning/20", action: () => navigate("/chat") },
-    { label: "Alerts", icon: Bell, color: "from-destructive/20 to-destructive/5 text-destructive border-destructive/20", action: () => showComingSoon("Price alerts") },
-    { label: "Portfolio", icon: Wallet, color: "from-primary/20 to-primary/5 text-primary border-primary/20", action: () => navigate("/portfolio") },
-    { label: "Reports", icon: FileText, color: "from-muted-foreground/20 to-muted-foreground/5 text-muted-foreground border-muted-foreground/20", action: () => showComingSoon("Reports") },
+    { label: "Add Trade", icon: Plus, action: () => showComingSoon("Trade tracking") },
+    { label: "Research", icon: Search, action: () => navigate("/markets") },
+    { label: "Analysis", icon: LineChart, action: () => navigate("/chat") },
+    { label: "Alerts", icon: Bell, action: () => showComingSoon("Price alerts") },
+    { label: "Portfolio", icon: Wallet, action: () => navigate("/portfolio") },
+    { label: "Reports", icon: FileText, action: () => showComingSoon("Reports") },
   ];
 
   return (
-    <div className="glass-card p-5">
-      <h3 className="text-sm font-medium text-muted-foreground mb-4">Quick Actions</h3>
-      <div className="grid grid-cols-3 gap-3">
+    <div className="glass-card p-4">
+      <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Quick Actions</h3>
+      <div className="grid grid-cols-3 gap-2">
         {actions.map((action) => (
           <Button
             key={action.label}
             variant="ghost"
             onClick={action.action}
-            className="flex flex-col items-center gap-2.5 h-auto py-4 hover:bg-secondary/50 transition-all duration-200 group"
+            className="flex flex-col items-center gap-2 h-auto py-3 hover:bg-secondary/60 transition-colors duration-200 group"
           >
-            <div className={`p-2.5 rounded-xl bg-gradient-to-br ${action.color} border transition-all duration-200 group-hover:scale-110`}>
-              <action.icon className="w-4 h-4" />
+            <div className="p-2 rounded-lg bg-secondary/60 group-hover:bg-secondary transition-colors duration-200">
+              <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
             </div>
             <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors duration-200">{action.label}</span>
           </Button>

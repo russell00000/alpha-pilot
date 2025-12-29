@@ -28,28 +28,25 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/30 bg-background/60 backdrop-blur-xl">
-      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 transition-all duration-300 group-hover:border-primary/40 group-hover:shadow-lg group-hover:shadow-primary/10">
-            <TrendingUp className="w-5 h-5 text-primary transition-transform duration-300 group-hover:scale-110" />
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
+      <div className="container flex h-14 items-center justify-between px-4 md:px-6">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200 group-hover:bg-primary/15">
+            <TrendingUp className="w-4 h-4 text-primary" />
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-bold tracking-tight text-foreground">InvestAI</h1>
-            <p className="text-xs text-muted-foreground">AI Investing Copilot</p>
-          </div>
+          <span className="hidden sm:block text-base font-semibold text-foreground">InvestAI</span>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1 bg-secondary/30 p-1 rounded-xl border border-border/30">
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <Link key={item.href} to={item.href}>
               <Button
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-muted-foreground hover:text-foreground transition-all duration-200 rounded-lg px-4",
-                  location.pathname === item.href && "text-foreground bg-background/80 shadow-sm"
+                  "text-muted-foreground hover:text-foreground transition-colors duration-200 h-8 px-3 text-sm",
+                  location.pathname === item.href && "text-foreground bg-secondary/60"
                 )}
               >
                 {item.label}
@@ -58,14 +55,14 @@ const Header = () => {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative hover:bg-secondary/50 transition-colors duration-200"
+            className="relative h-8 w-8 hover:bg-secondary/60 transition-colors duration-200"
           >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full animate-pulse-glow" />
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
           </Button>
           
           <DropdownMenu>
@@ -73,36 +70,26 @@ const Header = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="gap-2 hover:bg-secondary/50 transition-colors duration-200"
+                className="gap-1.5 h-8 hover:bg-secondary/60 transition-colors duration-200"
               >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-primary" />
+                <div className="w-6 h-6 rounded-md bg-secondary flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-popover/95 backdrop-blur-xl border-border/50">
+            <DropdownMenuContent align="end" className="w-52 bg-popover border-border/60">
               <DropdownMenuItem asChild>
-                <Link to="/admin/philosophy" className="flex items-center gap-3 cursor-pointer">
-                  <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                    <Settings className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium">AI Philosophy</p>
-                    <p className="text-xs text-muted-foreground">Customize AI behavior</p>
-                  </div>
+                <Link to="/admin/philosophy" className="flex items-center gap-2.5 cursor-pointer">
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">AI Philosophy</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border/50" />
               <DropdownMenuItem asChild>
-                <Link to="/auth" className="flex items-center gap-3 cursor-pointer">
-                  <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Account</p>
-                    <p className="text-xs text-muted-foreground">Manage your profile</p>
-                  </div>
+                <Link to="/auth" className="flex items-center gap-2.5 cursor-pointer">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">Account</span>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -111,21 +98,18 @@ const Header = () => {
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="hover:bg-secondary/50">
-                <Menu className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-secondary/60">
+                <Menu className="w-4 h-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 bg-background/95 backdrop-blur-xl border-border/30">
-              <div className="flex items-center gap-3 mb-8 pt-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-primary" />
+            <SheetContent side="right" className="w-64 bg-background border-border/40">
+              <div className="flex items-center gap-2.5 mb-6 pt-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
-                <div>
-                  <h2 className="font-bold">InvestAI</h2>
-                  <p className="text-xs text-muted-foreground">AI Investing Copilot</p>
-                </div>
+                <span className="font-semibold">InvestAI</span>
               </div>
-              <nav className="flex flex-col gap-1">
+              <nav className="flex flex-col gap-0.5">
                 {navItems.map((item) => (
                   <Link 
                     key={item.href} 
@@ -134,25 +118,27 @@ const Header = () => {
                   >
                     <Button
                       variant="ghost"
+                      size="sm"
                       className={cn(
-                        "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-200",
-                        location.pathname === item.href && "text-foreground bg-secondary"
+                        "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors duration-200 h-9",
+                        location.pathname === item.href && "text-foreground bg-secondary/60"
                       )}
                     >
                       {item.label}
                     </Button>
                   </Link>
                 ))}
-                <div className="h-px bg-border/50 my-2" />
+                <div className="h-px bg-border/40 my-2" />
                 <Link 
                   to="/admin/philosophy"
                   onClick={() => setMobileOpen(false)}
                 >
                   <Button
                     variant="ghost"
+                    size="sm"
                     className={cn(
-                      "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-200",
-                      location.pathname === "/admin/philosophy" && "text-foreground bg-secondary"
+                      "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors duration-200 h-9",
+                      location.pathname === "/admin/philosophy" && "text-foreground bg-secondary/60"
                     )}
                   >
                     <Settings className="w-4 h-4 mr-2" />

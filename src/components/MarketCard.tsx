@@ -14,34 +14,33 @@ const MarketCard = ({ symbol, name, price, change, changePercent }: MarketCardPr
 
   return (
     <div className="glass-card p-4 card-hover group cursor-pointer">
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2.5">
         <div>
-          <p className="font-bold text-foreground group-hover:text-primary transition-colors duration-200">
+          <p className="font-semibold text-foreground text-sm">
             {symbol}
           </p>
           <p className="text-xs text-muted-foreground truncate max-w-[100px]">{name}</p>
         </div>
         <div className={cn(
-          "flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200",
+          "flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium",
           isPositive 
-            ? "bg-success/10 text-success border border-success/20" 
-            : "bg-destructive/10 text-destructive border border-destructive/20"
+            ? "bg-success/10 text-success" 
+            : "bg-destructive/10 text-destructive"
         )}>
           {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {Math.abs(changePercent).toFixed(2)}%
         </div>
       </div>
       
-      <div className="space-y-1">
-        <p className="text-2xl font-bold text-foreground tracking-tight">${price}</p>
+      <div className="space-y-0.5">
+        <p className="text-xl font-semibold text-foreground">${price}</p>
         <p className={cn(
-          "text-sm font-medium",
+          "text-xs font-medium",
           isPositive ? "text-success" : "text-destructive"
         )}>
           {isPositive ? "+" : ""}{change.toFixed(2)}
         </p>
       </div>
-
     </div>
   );
 };
