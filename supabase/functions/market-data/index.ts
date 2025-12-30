@@ -16,10 +16,10 @@ interface MarketData {
   type: "stock" | "crypto" | "etf" | "mutual_fund";
 }
 
-// In-memory cache with TTL
+// In-memory cache with longer TTL to reduce API calls
 const cache: Map<string, { data: MarketData; timestamp: number }> = new Map();
-const CACHE_TTL = 60000; // 1 minute cache for stocks
-const CRYPTO_CACHE_TTL = 30000; // 30 seconds for crypto
+const CACHE_TTL = 300000; // 5 minutes cache for stocks (reduced API calls)
+const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 
 // Rate limit tracking
 let lastRequestTime = 0;
@@ -232,64 +232,83 @@ function generateSparkline(currentPrice: number, changePercent: number): number[
   return sparkline;
 }
 
-// Fetch stock quote from Finnhub with caching
-async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
+// Track rate limit status
+let finnhubRateLimited = false;
+let rateLimitResetTime = 0;
+
+// Fetch stock quote from Yahoo Finance (no rate limits)
+async function fetchStockQuoteYahoo(symbol: string): Promise<MarketData | null> {
   // Check cache first
   const cached = getCachedData(symbol);
   if (cached) {
-    console.log(`Using cached data for ${symbol}`);
     return cached;
   }
 
   try {
-    const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
-    console.log(`Fetching fresh quote for ${symbol}`);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
     
-    const response = await rateLimitedFetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
     const data = await response.json();
     
-    if (data.error) {
-      console.error(`Finnhub error for ${symbol}:`, data.error);
-      // Return stale cache if available
-      const staleCache = cache.get(symbol);
-      if (staleCache) {
-        console.log(`Returning stale cache for ${symbol}`);
-        return staleCache.data;
-      }
+    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
       return null;
     }
     
-    if (!data.c || data.c === 0) {
-      console.warn(`No price data for ${symbol}`);
+    const result = data.chart.result[0];
+    const meta = result.meta || {};
+    const quote = result.indicators?.quote?.[0] || {};
+    const closes = quote.close || [];
+    
+    const currentPrice = meta.regularMarketPrice || closes[closes.length - 1];
+    const previousClose = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2];
+    
+    if (!currentPrice) {
       return null;
     }
     
-    const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "stock" };
-    const currentPrice = data.c;
-    const changePercent = data.dp || 0;
+    const change = currentPrice - previousClose;
+    const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
     
-    const result: MarketData = {
+    const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: meta.shortName || symbol, type: "stock" };
+    
+    const marketData: MarketData = {
       symbol: symbol.toUpperCase(),
       name: assetInfo.name,
       price: currentPrice.toFixed(2),
-      change: data.d || 0,
+      change: change,
       changePercent: changePercent,
-      volume: formatVolume(data.v || 0),
-      sparkline: generateSparkline(currentPrice, changePercent),
+      volume: formatVolume(meta.regularMarketVolume || 0),
+      sparkline: closes.filter((c: number | null) => c !== null).slice(-24) || generateSparkline(currentPrice, changePercent),
       type: assetInfo.type,
     };
     
     // Cache the result
-    setCacheData(symbol, result);
+    setCacheData(symbol, marketData);
     
-    return result;
+    return marketData;
   } catch (error) {
-    console.error(`Error fetching ${symbol}:`, error);
-    // Return stale cache if available
+    console.error(`Yahoo Finance error for ${symbol}:`, error);
     const staleCache = cache.get(symbol);
     if (staleCache) return staleCache.data;
     return null;
   }
+}
+
+// Fetch stock quote - uses Yahoo Finance primarily (no rate limits)
+async function fetchStockQuote(symbol: string, apiKey: string): Promise<MarketData | null> {
+  // Check cache first
+  const cached = getCachedData(symbol);
+  if (cached) {
+    return cached;
+  }
+
+  // Use Yahoo Finance - no rate limits
+  return fetchStockQuoteYahoo(symbol);
 }
 
 // Fetch mutual fund quote from Yahoo Finance (Finnhub doesn't support mutual funds)
@@ -800,13 +819,24 @@ serve(async (req) => {
       results.push(...cryptoData);
     }
 
-    // Fetch only top 10 stocks to stay within rate limits
+    // Fetch top 30 stocks - use rate limiting and parallelization
     if (type === "all" || type === "stocks") {
-      const topStocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM"];
+      const topStocks = [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM",
+        "LLY", "MA", "JNJ", "XOM", "PG", "HD", "CVX", "MRK", "ABBV", "COST",
+        "PEP", "KO", "ADBE", "WMT", "CRM", "MCD", "BAC", "NFLX", "AMD", "CSCO"
+      ];
       
-      for (const sym of topStocks) {
-        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
-        if (result) results.push(result);
+      // Fetch in smaller sequential batches to respect rate limits
+      for (let i = 0; i < topStocks.length; i += 5) {
+        const batch = topStocks.slice(i, i + 5);
+        const promises = batch.map(sym => fetchStockQuote(sym, FINNHUB_API_KEY));
+        const batchResults = await Promise.all(promises);
+        results.push(...batchResults.filter(Boolean) as MarketData[]);
+        // Small delay between batches
+        if (i + 5 < topStocks.length) {
+          await new Promise(r => setTimeout(r, 150));
+        }
       }
     }
 

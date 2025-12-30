@@ -88,15 +88,17 @@ const Markets = () => {
         setLiveData(data.data);
         setLastUpdated(new Date());
         
-        // Cache the prices
+        // Cache all returned prices immediately
         const cache: Record<string, MarketData> = {};
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
         setPriceCache(prev => ({ ...prev, ...cache }));
+        setIsLoading(false);
       }
     } catch (err) {
       console.error("Error fetching market data:", err);
+      setIsLoading(false);
     }
   }, []);
 
@@ -108,12 +110,18 @@ const Markets = () => {
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  // Auto-load prices for current tab (load all in batches)
+  // Only load additional prices if not already loaded from "type: all"
   useEffect(() => {
-    const loadAllTabPrices = async () => {
+    let isCancelled = false;
+    
+    const loadAdditionalPrices = async () => {
+      // Skip if we're on crypto tab (handled by fetchMarketData)
+      if (activeTab === "crypto") return;
+      
       let allSymbols: string[] = [];
       
       if (activeTab === "stocks") {
+        // Only load stocks not already in cache (first 30 already loaded by "type:all")
         allSymbols = top100Stocks.map(s => s.symbol);
       } else if (activeTab === "etf") {
         allSymbols = topETFs.map(e => e.symbol);
@@ -127,19 +135,26 @@ const Markets = () => {
       const uncached = allSymbols.filter(s => !priceCache[s]);
       if (uncached.length === 0) return;
       
-      // Load in batches of 20 to avoid rate limits
-      const batchSize = 20;
-      for (let i = 0; i < uncached.length; i += batchSize) {
+      // Load in very small batches with longer delays to avoid rate limits
+      const batchSize = 5;
+      for (let i = 0; i < Math.min(uncached.length, 20); i += batchSize) {
+        if (isCancelled) break;
         const batch = uncached.slice(i, i + batchSize);
         await batchFetchPrices(batch);
-        // Small delay between batches to respect rate limits
+        // 2 second delay between batches to stay well under rate limit
         if (i + batchSize < uncached.length) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     };
     
-    loadAllTabPrices();
+    // Delay additional loading to let initial data load first
+    const timer = setTimeout(loadAdditionalPrices, 3000);
+    
+    return () => { 
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [activeTab, batchFetchPrices, priceCache]);
 
   const handleRefresh = async () => {
