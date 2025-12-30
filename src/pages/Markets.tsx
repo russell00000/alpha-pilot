@@ -347,28 +347,45 @@ const Markets = () => {
   ];
 
   const filteredSuggestions = searchQuery.trim()
-    ? allAssets
-        .filter(asset => {
-          const query = searchQuery.toLowerCase().trim();
-          return (
-            asset.symbol.toLowerCase().includes(query) ||
-            asset.name.toLowerCase().includes(query)
-          );
-        })
-        .sort((a, b) => {
-          const query = searchQuery.toLowerCase().trim();
-          // Exact symbol match first
-          if (a.symbol.toLowerCase() === query) return -1;
-          if (b.symbol.toLowerCase() === query) return 1;
-          // Symbol starts with query
-          if (a.symbol.toLowerCase().startsWith(query) && !b.symbol.toLowerCase().startsWith(query)) return -1;
-          if (b.symbol.toLowerCase().startsWith(query) && !a.symbol.toLowerCase().startsWith(query)) return 1;
-          // Name starts with query
-          if (a.name.toLowerCase().startsWith(query) && !b.name.toLowerCase().startsWith(query)) return -1;
-          if (b.name.toLowerCase().startsWith(query) && !a.name.toLowerCase().startsWith(query)) return 1;
-          return 0;
-        })
-        .slice(0, 8) // Limit to 8 suggestions
+    ? (() => {
+        const query = searchQuery.toLowerCase().trim();
+
+        const score = (asset: { symbol: string; name: string }) => {
+          const sym = asset.symbol.toLowerCase();
+          const name = asset.name.toLowerCase();
+
+          // Lower is better
+          if (sym === query) return 0;
+          if (name === query) return 5;
+
+          if (sym.startsWith(query)) return 10;
+          // Name starts with query or any word starts with query
+          if (name.startsWith(query)) return 20;
+          if (name.split(/\s+/).some((w) => w.startsWith(query))) return 25;
+
+          const symIdx = sym.indexOf(query);
+          if (symIdx >= 0) return 40 + symIdx;
+
+          const nameIdx = name.indexOf(query);
+          if (nameIdx >= 0) return 60 + nameIdx;
+
+          return 999;
+        };
+
+        return allAssets
+          .map((asset) => ({ asset, score: score(asset) }))
+          .filter((x) => x.score < 999)
+          .sort((a, b) => {
+            if (a.score !== b.score) return a.score - b.score;
+            // Tie-breakers: prefer shorter symbols, then shorter names
+            if (a.asset.symbol.length !== b.asset.symbol.length) {
+              return a.asset.symbol.length - b.asset.symbol.length;
+            }
+            return a.asset.name.length - b.asset.name.length;
+          })
+          .slice(0, 8)
+          .map((x) => x.asset);
+      })()
     : [];
 
 
