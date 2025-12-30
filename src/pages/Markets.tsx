@@ -354,14 +354,17 @@ const Markets = () => {
           const sym = asset.symbol.toLowerCase();
           const name = asset.name.toLowerCase();
 
-          // Prefix-only matching for suggestions (keeps results aligned with what the user is typing)
+          // Exact matches first
           if (sym === query) return 0;
-          if (sym.startsWith(query)) return 10;
+          if (name === query) return 1;
 
-          if (name === query) return 15;
-          if (name.startsWith(query)) return 20;
+          // Symbol or name prefix — equal weight, best match wins via length
+          const symPrefix = sym.startsWith(query);
+          const namePrefix = name.startsWith(query);
+          const wordPrefix = name.split(/\s+/).some((w) => w.startsWith(query));
 
-          if (name.split(/\s+/).some((w) => w.startsWith(query))) return 25;
+          if (symPrefix || namePrefix) return 10;
+          if (wordPrefix) return 20;
 
           return 999; // exclude non-prefix matches
         };
@@ -371,11 +374,10 @@ const Markets = () => {
           .filter((x) => x.score < 999)
           .sort((a, b) => {
             if (a.score !== b.score) return a.score - b.score;
-            // Tie-breakers: prefer shorter symbols, then shorter names
-            if (a.asset.symbol.length !== b.asset.symbol.length) {
-              return a.asset.symbol.length - b.asset.symbol.length;
-            }
-            return a.asset.name.length - b.asset.name.length;
+            // Tie-breakers: prefer the shortest match overall (symbol + name length)
+            const lenA = a.asset.symbol.length + a.asset.name.length;
+            const lenB = b.asset.symbol.length + b.asset.name.length;
+            return lenA - lenB;
           })
           .slice(0, 8)
           .map((x) => x.asset);
