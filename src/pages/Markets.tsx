@@ -354,22 +354,16 @@ const Markets = () => {
           const sym = asset.symbol.toLowerCase();
           const name = asset.name.toLowerCase();
 
-          // Lower is better
+          // Prefix-only matching for suggestions (keeps results aligned with what the user is typing)
           if (sym === query) return 0;
-          if (name === query) return 5;
-
           if (sym.startsWith(query)) return 10;
-          // Name starts with query or any word starts with query
+
+          if (name === query) return 15;
           if (name.startsWith(query)) return 20;
+
           if (name.split(/\s+/).some((w) => w.startsWith(query))) return 25;
 
-          const symIdx = sym.indexOf(query);
-          if (symIdx >= 0) return 40 + symIdx;
-
-          const nameIdx = name.indexOf(query);
-          if (nameIdx >= 0) return 60 + nameIdx;
-
-          return 999;
+          return 999; // exclude non-prefix matches
         };
 
         return allAssets
