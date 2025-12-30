@@ -347,13 +347,28 @@ const Markets = () => {
   ];
 
   const filteredSuggestions = searchQuery.trim()
-    ? allAssets.filter(asset => {
-        const query = searchQuery.toLowerCase().trim();
-        return (
-          asset.symbol.toLowerCase().includes(query) ||
-          asset.name.toLowerCase().includes(query)
-        );
-      })
+    ? allAssets
+        .filter(asset => {
+          const query = searchQuery.toLowerCase().trim();
+          return (
+            asset.symbol.toLowerCase().includes(query) ||
+            asset.name.toLowerCase().includes(query)
+          );
+        })
+        .sort((a, b) => {
+          const query = searchQuery.toLowerCase().trim();
+          // Exact symbol match first
+          if (a.symbol.toLowerCase() === query) return -1;
+          if (b.symbol.toLowerCase() === query) return 1;
+          // Symbol starts with query
+          if (a.symbol.toLowerCase().startsWith(query) && !b.symbol.toLowerCase().startsWith(query)) return -1;
+          if (b.symbol.toLowerCase().startsWith(query) && !a.symbol.toLowerCase().startsWith(query)) return 1;
+          // Name starts with query
+          if (a.name.toLowerCase().startsWith(query) && !b.name.toLowerCase().startsWith(query)) return -1;
+          if (b.name.toLowerCase().startsWith(query) && !a.name.toLowerCase().startsWith(query)) return 1;
+          return 0;
+        })
+        .slice(0, 8) // Limit to 8 suggestions
     : [];
 
 
