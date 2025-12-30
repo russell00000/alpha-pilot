@@ -108,28 +108,39 @@ const Markets = () => {
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  // Auto-load prices when tab changes (limit to 10 to avoid rate limits)
+  // Auto-load prices for current tab (load all in batches)
   useEffect(() => {
-    const loadTabPrices = async () => {
-      let symbols: string[] = [];
+    const loadAllTabPrices = async () => {
+      let allSymbols: string[] = [];
       
       if (activeTab === "stocks") {
-        symbols = top100Stocks.map(s => s.symbol).slice(0, 10);
+        allSymbols = top100Stocks.map(s => s.symbol);
       } else if (activeTab === "etf") {
-        symbols = topETFs.map(e => e.symbol).slice(0, 10);
+        allSymbols = topETFs.map(e => e.symbol);
       } else if (activeTab === "mutual_fund") {
-        symbols = topMutualFunds.map(m => m.symbol).slice(0, 10);
+        allSymbols = topMutualFunds.map(m => m.symbol);
       }
       
-      if (symbols.length > 0) {
-        setIsRefreshing(true);
-        await batchFetchPrices(symbols);
-        setIsRefreshing(false);
+      if (allSymbols.length === 0) return;
+      
+      // Filter out already cached symbols
+      const uncached = allSymbols.filter(s => !priceCache[s]);
+      if (uncached.length === 0) return;
+      
+      // Load in batches of 20 to avoid rate limits
+      const batchSize = 20;
+      for (let i = 0; i < uncached.length; i += batchSize) {
+        const batch = uncached.slice(i, i + batchSize);
+        await batchFetchPrices(batch);
+        // Small delay between batches to respect rate limits
+        if (i + batchSize < uncached.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
     };
     
-    loadTabPrices();
-  }, [activeTab, batchFetchPrices]);
+    loadAllTabPrices();
+  }, [activeTab, batchFetchPrices, priceCache]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -670,21 +681,14 @@ const Markets = () => {
                         </td>
                         <td className="p-4 text-right">
                           {isLoadingThis ? (
-                            <Loader2 className="w-4 h-4 animate-spin ml-auto" />
+                            <Loader2 className="w-4 h-4 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPrice ? (
                             <p className="font-semibold text-foreground">${item.price}</p>
                           ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-xs text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                fetchSingleStock(item.symbol);
-                              }}
-                            >
-                              Load Price
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">Loading...</span>
+                            </div>
                           )}
                         </td>
                         <td className="p-4 text-right">
