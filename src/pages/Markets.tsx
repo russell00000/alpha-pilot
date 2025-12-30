@@ -41,7 +41,7 @@ const Markets = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("stocks");
   const [liveData, setLiveData] = useState<MarketData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start false - show content immediately
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,12 +101,8 @@ const Markets = () => {
   }, []);
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      await fetchMarketData();
-      setIsLoading(false);
-    };
-    loadData();
+    // Fetch data in background - don't block UI with loading state
+    fetchMarketData();
 
     const interval = setInterval(fetchMarketData, 60000);
     return () => clearInterval(interval);

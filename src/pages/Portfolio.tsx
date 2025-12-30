@@ -185,7 +185,8 @@ const Portfolio = () => {
     setShowAssessment(true);
   };
 
-  if (authLoading || loadingData) {
+  // Show loading only during auth check, not data loading
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />

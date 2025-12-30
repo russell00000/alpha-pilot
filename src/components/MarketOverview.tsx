@@ -24,7 +24,7 @@ const MarketOverview = () => {
   const navigate = useNavigate();
   
   const [marketData, setMarketData] = useState<MarketData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start false - show placeholder immediately
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -69,12 +69,8 @@ const MarketOverview = () => {
   }, [toast]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      await fetchMarketData();
-      setIsLoading(false);
-    };
-    loadData();
+    // Fetch data in background without blocking UI
+    fetchMarketData();
 
     const interval = setInterval(() => {
       fetchMarketData();
@@ -90,9 +86,19 @@ const MarketOverview = () => {
   };
 
   // Get top 6 daily movers sorted by absolute change percentage
-  const displayData = [...marketData]
-    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
-    .slice(0, 6);
+  // Show placeholder data if no market data yet
+  const displayData = marketData.length > 0
+    ? [...marketData]
+        .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
+        .slice(0, 6)
+    : [
+        { symbol: "AAPL", name: "Apple Inc.", price: "—", change: 0, changePercent: 0.5, volume: "—", type: "stock" as const },
+        { symbol: "MSFT", name: "Microsoft Corp.", price: "—", change: 0, changePercent: 0.3, volume: "—", type: "stock" as const },
+        { symbol: "GOOGL", name: "Alphabet Inc.", price: "—", change: 0, changePercent: -0.2, volume: "—", type: "stock" as const },
+        { symbol: "BTC", name: "Bitcoin", price: "—", change: 0, changePercent: 1.5, volume: "—", type: "crypto" as const },
+        { symbol: "ETH", name: "Ethereum", price: "—", change: 0, changePercent: 1.2, volume: "—", type: "crypto" as const },
+        { symbol: "NVDA", name: "NVIDIA Corp.", price: "—", change: 0, changePercent: 0.8, volume: "—", type: "stock" as const },
+      ];
 
   return (
     <div className="glass-card p-5">
@@ -136,8 +142,8 @@ const MarketOverview = () => {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Loading State - only show when explicitly loading and no data */}
+      {isLoading && marketData.length === 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="glass-card p-4">
@@ -150,8 +156,8 @@ const MarketOverview = () => {
         </div>
       )}
 
-      {/* Market Cards Grid */}
-      {!isLoading && displayData.length > 0 && (
+      {/* Market Cards Grid - always show */}
+      {displayData.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 animate-stagger">
           {displayData.map((item) => (
             <div
@@ -164,10 +170,10 @@ const MarketOverview = () => {
         </div>
       )}
 
-      {/* Empty State */}
-      {!isLoading && !error && displayData.length === 0 && (
+      {/* Empty State - only if error and no fallback */}
+      {!isLoading && error && marketData.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No data available for this category</p>
+          <p>Unable to load market data</p>
         </div>
       )}
 
