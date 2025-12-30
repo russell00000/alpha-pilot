@@ -27,17 +27,17 @@ const AIChat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Only auto-scroll after user has interacted with the chat
-    if (hasInteracted) {
-      scrollToBottom();
-    }
+    // Only auto-scroll after user has interacted with the chat.
+    // IMPORTANT: Scroll the chat container, not the page.
+    if (!hasInteracted) return;
+
+    const el = messagesContainerRef.current;
+    if (!el) return;
+
+    el.scrollTop = el.scrollHeight;
   }, [messages, hasInteracted]);
 
   const sendMessage = async (messageText: string) => {
@@ -99,7 +99,7 @@ const AIChat = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -147,8 +147,8 @@ const AIChat = () => {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
+
 
       {/* Suggested Prompts */}
       {messages.length === 1 && (
