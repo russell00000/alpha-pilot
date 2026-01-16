@@ -152,6 +152,16 @@ export const top100Stocks = [
   { symbol: "BA", name: "Boeing Co.", sector: "Industrials" },
   { symbol: "UPS", name: "United Parcel Service", sector: "Industrials" },
   { symbol: "FDX", name: "FedEx Corp.", sector: "Industrials" },
+  { symbol: "MU", name: "Micron Technology", sector: "Technology" },
+  { symbol: "ADI", name: "Analog Devices", sector: "Technology" },
+  { symbol: "NXPI", name: "NXP Semiconductors", sector: "Technology" },
+  { symbol: "SWKS", name: "Skyworks Solutions", sector: "Technology" },
+  { symbol: "QRVO", name: "Qorvo Inc.", sector: "Technology" },
+  { symbol: "TER", name: "Teradyne Inc.", sector: "Technology" },
+  { symbol: "MPWR", name: "Monolithic Power", sector: "Technology" },
+  { symbol: "ENPH", name: "Enphase Energy", sector: "Technology" },
+  { symbol: "SEDG", name: "SolarEdge Technologies", sector: "Technology" },
+  { symbol: "FSLR", name: "First Solar Inc.", sector: "Technology" },
 ];
 
 // Top 50 ETFs
