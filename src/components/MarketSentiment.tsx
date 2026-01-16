@@ -1,52 +1,73 @@
-import { Target, Lightbulb, BarChart3, BookOpen } from "lucide-react";
+import { TrendingUp, Shield, Users, Sparkles } from "lucide-react";
 
-const categories = [
+const stats = [
   { 
-    label: "Strategy", 
-    items: ["Value Investing Core", "AI-Optimization", "Risk-Management"],
-    icon: Target,
+    label: "Assets Tracked", 
+    value: "10,000+",
+    sublabel: "Stocks, ETFs & Crypto",
+    icon: TrendingUp,
+    gradient: "from-emerald-500/20 to-emerald-500/5",
   },
   { 
-    label: "Solutions", 
-    items: ["Beginner Foundations", "Intermediate Growth", "Retirement Planning"],
-    icon: Lightbulb,
+    label: "AI Insights Daily", 
+    value: "50K+",
+    sublabel: "Real-time analysis",
+    icon: Sparkles,
+    gradient: "from-violet-500/20 to-violet-500/5",
   },
   { 
-    label: "Analysis", 
-    items: ["Weekly Market Signals", "Sector Research", "Fed Policy Updates"],
-    icon: BarChart3,
+    label: "Active Investors", 
+    value: "25K+",
+    sublabel: "Growing community",
+    icon: Users,
+    gradient: "from-blue-500/20 to-blue-500/5",
   },
   { 
-    label: "Resources", 
-    items: ["Investing 101", "Platform FAQ", "Security Standards"],
-    icon: BookOpen,
+    label: "Bank-Level Security", 
+    value: "256-bit",
+    sublabel: "SSL encryption",
+    icon: Shield,
+    gradient: "from-amber-500/20 to-amber-500/5",
   },
 ];
 
 const MarketSentiment = () => {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
-      {categories.map((category) => (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {stats.map((stat, index) => (
         <div 
-          key={category.label}
-          className="glass-card p-4 card-hover group"
+          key={stat.label}
+          className="relative overflow-hidden rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-5 group"
+          style={{ animationDelay: `${index * 100}ms` }}
         >
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="p-2 rounded-lg bg-primary/8 group-hover:bg-primary/12 transition-colors duration-200">
-              <category.icon className="w-4 h-4 text-primary" />
+          {/* Gradient background */}
+          <div 
+            className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+          />
+          
+          {/* Content */}
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 rounded-lg bg-muted/50">
+                <stat.icon className="w-4 h-4 text-muted-foreground" />
+              </div>
             </div>
-            <span className="text-sm font-medium text-foreground">{category.label}</span>
+            
+            <div className="space-y-1">
+              <p className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
+                {stat.value}
+              </p>
+              <p className="text-sm font-medium text-foreground/80">
+                {stat.label}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {stat.sublabel}
+              </p>
+            </div>
           </div>
-          <ul className="space-y-1.5">
-            {category.items.map((item) => (
-              <li 
-                key={item}
-                className="text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors duration-200"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
+          
+          {/* Decorative element */}
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-gradient-to-br from-primary/5 to-transparent blur-2xl" />
         </div>
       ))}
     </div>
