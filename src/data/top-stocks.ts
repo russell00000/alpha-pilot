@@ -162,6 +162,91 @@ export const top100Stocks = [
   { symbol: "ENPH", name: "Enphase Energy", sector: "Technology" },
   { symbol: "SEDG", name: "SolarEdge Technologies", sector: "Technology" },
   { symbol: "FSLR", name: "First Solar Inc.", sector: "Technology" },
+  // Global Semiconductors
+  { symbol: "TSM", name: "Taiwan Semiconductor", sector: "Technology" },
+  { symbol: "ASML", name: "ASML Holding", sector: "Technology" },
+  { symbol: "ARM", name: "Arm Holdings", sector: "Technology" },
+  // Biotech & Pharma
+  { symbol: "MRNA", name: "Moderna Inc.", sector: "Healthcare" },
+  { symbol: "BNTX", name: "BioNTech SE", sector: "Healthcare" },
+  { symbol: "BMY", name: "Bristol-Myers Squibb", sector: "Healthcare" },
+  { symbol: "BIIB", name: "Biogen Inc.", sector: "Healthcare" },
+  // Retail
+  { symbol: "TGT", name: "Target Corp.", sector: "Consumer Cyclical" },
+  { symbol: "LULU", name: "Lululemon Athletica", sector: "Consumer Cyclical" },
+  { symbol: "BBY", name: "Best Buy Co.", sector: "Consumer Cyclical" },
+  { symbol: "DG", name: "Dollar General", sector: "Consumer Defensive" },
+  { symbol: "DLTR", name: "Dollar Tree Inc.", sector: "Consumer Defensive" },
+  // Restaurants
+  { symbol: "CMG", name: "Chipotle Mexican Grill", sector: "Consumer Cyclical" },
+  { symbol: "YUM", name: "Yum! Brands", sector: "Consumer Cyclical" },
+  { symbol: "DPZ", name: "Domino's Pizza", sector: "Consumer Cyclical" },
+  // Airlines & Travel
+  { symbol: "DAL", name: "Delta Air Lines", sector: "Industrials" },
+  { symbol: "UAL", name: "United Airlines", sector: "Industrials" },
+  { symbol: "LUV", name: "Southwest Airlines", sector: "Industrials" },
+  { symbol: "AAL", name: "American Airlines", sector: "Industrials" },
+  { symbol: "MAR", name: "Marriott International", sector: "Consumer Cyclical" },
+  { symbol: "HLT", name: "Hilton Worldwide", sector: "Consumer Cyclical" },
+  // Telecom
+  { symbol: "TMUS", name: "T-Mobile US", sector: "Communication" },
+  // Banks & Financial
+  { symbol: "USB", name: "US Bancorp", sector: "Financial" },
+  { symbol: "PNC", name: "PNC Financial", sector: "Financial" },
+  { symbol: "TFC", name: "Truist Financial", sector: "Financial" },
+  { symbol: "COF", name: "Capital One Financial", sector: "Financial" },
+  { symbol: "ICE", name: "Intercontinental Exchange", sector: "Financial" },
+  { symbol: "MCO", name: "Moody's Corp.", sector: "Financial" },
+  { symbol: "MSCI", name: "MSCI Inc.", sector: "Financial" },
+  { symbol: "FIS", name: "Fidelity National Info", sector: "Technology" },
+  { symbol: "FISV", name: "Fiserv Inc.", sector: "Technology" },
+  { symbol: "GPN", name: "Global Payments", sector: "Technology" },
+  // Insurance
+  { symbol: "ALL", name: "Allstate Corp.", sector: "Financial" },
+  { symbol: "TRV", name: "Travelers Companies", sector: "Financial" },
+  { symbol: "MET", name: "MetLife Inc.", sector: "Financial" },
+  { symbol: "PRU", name: "Prudential Financial", sector: "Financial" },
+  { symbol: "AFL", name: "Aflac Inc.", sector: "Financial" },
+  // Industrials
+  { symbol: "MMM", name: "3M Company", sector: "Industrials" },
+  { symbol: "EMR", name: "Emerson Electric", sector: "Industrials" },
+  { symbol: "ITW", name: "Illinois Tool Works", sector: "Industrials" },
+  { symbol: "ETN", name: "Eaton Corp.", sector: "Industrials" },
+  { symbol: "ROK", name: "Rockwell Automation", sector: "Industrials" },
+  { symbol: "CSX", name: "CSX Corp.", sector: "Industrials" },
+  { symbol: "NSC", name: "Norfolk Southern", sector: "Industrials" },
+  // Aerospace & Defense
+  { symbol: "NOC", name: "Northrop Grumman", sector: "Industrials" },
+  { symbol: "GD", name: "General Dynamics", sector: "Industrials" },
+  { symbol: "LHX", name: "L3Harris Technologies", sector: "Industrials" },
+  // Energy
+  { symbol: "SLB", name: "Schlumberger Ltd.", sector: "Energy" },
+  { symbol: "OXY", name: "Occidental Petroleum", sector: "Energy" },
+  { symbol: "PSX", name: "Phillips 66", sector: "Energy" },
+  { symbol: "MPC", name: "Marathon Petroleum", sector: "Energy" },
+  { symbol: "VLO", name: "Valero Energy", sector: "Energy" },
+  // Tech & Software
+  { symbol: "ADSK", name: "Autodesk Inc.", sector: "Technology" },
+  { symbol: "TEAM", name: "Atlassian Corp.", sector: "Technology" },
+  { symbol: "VEEV", name: "Veeva Systems", sector: "Technology" },
+  { symbol: "PTC", name: "PTC Inc.", sector: "Technology" },
+  // Social & Entertainment
+  { symbol: "PINS", name: "Pinterest Inc.", sector: "Communication" },
+  { symbol: "MTCH", name: "Match Group", sector: "Communication" },
+  { symbol: "LYFT", name: "Lyft Inc.", sector: "Technology" },
+  { symbol: "DKNG", name: "DraftKings Inc.", sector: "Consumer Cyclical" },
+  // EV & Clean Energy
+  { symbol: "PLUG", name: "Plug Power Inc.", sector: "Industrials" },
+  { symbol: "CHPT", name: "ChargePoint Holdings", sector: "Industrials" },
+  // Consumer Goods
+  { symbol: "CL", name: "Colgate-Palmolive", sector: "Consumer Defensive" },
+  { symbol: "EL", name: "Estée Lauder", sector: "Consumer Defensive" },
+  { symbol: "KMB", name: "Kimberly-Clark", sector: "Consumer Defensive" },
+  { symbol: "GIS", name: "General Mills", sector: "Consumer Defensive" },
+  { symbol: "K", name: "Kellanova", sector: "Consumer Defensive" },
+  { symbol: "HSY", name: "Hershey Co.", sector: "Consumer Defensive" },
+  { symbol: "STZ", name: "Constellation Brands", sector: "Consumer Defensive" },
+  { symbol: "TAP", name: "Molson Coors", sector: "Consumer Defensive" },
 ];
 
 // Top 50 ETFs
