@@ -247,10 +247,11 @@ const Markets = () => {
     handleSearch(symbol);
   };
 
-  // Generate synthetic sparkline data based on symbol hash for consistency
+  // Generate realistic sparkline data based on symbol hash for consistency
   const generateSparkline = (symbol: string, changePercent: number): number[] => {
-    const points = 24;
+    const points = 48; // More data points for smoother curves
     const sparkline: number[] = [];
+    
     // Use symbol to generate a consistent seed
     let seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const pseudoRandom = () => {
@@ -260,14 +261,54 @@ const Markets = () => {
     
     const startValue = 100;
     const endValue = startValue * (1 + changePercent / 100);
+    const range = Math.abs(endValue - startValue);
+    
+    // Create trend phases for realistic movement
+    const numPhases = 3 + Math.floor(pseudoRandom() * 3);
+    const phases: { trend: number; volatility: number }[] = [];
+    for (let i = 0; i < numPhases; i++) {
+      phases.push({
+        trend: (pseudoRandom() - 0.45) * 0.02,
+        volatility: 0.005 + pseudoRandom() * 0.015,
+      });
+    }
+    
+    let currentValue = startValue;
+    let momentum = 0;
     
     for (let i = 0; i < points; i++) {
       const progress = i / (points - 1);
-      const noise = (pseudoRandom() - 0.5) * Math.abs(endValue - startValue) * 0.4;
-      const baseValue = startValue + (endValue - startValue) * progress;
-      sparkline.push(baseValue + noise);
+      const phaseIndex = Math.min(Math.floor(progress * numPhases), numPhases - 1);
+      const phase = phases[phaseIndex];
+      
+      // Mean reversion towards the end value
+      const meanReversion = (endValue - currentValue) * 0.03;
+      
+      // Random walk with momentum
+      const randomWalk = (pseudoRandom() - 0.5) * phase.volatility * startValue;
+      momentum = momentum * 0.7 + randomWalk * 0.3;
+      
+      // Combine forces
+      const delta = phase.trend * startValue + momentum + meanReversion;
+      currentValue += delta;
+      
+      // Keep within reasonable bounds
+      currentValue = Math.max(currentValue, startValue - range * 2);
+      currentValue = Math.min(currentValue, startValue + range * 2);
+      
+      sparkline.push(parseFloat(currentValue.toFixed(2)));
     }
+    
+    // Ensure last point matches the actual change
     sparkline[sparkline.length - 1] = endValue;
+    
+    // Smooth transition to final value over last few points
+    const smoothingPoints = 5;
+    for (let i = points - smoothingPoints; i < points - 1; i++) {
+      const t = (i - (points - smoothingPoints)) / smoothingPoints;
+      sparkline[i] = sparkline[i] * (1 - t * 0.5) + endValue * (t * 0.5);
+    }
+    
     return sparkline;
   };
 
