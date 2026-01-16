@@ -247,9 +247,9 @@ const Markets = () => {
     handleSearch(symbol);
   };
 
-  // Generate realistic sparkline data based on symbol hash for consistency
+  // Generate realistic sparkline data with pronounced daily movement
   const generateSparkline = (symbol: string, changePercent: number): number[] => {
-    const points = 48; // More data points for smoother curves
+    const points = 78; // Mimics ~5 min intervals in a trading day
     const sparkline: number[] = [];
     
     // Use symbol to generate a consistent seed
@@ -261,53 +261,61 @@ const Markets = () => {
     
     const startValue = 100;
     const endValue = startValue * (1 + changePercent / 100);
-    const range = Math.abs(endValue - startValue);
     
-    // Create trend phases for realistic movement
-    const numPhases = 3 + Math.floor(pseudoRandom() * 3);
-    const phases: { trend: number; volatility: number }[] = [];
-    for (let i = 0; i < numPhases; i++) {
-      phases.push({
-        trend: (pseudoRandom() - 0.45) * 0.02,
-        volatility: 0.005 + pseudoRandom() * 0.015,
-      });
-    }
+    // Base volatility scales with the magnitude of change
+    const baseVolatility = Math.max(0.3, Math.abs(changePercent) * 0.15);
+    
+    // Create distinct intraday phases (pre-market momentum, mid-day chop, power hour)
+    const phases = [
+      { start: 0, end: 0.15, volatility: baseVolatility * 1.8, trend: pseudoRandom() - 0.4 },
+      { start: 0.15, end: 0.4, volatility: baseVolatility * 0.8, trend: pseudoRandom() - 0.5 },
+      { start: 0.4, end: 0.6, volatility: baseVolatility * 0.6, trend: 0 },
+      { start: 0.6, end: 0.85, volatility: baseVolatility * 1.0, trend: pseudoRandom() - 0.5 },
+      { start: 0.85, end: 1, volatility: baseVolatility * 1.5, trend: (endValue - startValue) / startValue * 2 },
+    ];
     
     let currentValue = startValue;
     let momentum = 0;
+    let prevDirection = 0;
     
     for (let i = 0; i < points; i++) {
       const progress = i / (points - 1);
-      const phaseIndex = Math.min(Math.floor(progress * numPhases), numPhases - 1);
-      const phase = phases[phaseIndex];
       
-      // Mean reversion towards the end value
-      const meanReversion = (endValue - currentValue) * 0.03;
+      // Find current phase
+      const phase = phases.find(p => progress >= p.start && progress < p.end) || phases[phases.length - 1];
       
-      // Random walk with momentum
-      const randomWalk = (pseudoRandom() - 0.5) * phase.volatility * startValue;
-      momentum = momentum * 0.7 + randomWalk * 0.3;
+      // Add occasional sharp moves (news events, volume spikes)
+      const isSharpMove = pseudoRandom() > 0.92;
+      const sharpMultiplier = isSharpMove ? (2 + pseudoRandom() * 2) : 1;
       
-      // Combine forces
-      const delta = phase.trend * startValue + momentum + meanReversion;
-      currentValue += delta;
+      // Random walk with varying intensity
+      const randomDirection = pseudoRandom() - 0.5;
       
-      // Keep within reasonable bounds
-      currentValue = Math.max(currentValue, startValue - range * 2);
-      currentValue = Math.min(currentValue, startValue + range * 2);
+      // Add some continuation bias (trends tend to continue briefly)
+      const continuationBias = prevDirection * 0.3;
+      
+      const volatilityNow = phase.volatility * sharpMultiplier;
+      const move = (randomDirection + continuationBias + phase.trend * 0.1) * volatilityNow;
+      
+      // Momentum smoothing
+      momentum = momentum * 0.4 + move * 0.6;
+      
+      // Mean reversion towards end value (stronger near the end)
+      const meanReversion = (endValue - currentValue) * progress * 0.08;
+      
+      currentValue += momentum + meanReversion;
+      prevDirection = move > 0 ? 1 : -1;
+      
+      // Keep within reasonable intraday bounds
+      const maxSwing = startValue * 0.08;
+      currentValue = Math.max(currentValue, Math.min(startValue, endValue) - maxSwing);
+      currentValue = Math.min(currentValue, Math.max(startValue, endValue) + maxSwing);
       
       sparkline.push(parseFloat(currentValue.toFixed(2)));
     }
     
     // Ensure last point matches the actual change
     sparkline[sparkline.length - 1] = endValue;
-    
-    // Smooth transition to final value over last few points
-    const smoothingPoints = 5;
-    for (let i = points - smoothingPoints; i < points - 1; i++) {
-      const t = (i - (points - smoothingPoints)) / smoothingPoints;
-      sparkline[i] = sparkline[i] * (1 - t * 0.5) + endValue * (t * 0.5);
-    }
     
     return sparkline;
   };
