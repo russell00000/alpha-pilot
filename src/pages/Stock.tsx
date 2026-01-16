@@ -1276,15 +1276,6 @@ const Stock = () => {
         <div className="glass-card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-foreground">Our Recommendation</h3>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate("/admin/philosophy")}
-              className="text-xs text-muted-foreground hover:text-primary"
-            >
-              View Our Philosophy
-              <ExternalLink className="w-3 h-3 ml-1" />
-            </Button>
           </div>
           {isLoadingAnalysis ? (
             <div className="flex items-center justify-center py-8">
