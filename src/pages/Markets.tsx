@@ -400,15 +400,23 @@ const Markets = () => {
           if (sym === query) return 0;
           if (name === query) return 1;
 
-          // Symbol or name prefix — equal weight, best match wins via length
+          // Symbol or name prefix
           const symPrefix = sym.startsWith(query);
           const namePrefix = name.startsWith(query);
-          const wordPrefix = name.split(/\s+/).some((w) => w.startsWith(query));
+          if (symPrefix) return 10;
+          if (namePrefix) return 11;
 
-          if (symPrefix || namePrefix) return 10;
+          // Word prefix (a word in the name starts with query)
+          const wordPrefix = name.split(/\s+/).some((w) => w.startsWith(query));
           if (wordPrefix) return 20;
 
-          return 999; // exclude non-prefix matches
+          // Contains match (symbol or name contains the query anywhere)
+          const symContains = sym.includes(query);
+          const nameContains = name.includes(query);
+          if (symContains) return 30;
+          if (nameContains) return 31;
+
+          return 999; // no match
         };
 
         return allAssets
@@ -421,7 +429,7 @@ const Markets = () => {
             const lenB = b.asset.symbol.length + b.asset.name.length;
             return lenA - lenB;
           })
-          .slice(0, 8)
+          .slice(0, 12)
           .map((x) => x.asset);
       })()
     : [];
