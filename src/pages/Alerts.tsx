@@ -255,7 +255,10 @@ const Alerts = () => {
             </div>
           )}
           
-          <Button onClick={handleAddAlert} className="mt-4 block">
+          <Button 
+            onClick={handleAddAlert} 
+            className="mt-5 h-11 px-6 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Create Alert
           </Button>
