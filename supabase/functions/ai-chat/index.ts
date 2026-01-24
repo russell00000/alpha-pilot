@@ -365,7 +365,19 @@ ${marketData}
     }
 
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
+    console.log("AI Gateway response structure:", JSON.stringify(data, null, 2));
+    
+    // Handle different response structures from various models
+    const aiResponse = data.choices?.[0]?.message?.content 
+      || data.message?.content 
+      || data.content
+      || data.response
+      || (typeof data === 'string' ? data : null);
+    
+    if (!aiResponse) {
+      console.error("Could not extract response from AI data:", JSON.stringify(data));
+      throw new Error("Failed to parse AI response");
+    }
     
     console.log("Successfully generated AI response");
 
