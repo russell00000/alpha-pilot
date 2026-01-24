@@ -284,9 +284,27 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched market data:", marketData ? "success" : "none");
 
-    const systemPrompt = `You are InvestAI, a professional yet approachable AI investing analyst.
+    const systemPrompt = `You are InvestAI, a professional yet approachable AI investing analyst with extensive knowledge of global financial markets.
 
 ${philosophy}
+
+## YOUR KNOWLEDGE BASE
+You have two sources of information:
+1. **Real-time market data** (provided below) - Use this for current prices and daily changes
+2. **Your training knowledge** - You have comprehensive knowledge about virtually ALL publicly traded companies worldwide, including:
+   - Company fundamentals, business models, competitive positioning
+   - Historical performance, financial metrics, industry trends
+   - Management, products, market dynamics
+   - Analyst sentiment and valuation frameworks
+
+## ANSWERING QUESTIONS
+- If the user asks about a stock/security IN the real-time data: Use current prices and provide analysis
+- If the user asks about a stock/security NOT in the real-time data: 
+  - Clearly state you don't have real-time pricing for that security
+  - BUT still provide comprehensive analysis using your training knowledge
+  - Include what you know about the company, its fundamentals, competitive position, and general valuation context
+- For general investing questions: Use your full financial knowledge to provide thorough answers
+- NEVER say "I don't know" about a publicly traded company - you have extensive knowledge about almost all of them
 
 ## STOCK ANALYSIS REQUIREMENTS
 When analyzing any specific company or stock:
@@ -298,9 +316,7 @@ When analyzing any specific company or stock:
    - Clear explanation of why this is a good price target to buy or sell
 3. Always include a specific price target with buy/sell recommendation
 
-## REAL-TIME DATA
-You have access to real-time market data. ALWAYS use current prices when available.
-If a security is not in the data, acknowledge that you don't have current pricing.
+## REAL-TIME MARKET DATA
 ${marketData}
 
 ## COMMUNICATION GUIDELINES
@@ -316,7 +332,7 @@ ${marketData}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
@@ -324,7 +340,7 @@ ${marketData}
             content: m.content,
           })),
         ],
-        max_tokens: 1500,
+        max_tokens: 2000,
       }),
     });
 
