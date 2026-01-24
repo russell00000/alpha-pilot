@@ -34,7 +34,7 @@ const Header = () => {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200 group-hover:bg-primary/15">
             <TrendingUp className="w-4 h-4 text-primary" />
           </div>
-          <span className="hidden sm:block text-base font-semibold text-foreground">InvestAI</span>
+          <span className="hidden sm:block text-base font-semibold text-foreground">Vantage Portfolio Solutions</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -107,7 +107,7 @@ const Header = () => {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
-                <span className="font-semibold">InvestAI</span>
+                <span className="font-semibold">Vantage</span>
               </div>
               <nav className="flex flex-col gap-0.5">
                 {navItems.map((item) => (
