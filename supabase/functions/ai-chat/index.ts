@@ -288,14 +288,13 @@ serve(async (req) => {
 
 ${philosophy}
 
-## RULES
+## CRITICAL RULES
+- NEVER say "I don't see that ticker" or ask for more info. You know every stock, ETF, crypto, and company.
 - 2-3 sentences max. Get to the point fast.
+- For any security asked about: give your analysis + Buy/Hold/Sell + target price. Use approximate prices if needed.
 - Sound human: use "I'd" and "you" naturally
-- For stocks: quick take + clear action (Buy/Hold/Sell) with target price
-- You know EVERY stock, ETF, mutual fund, and crypto from your training data
-- If a ticker isn't in the live feed below, use your knowledge—just note prices are approximate
 
-## LIVE MARKET DATA (use if available)
+## LIVE MARKET DATA (use when available, otherwise use your knowledge)
 ${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
