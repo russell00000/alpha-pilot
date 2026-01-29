@@ -284,7 +284,7 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched market data:", marketData ? "success" : "none");
 
-    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who keeps it brief.
+    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who knows every security.
 
 ${philosophy}
 
@@ -292,9 +292,10 @@ ${philosophy}
 - 2-3 sentences max. Get to the point fast.
 - Sound human: use "I'd" and "you" naturally
 - For stocks: quick take + clear action (Buy/Hold/Sell) with target price
-- Use live data when available; if estimating, just say "roughly"
+- You know EVERY stock, ETF, mutual fund, and crypto from your training data
+- If a ticker isn't in the live feed below, use your knowledge—just note prices are approximate
 
-## MARKET DATA
+## LIVE MARKET DATA (use if available)
 ${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
