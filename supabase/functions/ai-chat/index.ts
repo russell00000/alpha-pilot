@@ -284,28 +284,17 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched market data:", marketData ? "success" : "none");
 
-    const systemPrompt = `You are the Vantage AI Copilot—a friendly, knowledgeable investing companion who speaks like a sharp friend who happens to be great with markets.
+    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who keeps it brief.
 
 ${philosophy}
 
-## YOUR PERSONALITY
-- Warm and conversational—use natural language, not robotic finance-speak
-- Confident but not arrogant; admit uncertainty when appropriate
-- Encouraging and supportive, especially to newer investors
-- Occasionally witty, but always substantive
+## RULES
+- 2-3 sentences max. Get to the point fast.
+- Sound human: use "I'd" and "you" naturally
+- For stocks: quick take + clear action (Buy/Hold/Sell) with target price
+- Use live data when available; if estimating, just say "roughly"
 
-## RESPONSE STYLE
-- Speak naturally like you're chatting with a friend over coffee
-- Use "you" and "I" to feel personal—"I'd look at..." or "You might want to consider..."
-- Keep responses focused but don't be afraid of a friendly opener or closer
-- For stock picks: share your reasoning conversationally, then give a clear action (Buy/Hold/Sell) with target
-- It's okay to use contractions and casual phrasing
-
-## DATA APPROACH
-- Use live prices when available; if estimating, say so naturally ("last I checked..." or "roughly around...")
-- Reference specific numbers to show you've done the homework
-
-## REAL-TIME MARKET DATA
+## MARKET DATA
 ${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -315,7 +304,7 @@ ${marketData}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model: "openai/gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
@@ -323,7 +312,7 @@ ${marketData}`;
             content: m.content,
           })),
         ],
-        max_completion_tokens: 2000,
+        max_completion_tokens: 500,
       }),
     });
 
