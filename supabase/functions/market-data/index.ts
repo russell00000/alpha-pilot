@@ -245,7 +245,8 @@ async function fetchStockQuoteYahoo(symbol: string): Promise<MarketData | null> 
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    // Use 1d interval with 1d range to get today's intraday data for accurate sparkline
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=1d`;
     
     const response = await fetch(url, {
       headers: {
@@ -265,14 +266,21 @@ async function fetchStockQuoteYahoo(symbol: string): Promise<MarketData | null> 
     const closes = quote.close || [];
     
     const currentPrice = meta.regularMarketPrice || closes[closes.length - 1];
-    const previousClose = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2];
+    const previousClose = meta.chartPreviousClose || meta.previousClose;
     
     if (!currentPrice) {
       return null;
     }
     
-    const change = currentPrice - previousClose;
+    const change = previousClose ? (currentPrice - previousClose) : 0;
     const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+    
+    // Filter out null values and get valid price points for sparkline
+    const validCloses = closes.filter((c: number | null) => c !== null && !isNaN(c));
+    // Use intraday closes for sparkline - matches the daily change shown
+    const sparklineData = validCloses.length >= 2 
+      ? validCloses.slice(-24) 
+      : generateSparkline(currentPrice, changePercent);
     
     const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: meta.shortName || symbol, type: "stock" };
     
@@ -283,7 +291,7 @@ async function fetchStockQuoteYahoo(symbol: string): Promise<MarketData | null> 
       change: change,
       changePercent: changePercent,
       volume: formatVolume(meta.regularMarketVolume || 0),
-      sparkline: closes.filter((c: number | null) => c !== null).slice(-24) || generateSparkline(currentPrice, changePercent),
+      sparkline: sparklineData,
       type: assetInfo.type,
     };
     
@@ -321,6 +329,7 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
   }
 
   try {
+    // Mutual funds only update once daily, so use 1d interval but still get today's close
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
     console.log(`Fetching Yahoo Finance quote for mutual fund ${symbol}`);
     
@@ -344,21 +353,21 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
     const volumes = quote.volume || [];
     
     const currentPrice = meta.regularMarketPrice || closes[closes.length - 1];
-    const previousClose = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2];
+    const previousClose = meta.chartPreviousClose || meta.previousClose;
     
     if (!currentPrice) {
       console.warn(`No price data for mutual fund ${symbol}`);
       return null;
     }
     
-    const change = currentPrice - previousClose;
+    const change = previousClose ? (currentPrice - previousClose) : 0;
     const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
     const totalVolume = volumes.reduce((sum: number, v: number) => sum + (v || 0), 0);
     
     const assetInfo = assetDatabase[symbol.toUpperCase()] || { name: symbol, type: "mutual_fund" };
     
-    // Generate sparkline from recent closes
-    const sparkline = closes.filter((c: number | null) => c !== null).slice(-24);
+    // For mutual funds, generate sparkline based on the daily change since they don't have intraday data
+    const sparklineData = generateSparkline(currentPrice, changePercent);
     
     const marketData: MarketData = {
       symbol: symbol.toUpperCase(),
@@ -367,7 +376,7 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
       change: change,
       changePercent: changePercent,
       volume: formatVolume(totalVolume),
-      sparkline: sparkline.length >= 2 ? sparkline : generateSparkline(currentPrice, changePercent),
+      sparkline: sparklineData,
       type: "mutual_fund",
     };
     
