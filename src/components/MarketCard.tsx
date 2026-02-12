@@ -13,34 +13,28 @@ const MarketCard = ({ symbol, name, price, change, changePercent }: MarketCardPr
   const isPositive = change >= 0;
 
   return (
-    <div className="glass-card p-4 card-hover group cursor-pointer">
-      <div className="flex items-start justify-between mb-2.5">
-        <div>
-          <p className="font-semibold text-foreground text-sm">
-            {symbol}
-          </p>
-          <p className="text-xs text-muted-foreground truncate max-w-[100px]">{name}</p>
+    <div className="group cursor-pointer p-4 rounded-xl bg-secondary/20 border border-border/20 hover:bg-secondary/40 hover:border-border/40 transition-all duration-200">
+      <div className="flex items-center justify-between mb-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground text-sm">{symbol}</p>
+          <p className="text-xs text-muted-foreground truncate">{name}</p>
         </div>
         <div className={cn(
           "flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium",
-          isPositive 
-            ? "bg-success/10 text-success" 
-            : "bg-destructive/10 text-destructive"
+          isPositive ? "text-success" : "text-destructive"
         )}>
           {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {Math.abs(changePercent).toFixed(2)}%
         </div>
       </div>
       
-      <div className="space-y-0.5">
-        <p className="text-xl font-semibold text-foreground">${price}</p>
-        <p className={cn(
-          "text-xs font-medium",
-          isPositive ? "text-success" : "text-destructive"
-        )}>
-          {isPositive ? "+" : ""}{change.toFixed(2)}
-        </p>
-      </div>
+      <p className="text-xl font-semibold text-foreground tabular-nums">${price}</p>
+      <p className={cn(
+        "text-xs font-medium mt-0.5 tabular-nums",
+        isPositive ? "text-success" : "text-destructive"
+      )}>
+        {isPositive ? "+" : ""}{change.toFixed(2)}
+      </p>
     </div>
   );
 };

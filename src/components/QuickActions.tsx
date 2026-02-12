@@ -1,5 +1,4 @@
 import { Gamepad2, Search, LineChart, Bell, Wallet, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 interface QuickAction {
@@ -34,23 +33,17 @@ const QuickActions = () => {
   };
 
   return (
-    <div className="glass-card p-4">
-      <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Quick Actions</h3>
-      <div className="grid grid-cols-3 gap-2">
-        {actions.map((action) => (
-          <Button
-            key={action.label}
-            variant="ghost"
-            onClick={() => handleAction(action)}
-            className="flex flex-col items-center gap-2 h-auto py-3 hover:bg-secondary/60 transition-colors duration-200 group"
-          >
-            <div className="p-2 rounded-lg bg-secondary/60 group-hover:bg-secondary transition-colors duration-200">
-              <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
-            </div>
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors duration-200">{action.label}</span>
-          </Button>
-        ))}
-      </div>
+    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+      {actions.map((action) => (
+        <button
+          key={action.label}
+          onClick={() => handleAction(action)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary/40 border border-border/30 hover:bg-secondary/70 hover:border-border/50 transition-all duration-200 whitespace-nowrap group"
+        >
+          <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
+          <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors duration-200">{action.label}</span>
+        </button>
+      ))}
     </div>
   );
 };
