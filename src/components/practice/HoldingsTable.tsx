@@ -80,7 +80,7 @@ export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) 
                       </div>
                     </div>
                   </td>
-                  <td className="text-right px-4 py-3 text-foreground">{h.quantity}</td>
+                  <td className="text-right px-4 py-3 text-foreground">{Number.isInteger(h.quantity) ? h.quantity : h.quantity.toFixed(4)}</td>
                   <td className="text-right px-4 py-3 text-foreground">${h.avg_cost_basis.toFixed(2)}</td>
                   <td className="text-right px-4 py-3 text-foreground">
                     {currentPrice ? `$${currentPrice.toFixed(2)}` : "—"}
