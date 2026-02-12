@@ -53,14 +53,14 @@ const Index = () => {
 
         {/* Quick Actions */}
         <section className="container px-4 md:px-6 mb-10">
-          <div className="rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-4">
+          <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-4">
             <QuickActions />
           </div>
         </section>
 
         {/* Market Overview + AI Chat */}
         <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
-          <div className="lg:col-span-3 animate-fade-in rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-5" style={{ animationDelay: "100ms" }}>
+          <div className="lg:col-span-3 animate-fade-in rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-5" style={{ animationDelay: "100ms" }}>
             <MarketOverview />
           </div>
           <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
@@ -70,7 +70,7 @@ const Index = () => {
 
         {/* News - full width */}
         <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <div className="rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-5">
+          <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-5">
             <TrendingNews />
           </div>
         </section>
