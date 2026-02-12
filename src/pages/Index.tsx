@@ -22,17 +22,17 @@ const Index = () => {
         }} 
       />
       {/* Dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-background/40" />
+      <div className="fixed inset-0 pointer-events-none bg-background/60" />
       
       <Header />
       
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight max-w-3xl animate-fade-in drop-shadow-[0_2px_30px_hsl(38_90%_55%/0.15)]">
+          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight max-w-3xl animate-fade-in" style={{ textShadow: '0 2px 40px rgba(0,0,0,0.7), 0 0 80px rgba(255,255,255,0.08)' }}>
             Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
           </h1>
-          <p className="text-lg md:text-xl text-secondary-foreground/80 mt-6 max-w-xl animate-fade-in font-light" style={{ animationDelay: "100ms" }}>
+          <p className="text-lg md:text-xl text-white/75 mt-6 max-w-xl animate-fade-in font-light" style={{ animationDelay: "100ms", textShadow: '0 1px 20px rgba(0,0,0,0.6)' }}>
             We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
           </p>
           <div className="flex items-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
@@ -53,12 +53,14 @@ const Index = () => {
 
         {/* Quick Actions */}
         <section className="container px-4 md:px-6 mb-10">
-          <QuickActions />
+          <div className="rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-4">
+            <QuickActions />
+          </div>
         </section>
 
         {/* Market Overview + AI Chat */}
         <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
-          <div className="lg:col-span-3 animate-fade-in" style={{ animationDelay: "100ms" }}>
+          <div className="lg:col-span-3 animate-fade-in rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-5" style={{ animationDelay: "100ms" }}>
             <MarketOverview />
           </div>
           <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
@@ -68,7 +70,9 @@ const Index = () => {
 
         {/* News - full width */}
         <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <TrendingNews />
+          <div className="rounded-2xl bg-background/80 backdrop-blur-md border border-border/30 p-5">
+            <TrendingNews />
+          </div>
         </section>
       </main>
 
