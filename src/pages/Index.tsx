@@ -31,9 +31,9 @@ const Index = () => {
         <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
           <div>
             <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-              Welcome to <span className="text-gradient">Vantage</span>
+              Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">AI-powered market insights & portfolio analysis</p>
+            <p className="text-sm text-muted-foreground mt-0.5">We're here to turn your financial aspirations into reality. It all starts with the right vantage point.</p>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/portfolio">
