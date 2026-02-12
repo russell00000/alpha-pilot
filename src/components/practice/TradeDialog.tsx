@@ -35,8 +35,10 @@ export default function TradeDialog({
         const { data } = await supabase.functions.invoke("market-data", {
           body: { symbols: [symbol] },
         });
-        if (data?.prices?.[symbol]) {
-          setPrice(data.prices[symbol].price);
+        // The edge function returns { data: MarketData[] }
+        const results = data?.data;
+        if (Array.isArray(results) && results.length > 0) {
+          setPrice(parseFloat(results[0].price));
         }
       } catch {
         // fallback

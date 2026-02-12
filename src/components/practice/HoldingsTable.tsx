@@ -20,10 +20,11 @@ export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) 
         const { data } = await supabase.functions.invoke("market-data", {
           body: { symbols },
         });
-        if (data?.prices) {
+        const results = data?.data;
+        if (Array.isArray(results)) {
           const p: Record<string, number> = {};
-          for (const [sym, info] of Object.entries(data.prices)) {
-            p[sym] = (info as any).price;
+          for (const item of results) {
+            p[item.symbol] = parseFloat(item.price);
           }
           setPrices(p);
         }
