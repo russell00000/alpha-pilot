@@ -24,9 +24,9 @@ interface MarketData {
 
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
-  { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
   { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
+  { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
 ];
 
 const popularSearches = [
