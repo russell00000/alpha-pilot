@@ -101,7 +101,7 @@ const TrendingNews = () => {
         </div>
       ) : (
         <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide">
-          {news.map((item, index) => (
+          {news.slice(0, Math.max(news.length - 3, 1)).map((item, index) => (
             <div
               key={index}
               onClick={() => handleNewsClick(item.url)}
