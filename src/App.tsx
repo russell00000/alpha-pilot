@@ -13,6 +13,7 @@ import Stock from "./pages/Stock";
 import Auth from "./pages/Auth";
 import AdminPhilosophy from "./pages/AdminPhilosophy";
 import Alerts from "./pages/Alerts";
+import Practice from "./pages/Practice";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/philosophy" element={<AdminPhilosophy />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/practice" element={<Practice />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -20,6 +20,7 @@ const navItems = [
   { label: "Dashboard", href: "/" },
   { label: "Markets", href: "/markets" },
   { label: "Portfolio", href: "/portfolio" },
+  { label: "Practice", href: "/practice" },
   { label: "Chat", href: "/chat" },
 ];
 
