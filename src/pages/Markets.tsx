@@ -9,6 +9,7 @@ import SparklineChart from "@/components/SparklineChart";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
+import financeBg from "@/assets/finance-bg.jpg";
 
 interface MarketData {
   symbol: string;
@@ -485,12 +486,16 @@ const Markets = () => {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Finance background */}
+      <div className="fixed inset-0 pointer-events-none opacity-100" style={{ backgroundImage: `url(${financeBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+      <div className="fixed inset-0 pointer-events-none bg-background/70" />
+
       <Header />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 relative">
         {/* Hero Search Section */}
-        <div className="glass-card p-8 mb-8 text-center overflow-visible">
+        <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 mb-8 text-center overflow-visible">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Globe className="w-8 h-8 text-primary" />
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
@@ -589,7 +594,7 @@ const Markets = () => {
 
         {/* Search Results Banner */}
         {searchResults.length > 0 && (
-          <div className="flex items-center justify-between mb-6 p-4 glass-card">
+          <div className="flex items-center justify-between mb-6 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
               <span className="font-medium text-foreground">
@@ -675,7 +680,7 @@ const Markets = () => {
 
 
         {/* Market Table */}
-        <div className="glass-card overflow-hidden">
+        <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -802,7 +807,7 @@ const Markets = () => {
         </div>
 
         {/* Info Section */}
-        <div className="mt-6 p-4 glass-card">
+        <div className="mt-6 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20">
           <h3 className="font-semibold text-foreground mb-2">About Market Data</h3>
           <p className="text-sm text-muted-foreground">
             Browse the top 100 US stocks by market cap, popular ETFs, and major cryptocurrencies. 
