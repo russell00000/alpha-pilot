@@ -8,7 +8,20 @@ interface SecuritySearchProps {
   onBuy: (symbol: string, name: string) => void;
 }
 
+const cryptoAssets = [
+  { symbol: "BTC", name: "Bitcoin", type: "Crypto" },
+  { symbol: "ETH", name: "Ethereum", type: "Crypto" },
+  { symbol: "SOL", name: "Solana", type: "Crypto" },
+  { symbol: "XRP", name: "XRP", type: "Crypto" },
+  { symbol: "ADA", name: "Cardano", type: "Crypto" },
+  { symbol: "DOGE", name: "Dogecoin", type: "Crypto" },
+  { symbol: "DOT", name: "Polkadot", type: "Crypto" },
+  { symbol: "AVAX", name: "Avalanche", type: "Crypto" },
+  { symbol: "LINK", name: "Chainlink", type: "Crypto" },
+];
+
 const allSecurities = [
+  ...cryptoAssets,
   ...top100Stocks.map(s => ({ symbol: s.symbol, name: s.name, type: "Stock" })),
   ...topETFs.map(e => ({ symbol: e.symbol, name: e.name, type: "ETF" })),
 ];
