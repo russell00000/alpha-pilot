@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { PracticeHolding } from "@/hooks/usePracticeTrading";
@@ -9,6 +10,7 @@ interface HoldingsTableProps {
 }
 
 export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) {
+  const navigate = useNavigate();
   const [prices, setPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) 
               const gainPct = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
 
               return (
-                <tr key={h.symbol} className="border-b border-border/20 hover:bg-muted/10">
+                <tr key={h.symbol} className="border-b border-border/20 hover:bg-muted/10 cursor-pointer" onClick={() => navigate(`/stock/${h.symbol}`)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <img
@@ -101,7 +103,7 @@ export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) 
                     ) : "—"}
                   </td>
                   <td className="text-right px-4 py-3">
-                    <Button size="sm" variant="outline" onClick={() => onSell(h.symbol, h.name, h.quantity)}>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSell(h.symbol, h.name, h.quantity); }}>
                       Sell
                     </Button>
                   </td>
