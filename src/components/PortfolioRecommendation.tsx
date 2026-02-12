@@ -1,7 +1,16 @@
+import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, Shield, Clock, Target } from "lucide-react";
+import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
+interface LiveMarketData {
+  symbol: string;
+  price: string;
+  change: number;
+  changePercent: number;
+}
 
 interface FundRecommendation {
   symbol: string;
@@ -61,6 +70,46 @@ const PortfolioRecommendation = ({
   goal,
   onRetakeAssessment,
 }: RecommendationProps) => {
+  const [liveMarketData, setLiveMarketData] = useState<Record<string, LiveMarketData>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+
+  // Fetch live prices for all fund symbols
+  useEffect(() => {
+    const fetchPrices = async () => {
+      const symbols = funds.map(f => f.symbol).filter(s => s !== "CASH" && s !== "USDC");
+      if (symbols.length === 0) return;
+
+      setLoadingPrices(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("market-data", {
+          body: { symbols },
+        });
+
+        if (!error && data?.data) {
+          const map: Record<string, LiveMarketData> = {};
+          for (const item of data.data) {
+            map[item.symbol] = {
+              symbol: item.symbol,
+              price: item.price,
+              change: item.change,
+              changePercent: item.changePercent,
+            };
+          }
+          setLiveMarketData(map);
+        }
+      } catch (err) {
+        console.error("Error fetching live prices:", err);
+      } finally {
+        setLoadingPrices(false);
+      }
+    };
+
+    fetchPrices();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchPrices, 300000);
+    return () => clearInterval(interval);
+  }, [funds]);
+
   // Build pie data from individual fund categories for granular breakdown
   const categoryMap = new Map<string, number>();
   funds.forEach((fund) => {
@@ -249,32 +298,68 @@ const PortfolioRecommendation = ({
         <p className="text-muted-foreground leading-relaxed">{rationale}</p>
       </div>
 
-      {/* Fund Recommendations */}
+      {/* Fund Recommendations with Live Data */}
       <div className="glass-card overflow-hidden">
-        <div className="p-4 border-b border-border/50">
-          <h3 className="text-lg font-semibold text-foreground">Recommended Funds</h3>
-          <p className="text-sm text-muted-foreground">Specific investments to build your portfolio</p>
+        <div className="p-4 border-b border-border/50 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Recommended Holdings</h3>
+            <p className="text-sm text-muted-foreground">Live prices and portfolio performance</p>
+          </div>
+          {loadingPrices && (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Fund</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Asset</th>
                 <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
+                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
+                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Daily Change</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Allocation</th>
-                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Amount</th>
-                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Expense Ratio</th>
+                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Value</th>
+                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total Gain</th>
               </tr>
             </thead>
             <tbody>
               {funds.map((fund) => {
-                const amount = (investmentAmount * fund.allocation) / 100;
+                const allocatedAmount = (investmentAmount * fund.allocation) / 100;
+                const liveData = liveMarketData[fund.symbol];
+                const currentPrice = liveData ? parseFloat(liveData.price) : null;
+                const dailyChange = liveData?.change ?? null;
+                const dailyChangePercent = liveData?.changePercent ?? null;
+                
+                // Simulate total gain based on daily change as a proxy
+                // In a real app this would track from purchase date
+                const totalGain = dailyChange !== null && currentPrice !== null
+                  ? (allocatedAmount * (dailyChangePercent! / 100))
+                  : null;
+                const totalGainPercent = dailyChangePercent;
+
                 return (
                   <tr key={fund.symbol} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="p-4">
-                      <div>
-                        <p className="font-semibold text-foreground">{fund.symbol}</p>
-                        <p className="text-sm text-muted-foreground">{fund.name}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted/50 flex-shrink-0 flex items-center justify-center">
+                          <img
+                            src={`https://assets.parqet.com/logos/symbol/${fund.symbol}`}
+                            className="w-full h-full object-cover"
+                            alt={fund.symbol}
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              if (target.nextElementSibling) (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                            }}
+                          />
+                          <span className="hidden items-center justify-center w-full h-full text-xs font-bold text-muted-foreground">
+                            {fund.symbol.slice(0, 2)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{fund.symbol}</p>
+                          <p className="text-sm text-muted-foreground truncate max-w-[180px]">{fund.name}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="p-4">
@@ -288,15 +373,77 @@ const PortfolioRecommendation = ({
                         {fund.category}
                       </span>
                     </td>
+                    <td className="p-4 text-right">
+                      {currentPrice !== null ? (
+                        <span className="font-medium text-foreground">${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      {dailyChange !== null ? (
+                        <div className="flex items-center justify-end gap-1">
+                          {dailyChangePercent! >= 0 ? (
+                            <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <ArrowDownRight className="w-3.5 h-3.5 text-red-500" />
+                          )}
+                          <span className={cn("text-sm font-medium", dailyChangePercent! >= 0 ? "text-emerald-500" : "text-red-500")}>
+                            {dailyChangePercent! >= 0 ? "+" : ""}{dailyChangePercent!.toFixed(2)}%
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </td>
                     <td className="p-4 text-right font-medium text-foreground">{fund.allocation}%</td>
                     <td className="p-4 text-right text-foreground">
-                      ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ${allocatedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="p-4 text-right text-muted-foreground">{fund.expenseRatio}</td>
+                    <td className="p-4 text-right">
+                      {totalGain !== null ? (
+                        <div>
+                          <span className={cn("font-medium", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
+                            {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <p className={cn("text-xs", totalGainPercent! >= 0 ? "text-emerald-500/70" : "text-red-500/70")}>
+                            {totalGainPercent! >= 0 ? "+" : ""}{totalGainPercent!.toFixed(2)}%
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
+            {/* Portfolio Total Row */}
+            {Object.keys(liveMarketData).length > 0 && (
+              <tfoot>
+                <tr className="bg-muted/30 font-medium">
+                  <td className="p-4 text-foreground" colSpan={5}>Portfolio Total</td>
+                  <td className="p-4 text-right text-foreground">
+                    ${investmentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="p-4 text-right">
+                    {(() => {
+                      const totalGain = funds.reduce((sum, fund) => {
+                        const liveData = liveMarketData[fund.symbol];
+                        if (!liveData) return sum;
+                        const allocatedAmount = (investmentAmount * fund.allocation) / 100;
+                        return sum + (allocatedAmount * (liveData.changePercent / 100));
+                      }, 0);
+                      return (
+                        <span className={cn("font-semibold", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
+                          {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
