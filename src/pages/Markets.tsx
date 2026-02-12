@@ -742,13 +742,25 @@ const Markets = () => {
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className={cn(
-                              "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm",
+                              "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden bg-secondary",
                               item.type === "crypto" ? "bg-primary/20 text-primary" :
                               item.type === "etf" ? "bg-accent/20 text-accent-foreground" :
                               item.type === "mutual_fund" ? "bg-warning/20 text-warning" :
-                              "bg-secondary text-foreground"
+                              "text-foreground"
                             )}>
-                              {item.symbol.slice(0, 2)}
+                              <img
+                                src={`https://assets.parqet.com/logos/symbol/${item.symbol}`}
+                                alt={item.symbol}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  if (target.nextElementSibling) (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                }}
+                              />
+                              <span className="hidden items-center justify-center w-full h-full text-sm font-bold">
+                                {item.symbol.slice(0, 2)}
+                              </span>
                             </div>
                             <div>
                               <p className="font-semibold text-foreground">{item.symbol}</p>
