@@ -145,10 +145,10 @@ const PracticeRisk = () => {
   const portfolioStdDev = Math.sqrt(portfolioVariance);
   const annualizedStdDev = portfolioStdDev * Math.sqrt(252);
 
-  // Value at Risk (95% confidence, 1-day) using parametric method
+  // Expected Daily Movement Range (1 std dev = ~68% of days fall within this range)
   const investedValue = totalPortfolioValue - cashBalance;
-  const dailyVaR95 = investedValue * portfolioStdDev * 1.645 / 100;
-  const dailyVaR99 = investedValue * portfolioStdDev * 2.326 / 100;
+  const dailyMoveAmt = investedValue * portfolioStdDev / 100;
+  const dailyMovePct = portfolioStdDev;
 
   // Sharpe Ratio (annualized, risk-free rate ~4.5%)
   const riskFreeRate = 4.5;
@@ -245,32 +245,37 @@ const PracticeRisk = () => {
           <Activity className="h-4 w-4" /> Quantitative Risk Metrics
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {/* VaR */}
+          {/* Daily Movement Range */}
           <div className="rounded-xl border border-border/60 bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="h-4 w-4 text-red-400" />
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Value at Risk (95%)</span>
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Avg Daily Range</span>
             </div>
-            <p className="text-2xl font-bold text-red-400">
-              {loading ? "—" : `-$${dailyVaR95.toFixed(2)}`}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Max 1-day loss at 95% confidence</p>
-            <div className="mt-2 text-xs text-muted-foreground/70">
-              99% VaR: <span className="text-red-400/80">-${dailyVaR99.toFixed(2)}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-green-500">{loading ? "—" : `+$${dailyMoveAmt.toFixed(2)}`}</span>
+              <span className="text-muted-foreground text-sm">to</span>
+              <span className="text-lg font-bold text-red-500">{loading ? "—" : `-$${dailyMoveAmt.toFixed(2)}`}</span>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">Expected daily movement (±{dailyMovePct.toFixed(2)}%)</p>
           </div>
 
-          {/* Beta */}
+          {/* Beta vs S&P 500 */}
           <div className="rounded-xl border border-border/60 bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Portfolio Beta (β)</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Beta (β) vs S&P 500</span>
             </div>
             <p className={`text-2xl font-bold ${portfolioBeta > 1.5 ? "text-red-400" : portfolioBeta > 1.0 ? "text-amber-400" : "text-green-400"}`}>
               {loading ? "—" : portfolioBeta.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {portfolioBeta > 1.5 ? "Aggressive — high market sensitivity" : portfolioBeta > 1.0 ? "Above market — moderate sensitivity" : portfolioBeta > 0.5 ? "Defensive — below market risk" : "Very defensive / hedged"}
+              {portfolioBeta > 1.5
+                ? `${(portfolioBeta * 100 - 100).toFixed(0)}% more volatile than S&P 500`
+                : portfolioBeta > 1.0
+                ? `${(portfolioBeta * 100 - 100).toFixed(0)}% above S&P 500 volatility`
+                : portfolioBeta > 0.5
+                ? `${(100 - portfolioBeta * 100).toFixed(0)}% less volatile than S&P 500`
+                : `${(100 - portfolioBeta * 100).toFixed(0)}% less volatile — very defensive`}
             </p>
           </div>
 
@@ -426,7 +431,7 @@ const PracticeRisk = () => {
               const stockVolRisk = vol > 3.5 ? "High" : vol > 1.8 ? "Medium" : "Low";
               const gainLoss = (stock.currentPrice - stock.avgCost) * stock.quantity;
               const gainLossPct = stock.avgCost > 0 ? ((stock.currentPrice - stock.avgCost) / stock.avgCost) * 100 : 0;
-              const positionVaR = (stock.quantity * stock.currentPrice) * vol * 1.645 / 100;
+              const positionVaR = (stock.quantity * stock.currentPrice) * vol / 100;
 
               return (
                 <div
@@ -462,8 +467,8 @@ const PracticeRisk = () => {
                       <p className="font-medium text-foreground">{vol.toFixed(1)}%</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">VaR (95%)</p>
-                      <p className="font-medium text-red-400">-${positionVaR.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Daily Range</p>
+                      <p className="font-medium text-foreground">±${positionVaR.toFixed(2)}</p>
                     </div>
                   </div>
 
