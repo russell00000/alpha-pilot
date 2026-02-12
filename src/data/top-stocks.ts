@@ -339,6 +339,41 @@ export const topMutualFunds = [
   { symbol: "PRWCX", name: "T. Rowe Price Capital Appreciation", category: "Balanced" },
 ];
 
+// Top 30 Bonds & Bond Funds
+export const topBonds = [
+  { symbol: "TLT", name: "iShares 20+ Year Treasury Bond", category: "Long-Term Treasury" },
+  { symbol: "IEF", name: "iShares 7-10 Year Treasury Bond", category: "Intermediate Treasury" },
+  { symbol: "SHY", name: "iShares 1-3 Year Treasury Bond", category: "Short-Term Treasury" },
+  { symbol: "BND", name: "Vanguard Total Bond Market", category: "Total Bond Market" },
+  { symbol: "AGG", name: "iShares Core US Aggregate Bond", category: "Total Bond Market" },
+  { symbol: "LQD", name: "iShares Investment Grade Corporate", category: "Investment Grade Corporate" },
+  { symbol: "HYG", name: "iShares High Yield Corporate Bond", category: "High Yield Corporate" },
+  { symbol: "JNK", name: "SPDR Bloomberg High Yield Bond", category: "High Yield Corporate" },
+  { symbol: "TIP", name: "iShares TIPS Bond", category: "Inflation-Protected" },
+  { symbol: "VTIP", name: "Vanguard Short-Term Inflation-Protected", category: "Inflation-Protected" },
+  { symbol: "MUB", name: "iShares National Muni Bond", category: "Municipal" },
+  { symbol: "VGSH", name: "Vanguard Short-Term Treasury", category: "Short-Term Treasury" },
+  { symbol: "VGIT", name: "Vanguard Intermediate-Term Treasury", category: "Intermediate Treasury" },
+  { symbol: "VGLT", name: "Vanguard Long-Term Treasury", category: "Long-Term Treasury" },
+  { symbol: "VCSH", name: "Vanguard Short-Term Corporate Bond", category: "Short-Term Corporate" },
+  { symbol: "VCIT", name: "Vanguard Intermediate-Term Corporate", category: "Intermediate Corporate" },
+  { symbol: "VCLT", name: "Vanguard Long-Term Corporate Bond", category: "Long-Term Corporate" },
+  { symbol: "BIV", name: "Vanguard Intermediate-Term Bond", category: "Intermediate Bond" },
+  { symbol: "BSV", name: "Vanguard Short-Term Bond", category: "Short-Term Bond" },
+  { symbol: "BLV", name: "Vanguard Long-Term Bond", category: "Long-Term Bond" },
+  { symbol: "GOVT", name: "iShares US Treasury Bond", category: "US Treasury" },
+  { symbol: "SHV", name: "iShares Short Treasury Bond", category: "Ultra Short-Term" },
+  { symbol: "SCHO", name: "Schwab Short-Term US Treasury", category: "Short-Term Treasury" },
+  { symbol: "SCHR", name: "Schwab Intermediate-Term US Treasury", category: "Intermediate Treasury" },
+  { symbol: "SCHZ", name: "Schwab US Aggregate Bond", category: "Total Bond Market" },
+  { symbol: "EMB", name: "iShares JP Morgan USD EM Bond", category: "Emerging Market Bonds" },
+  { symbol: "BNDX", name: "Vanguard Total International Bond", category: "International Bond" },
+  { symbol: "IAGG", name: "iShares Core Intl Aggregate Bond", category: "International Bond" },
+  { symbol: "FLOT", name: "iShares Floating Rate Bond", category: "Floating Rate" },
+  { symbol: "SGOV", name: "iShares 0-3 Month Treasury Bond", category: "Ultra Short-Term" },
+];
+
 export type StockInfo = typeof top100Stocks[number];
 export type ETFInfo = typeof topETFs[number];
 export type MutualFundInfo = typeof topMutualFunds[number];
+export type BondInfo = typeof topBonds[number];
