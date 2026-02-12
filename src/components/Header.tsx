@@ -29,7 +29,7 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="container flex h-14 items-center px-4 md:px-6">
+      <div className="container flex h-14 items-center px-4 md:px-6 gap-8">
         {/* Logo - left */}
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200 group-hover:bg-primary/15">
@@ -38,8 +38,8 @@ const Header = () => {
           <span className="hidden sm:block text-base font-semibold text-foreground">Vantage</span>
         </Link>
 
-        {/* Desktop Nav - centered */}
-        <nav className="hidden md:flex items-center justify-center flex-1">
+        {/* Desktop Nav - left */}
+        <nav className="hidden md:flex items-center">
           <div className="relative flex items-center bg-secondary/40 rounded-full p-1 border border-border/20">
             {navItems.map((item) => {
               const isActive = location.pathname === item.href;
@@ -66,6 +66,8 @@ const Header = () => {
             })}
           </div>
         </nav>
+
+        <div className="flex-1" />
 
         <div className="flex items-center gap-1.5">
           <Button 
