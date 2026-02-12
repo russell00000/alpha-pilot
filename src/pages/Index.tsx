@@ -26,25 +26,25 @@ const Index = () => {
       
       <Header />
       
-      <main className="relative container px-4 md:px-6 py-5">
-        {/* Compact hero bar */}
-        <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-              Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">We're here to turn your financial aspirations into reality. It all starts with the right vantage point.</p>
-          </div>
-          <div className="flex items-center gap-2">
+      <main className="relative">
+        {/* Hero section - generous breathing room */}
+        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[60vh] py-20">
+          <h1 className="text-3xl md:text-5xl font-semibold text-foreground tracking-tight max-w-3xl animate-fade-in">
+            Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
+          </h1>
+          <p className="text-base md:text-lg text-muted-foreground mt-4 max-w-xl animate-fade-in" style={{ animationDelay: "100ms" }}>
+            We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
+          </p>
+          <div className="flex items-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
             <Link to="/portfolio">
-              <Button size="sm" className="gap-1.5 h-9 px-4 text-sm font-medium rounded-lg">
-                <Zap className="w-3.5 h-3.5" />
+              <Button size="lg" className="gap-2 px-6 text-sm font-medium rounded-lg">
+                <Zap className="w-4 h-4" />
                 Get Started
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <Link to="/markets">
-              <Button variant="outline" size="sm" className="h-9 px-4 text-sm font-medium border-border/40 hover:bg-secondary/40 rounded-lg">
+              <Button variant="outline" size="lg" className="px-6 text-sm font-medium border-border/40 hover:bg-secondary/40 rounded-lg">
                 All Markets
               </Button>
             </Link>
@@ -52,12 +52,12 @@ const Index = () => {
         </section>
 
         {/* Quick Actions */}
-        <section className="mb-5">
+        <section className="container px-4 md:px-6 mb-10">
           <QuickActions />
         </section>
 
-        {/* Top row: Movers + AI Chat side by side */}
-        <section className="grid lg:grid-cols-5 gap-5 mb-5">
+        {/* Market Overview + AI Chat */}
+        <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
           <div className="lg:col-span-3 animate-fade-in" style={{ animationDelay: "100ms" }}>
             <MarketOverview />
           </div>
@@ -66,8 +66,8 @@ const Index = () => {
           </div>
         </section>
 
-        {/* News - full width bottom */}
-        <section className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+        {/* News - full width */}
+        <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
           <TrendingNews />
         </section>
       </main>
