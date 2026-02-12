@@ -28,7 +28,7 @@ const Index = () => {
       
       <main className="relative">
         {/* Hero section - generous breathing room */}
-        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[60vh] py-20">
+        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
           <h1 className="text-3xl md:text-5xl font-semibold text-foreground tracking-tight max-w-3xl animate-fade-in">
             Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
           </h1>
