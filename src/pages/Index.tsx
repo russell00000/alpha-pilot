@@ -1,11 +1,10 @@
 import Header from "@/components/Header";
-import MarketSentiment from "@/components/MarketSentiment";
 import MarketOverview from "@/components/MarketOverview";
 import AIChat from "@/components/AIChat";
 import TrendingNews from "@/components/TrendingNews";
 import QuickActions from "@/components/QuickActions";
 import { Link } from "react-router-dom";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight, Zap, TrendingUp, MessageSquare, BarChart3, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
@@ -20,79 +19,68 @@ const Index = () => {
       
       <Header />
       
-      <main className="relative container px-4 md:px-6 py-8 space-y-10">
-        {/* Hero Section */}
-        <section className="text-center py-16 md:py-24">
-          <div 
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-primary text-sm font-medium mb-8 animate-fade-in"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
-            </span>
-            Live Markets · AI-Powered
-          </div>
-          
-          <h1 
-            className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground mb-6 animate-fade-in"
-            style={{ animationDelay: "100ms" }}
-          >
-            Your <span className="text-gradient">AI Investing</span>
-            <br className="hidden sm:block" /> Copilot
-          </h1>
-          
-          <p 
-            className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto mb-10 animate-fade-in leading-relaxed"
-            style={{ animationDelay: "200ms" }}
-          >
-            Intelligent market insights and AI-powered analysis to help you make smarter investment decisions.
-          </p>
+      <main className="relative container px-4 md:px-6 py-8 space-y-8">
+        {/* Compact Hero + Quick Actions Row */}
+        <section className="grid lg:grid-cols-5 gap-6 items-center py-10 md:py-16">
+          {/* Hero Text - Left */}
+          <div className="lg:col-span-3 space-y-5">
+            <div 
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-primary text-sm font-medium animate-fade-in"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+              </span>
+              Live Markets · AI-Powered
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground animate-fade-in" style={{ animationDelay: "100ms" }}>
+              Your <span className="text-gradient">AI Investing</span>
+              <br className="hidden sm:block" /> Copilot
+            </h1>
+            
+            <p className="text-muted-foreground text-base md:text-lg max-w-xl animate-fade-in leading-relaxed" style={{ animationDelay: "200ms" }}>
+              Intelligent market insights and AI-powered analysis to help you make smarter investment decisions.
+            </p>
 
-          <div 
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-in"
-            style={{ animationDelay: "300ms" }}
-          >
-            <Link to="/portfolio">
-              <Button size="lg" className="btn-hover-lift gap-2 h-11 px-6 text-sm font-medium">
-                <Zap className="w-4 h-4" />
-                Get Started
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link to="/markets">
-              <Button variant="outline" size="lg" className="gap-2 h-11 px-6 text-sm font-medium border-border/60 hover:bg-secondary/50">
-                Explore Markets
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row items-start gap-3 animate-fade-in" style={{ animationDelay: "300ms" }}>
+              <Link to="/portfolio">
+                <Button size="lg" className="btn-hover-lift gap-2 h-11 px-6 text-sm font-medium">
+                  <Zap className="w-4 h-4" />
+                  Get Started
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link to="/markets">
+                <Button variant="outline" size="lg" className="gap-2 h-11 px-6 text-sm font-medium border-border/60 hover:bg-secondary/50">
+                  Explore Markets
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Actions - Right */}
+          <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "400ms" }}>
+            <QuickActions />
           </div>
         </section>
 
-        {/* Market Sentiment */}
-        <section className="animate-fade-in" style={{ animationDelay: "400ms" }}>
-          <MarketSentiment />
+        {/* Full-width Content Grid */}
+        <section className="grid lg:grid-cols-5 gap-5">
+          {/* Market Overview - spans wider */}
+          <div className="lg:col-span-3 animate-fade-in" style={{ animationDelay: "500ms" }}>
+            <MarketOverview />
+          </div>
+
+          {/* AI Chat - taller right column */}
+          <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "500ms" }}>
+            <AIChat />
+          </div>
         </section>
 
-        {/* Main Content Grid */}
-        <section className="grid lg:grid-cols-3 gap-5">
-          {/* Left Column - Market Data */}
-          <div className="lg:col-span-2 space-y-5">
-            <div className="animate-fade-in" style={{ animationDelay: "500ms" }}>
-              <MarketOverview />
-            </div>
-            <div className="animate-fade-in" style={{ animationDelay: "600ms" }}>
-              <TrendingNews />
-            </div>
-          </div>
-
-          {/* Right Column - AI Chat & Actions */}
-          <div className="space-y-5">
-            <div className="animate-fade-in" style={{ animationDelay: "500ms" }}>
-              <QuickActions />
-            </div>
-            <div className="animate-fade-in" style={{ animationDelay: "600ms" }}>
-              <AIChat />
-            </div>
-          </div>
+        {/* Trending News - full width */}
+        <section className="animate-fade-in" style={{ animationDelay: "600ms" }}>
+          <TrendingNews />
         </section>
       </main>
 
