@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import TradeHistory from "@/components/practice/TradeHistory";
 import TradeDialog from "@/components/practice/TradeDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DollarSign, TrendingUp, Briefcase, RotateCcw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Practice = () => {
   const { user, loading: authLoading } = useAuth();
@@ -33,9 +34,40 @@ const Practice = () => {
     setTradeDialog({ open: true, mode: "sell", symbol, name, maxShares });
   };
 
-  // Calculate portfolio value
+  // Fetch live prices for holdings
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
+  const fetchLivePrices = useCallback(async () => {
+    if (holdings.length === 0) {
+      setLivePrices({});
+      return;
+    }
+    try {
+      const symbols = holdings.map(h => h.symbol);
+      const { data } = await supabase.functions.invoke("market-data", { body: { symbols } });
+      const results = data?.data;
+      if (Array.isArray(results)) {
+        const p: Record<string, number> = {};
+        for (const item of results) {
+          p[item.symbol] = parseFloat(item.price);
+        }
+        setLivePrices(p);
+      }
+    } catch { /* ignore */ }
+  }, [holdings]);
+
+  useEffect(() => {
+    fetchLivePrices();
+    const interval = setInterval(fetchLivePrices, 60000); // refresh every minute
+    return () => clearInterval(interval);
+  }, [fetchLivePrices]);
+
+  // Calculate portfolio value using live prices
   const initialInvestment = 10000;
-  const holdingsValue = holdings.reduce((sum, h) => sum + h.quantity * (h.avg_cost_basis || 0), 0);
+  const holdingsValue = holdings.reduce((sum, h) => {
+    const livePrice = livePrices[h.symbol];
+    return sum + h.quantity * (livePrice ?? h.avg_cost_basis);
+  }, 0);
   const totalValue = cashBalance + holdingsValue;
   const profitLoss = totalValue - initialInvestment;
   const profitLossPct = (profitLoss / initialInvestment) * 100;
