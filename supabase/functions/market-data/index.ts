@@ -26,7 +26,7 @@ let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // Minimum 100ms between Finnhub requests
 
 // Known crypto symbols - these should NOT be looked up via Finnhub
-const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC"]);
+const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC", "USDC"]);
 
 // Crypto symbol to CoinGecko ID mapping
 const CRYPTO_ID_MAP: Record<string, string> = {
@@ -40,6 +40,7 @@ const CRYPTO_ID_MAP: Record<string, string> = {
   AVAX: "avalanche-2",
   LINK: "chainlink",
   MATIC: "polygon",
+  USDC: "usd-coin",
 };
 
 // Extended stock database with names and types
