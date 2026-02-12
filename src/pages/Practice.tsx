@@ -34,8 +34,11 @@ const Practice = () => {
   };
 
   // Calculate portfolio value
+  const initialInvestment = 10000;
   const holdingsValue = holdings.reduce((sum, h) => sum + h.quantity * (h.avg_cost_basis || 0), 0);
   const totalValue = cashBalance + holdingsValue;
+  const profitLoss = totalValue - initialInvestment;
+  const profitLossPct = (profitLoss / initialInvestment) * 100;
 
   if (!authLoading && !user) {
     return (
@@ -86,11 +89,18 @@ const Practice = () => {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-border/60 bg-card p-5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Briefcase className="h-4 w-4 text-primary" />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">Account Value</span>
                 </div>
-                <span className="text-sm text-muted-foreground">Total Gains</span>
+                {!loading && (
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-md ${profitLoss >= 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+                    {profitLoss >= 0 ? "+" : ""}${Math.abs(profitLoss).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({profitLossPct >= 0 ? "+" : ""}{profitLossPct.toFixed(2)}%)
+                  </span>
+                )}
               </div>
               <p className="text-2xl font-bold text-foreground">
                 {loading ? "—" : `$${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
