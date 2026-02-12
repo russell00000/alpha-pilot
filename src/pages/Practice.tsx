@@ -151,12 +151,15 @@ const Practice = () => {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border/60 bg-card p-5">
+            <div
+              className="rounded-xl border border-border/60 bg-card p-5 cursor-pointer hover:bg-muted/10 transition-colors"
+              onClick={() => navigate("/practice/risk")}
+            >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
-                <span className="text-sm text-muted-foreground">Volatility/Risk Analysis</span>
+                <span className="text-sm text-muted-foreground">Volatility/Risk Analysis →</span>
               </div>
               <p className="text-2xl font-bold text-foreground">
                 {loading ? "—" : `$${holdingsValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
