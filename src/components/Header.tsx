@@ -29,30 +29,42 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="container flex h-14 items-center justify-between px-4 md:px-6">
+      <div className="container flex h-14 items-center px-4 md:px-6">
+        {/* Logo - left */}
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200 group-hover:bg-primary/15">
             <TrendingUp className="w-4 h-4 text-primary" />
           </div>
-          <span className="hidden sm:block text-base font-semibold text-foreground">Vantage Portfolio Solutions</span>
+          <span className="hidden sm:block text-base font-semibold text-foreground">Vantage</span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => (
-            <Link key={item.href} to={item.href}>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-muted-foreground hover:text-foreground transition-colors duration-200 h-8 px-3 text-sm",
-                  location.pathname === item.href && "text-foreground bg-secondary/60"
-                )}
-              >
-                {item.label}
-              </Button>
-            </Link>
-          ))}
+        {/* Desktop Nav - centered */}
+        <nav className="hidden md:flex items-center justify-center flex-1">
+          <div className="relative flex items-center bg-secondary/40 rounded-full p-1 border border-border/20">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <button
+                    className={cn(
+                      "relative px-5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ease-out",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground/80"
+                    )}
+                  >
+                    {isActive && (
+                      <span
+                        className="absolute inset-0 rounded-full bg-secondary border border-border/40 shadow-sm"
+                        style={{ animation: "scale-in 0.25s ease-out" }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         <div className="flex items-center gap-1.5">
