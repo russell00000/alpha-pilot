@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import SparklineChart from "@/components/SparklineChart";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
+import { top100Stocks, topETFs, topMutualFunds, topBonds } from "@/data/top-stocks";
 import financeBg from "@/assets/finance-bg.jpg";
 
 interface MarketData {
@@ -19,12 +19,13 @@ interface MarketData {
   changePercent: number;
   volume: string;
   sparkline?: number[];
-  type: "stock" | "crypto" | "etf" | "mutual_fund";
+  type: "stock" | "crypto" | "etf" | "mutual_fund" | "bond";
 }
 
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
+  { id: "bond", label: "Bonds", icon: Landmark, count: null, description: "Fixed income securities" },
   { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
   { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
 ];
@@ -128,6 +129,8 @@ const Markets = () => {
         allSymbols = topETFs.map(e => e.symbol);
       } else if (activeTab === "mutual_fund") {
         allSymbols = topMutualFunds.map(m => m.symbol);
+      } else if (activeTab === "bond") {
+        allSymbols = topBonds.map(b => b.symbol);
       }
       
       if (allSymbols.length === 0) return;
