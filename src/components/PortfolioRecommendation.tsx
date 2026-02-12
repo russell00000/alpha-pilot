@@ -76,7 +76,7 @@ const PortfolioRecommendation = ({
   // Fetch live prices for all fund symbols
   useEffect(() => {
     const fetchPrices = async () => {
-      const symbols = funds.map(f => f.symbol).filter(s => s !== "CASH" && s !== "USDC");
+      const symbols = funds.map(f => f.symbol).filter(s => s !== "CASH");
       if (symbols.length === 0) return;
 
       setLoadingPrices(true);
@@ -341,21 +341,27 @@ const PortfolioRecommendation = ({
                   <tr key={fund.symbol} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted/50 flex-shrink-0 flex items-center justify-center">
-                          <img
-                            src={`https://assets.parqet.com/logos/symbol/${fund.symbol}`}
-                            className="w-full h-full object-cover"
-                            alt={fund.symbol}
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              target.style.display = 'none';
-                              if (target.nextElementSibling) (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                            }}
-                          />
-                          <span className="hidden items-center justify-center w-full h-full text-xs font-bold text-muted-foreground">
-                            {fund.symbol.slice(0, 2)}
-                          </span>
-                        </div>
+                        {fund.symbol === "CASH" ? (
+                          <div className="w-8 h-8 rounded-full bg-muted/50 flex-shrink-0 flex items-center justify-center">
+                            <span className="text-xs font-bold text-muted-foreground">$</span>
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-muted/50 flex-shrink-0 flex items-center justify-center">
+                            <img
+                              src={`https://assets.parqet.com/logos/symbol/${fund.symbol}`}
+                              className="w-full h-full object-cover"
+                              alt={fund.symbol}
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                if (target.nextElementSibling) (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                              }}
+                            />
+                            <span className="hidden items-center justify-center w-full h-full text-xs font-bold text-muted-foreground">
+                              {fund.symbol.slice(0, 2)}
+                            </span>
+                          </div>
+                        )}
                         <div>
                           <p className="font-semibold text-foreground">{fund.symbol}</p>
                           <p className="text-sm text-muted-foreground truncate max-w-[180px]">{fund.name}</p>
