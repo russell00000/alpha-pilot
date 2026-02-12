@@ -8,6 +8,7 @@ import PortfolioRecommendation from "@/components/PortfolioRecommendation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import financeBg from "@/assets/finance-bg.jpg";
 
 interface SavedAssessment {
   id: string;
@@ -188,9 +189,11 @@ const Portfolio = () => {
   // Show loading only during auth check, not data loading
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background relative">
+        <div className="fixed inset-0 pointer-events-none opacity-100" style={{ backgroundImage: `url(${financeBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+        <div className="fixed inset-0 pointer-events-none bg-background/70" />
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-8 relative">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-pulse text-muted-foreground">Loading...</div>
           </div>
@@ -200,40 +203,48 @@ const Portfolio = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Finance background */}
+      <div className="fixed inset-0 pointer-events-none opacity-100" style={{ backgroundImage: `url(${financeBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+      <div className="fixed inset-0 pointer-events-none bg-background/70" />
+
       <Header />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 relative">
         {/* Show Assessment Quiz */}
         {showAssessment || (!savedAssessment && !savedRecommendation) ? (
           <>
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-2">Investment Assessment</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2" style={{ textShadow: '0 1px 20px rgba(0,0,0,0.5)' }}>Investment Assessment</h1>
               <p className="text-muted-foreground">Answer a few questions to get your personalized portfolio recommendation</p>
             </div>
-            <InvestmentAssessment onComplete={handleAssessmentComplete} loading={generating} />
+            <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-6">
+              <InvestmentAssessment onComplete={handleAssessmentComplete} loading={generating} />
+            </div>
           </>
         ) : savedRecommendation && savedAssessment ? (
           /* Show Portfolio Recommendation */
-          <PortfolioRecommendation
-            allocation={{
-              stocks: Number(savedRecommendation.allocation_stocks),
-              bonds: Number(savedRecommendation.allocation_bonds),
-              cash: Number(savedRecommendation.allocation_cash),
-              alternatives: Number(savedRecommendation.allocation_alternatives),
-            }}
-            funds={savedRecommendation.recommended_funds}
-            rationale={savedRecommendation.rationale}
-            investmentAmount={Number(savedAssessment.investment_amount)}
-            riskProfile={savedAssessment.risk_tolerance}
-            timeline={savedAssessment.investment_timeline}
-            goal={savedAssessment.investment_goal}
-            onRetakeAssessment={handleRetakeAssessment}
-          />
+          <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-6">
+            <PortfolioRecommendation
+              allocation={{
+                stocks: Number(savedRecommendation.allocation_stocks),
+                bonds: Number(savedRecommendation.allocation_bonds),
+                cash: Number(savedRecommendation.allocation_cash),
+                alternatives: Number(savedRecommendation.allocation_alternatives),
+              }}
+              funds={savedRecommendation.recommended_funds}
+              rationale={savedRecommendation.rationale}
+              investmentAmount={Number(savedAssessment.investment_amount)}
+              riskProfile={savedAssessment.risk_tolerance}
+              timeline={savedAssessment.investment_timeline}
+              goal={savedAssessment.investment_goal}
+              onRetakeAssessment={handleRetakeAssessment}
+            />
+          </div>
         ) : (
           /* Prompt to take assessment */
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <div className="glass-card p-8 max-w-md mx-auto">
+            <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 max-w-md mx-auto">
               <div className="inline-flex p-4 rounded-full bg-primary/10 mb-6">
                 <Sparkles className="w-12 h-12 text-primary" />
               </div>

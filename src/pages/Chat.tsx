@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import financeBg from "@/assets/finance-bg.jpg";
 
 interface Message {
   role: "user" | "assistant";
@@ -106,23 +107,27 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative">
+      {/* Finance background */}
+      <div className="fixed inset-0 pointer-events-none opacity-100" style={{ backgroundImage: `url(${financeBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+      <div className="fixed inset-0 pointer-events-none bg-background/70" />
+
       <Header />
       
-      <main className="flex-1 container mx-auto px-4 py-6 flex flex-col max-w-4xl">
+      <main className="flex-1 container mx-auto px-4 py-6 flex flex-col max-w-4xl relative">
         {/* Chat Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="p-3 rounded-xl bg-primary/10 glow-primary">
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
             <Sparkles className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">AI Chat</h1>
+            <h1 className="text-2xl font-bold text-foreground" style={{ textShadow: '0 1px 20px rgba(0,0,0,0.5)' }}>AI Chat</h1>
             <p className="text-muted-foreground">Your personal investing assistant</p>
           </div>
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 glass-card flex flex-col min-h-[500px] max-h-[calc(100vh-300px)]">
+        <div className="flex-1 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 flex flex-col min-h-[500px] max-h-[calc(100vh-300px)]">
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.map((message, index) => (
               <div
