@@ -157,24 +157,24 @@ function selectFunds(allocation: PortfolioAllocation, data: AssessmentData): Fun
   if (allocation.stocks > 0) {
     // Core US stocks
     const vtiAlloc = Math.min(Math.round(allocation.stocks * 0.5), remainingStocks);
-    funds.push({ ...STOCK_FUNDS[0], category: "Stock", allocation: vtiAlloc });
+    funds.push({ ...STOCK_FUNDS[0], category: "Stock ETF", allocation: vtiAlloc });
     remainingStocks -= vtiAlloc;
 
     // International diversification
     if (remainingStocks >= 10) {
       const intlAlloc = Math.min(Math.round(allocation.stocks * 0.2), remainingStocks);
-      funds.push({ ...STOCK_FUNDS[3], category: "Stock", allocation: intlAlloc });
+      funds.push({ ...STOCK_FUNDS[3], category: "International ETF", allocation: intlAlloc });
       remainingStocks -= intlAlloc;
     }
 
     // Dividend stocks for income goal
     if (data.investmentGoal === "income" && remainingStocks >= 10) {
       const divAlloc = remainingStocks;
-      funds.push({ ...STOCK_FUNDS[5], category: "Stock", allocation: divAlloc });
+      funds.push({ ...STOCK_FUNDS[5], category: "Dividend ETF", allocation: divAlloc });
       remainingStocks = 0;
     } else if (remainingStocks > 0) {
       // Growth stocks
-      funds.push({ ...STOCK_FUNDS[2], category: "Stock", allocation: remainingStocks });
+      funds.push({ ...STOCK_FUNDS[2], category: "Sector ETF", allocation: remainingStocks });
     }
   }
 
@@ -182,31 +182,31 @@ function selectFunds(allocation: PortfolioAllocation, data: AssessmentData): Fun
   if (allocation.bonds > 0) {
     // Core bonds
     const bndAlloc = Math.min(Math.round(allocation.bonds * 0.6), remainingBonds);
-    funds.push({ ...BOND_FUNDS[0], category: "Bond", allocation: bndAlloc });
+    funds.push({ ...BOND_FUNDS[0], category: "Bond ETF", allocation: bndAlloc });
     remainingBonds -= bndAlloc;
 
     // Short-term for stability
     if (remainingBonds > 0 && data.investmentTimeline === "less_than_1_year") {
-      funds.push({ ...BOND_FUNDS[1], category: "Bond", allocation: remainingBonds });
+      funds.push({ ...BOND_FUNDS[1], category: "Treasury ETF", allocation: remainingBonds });
     } else if (remainingBonds > 0) {
       // Inflation protection
-      funds.push({ ...BOND_FUNDS[3], category: "Bond", allocation: remainingBonds });
+      funds.push({ ...BOND_FUNDS[3], category: "TIPS ETF", allocation: remainingBonds });
     }
   }
 
   // Alternatives
   if (allocation.alternatives > 0) {
     if (allocation.alternatives >= 5) {
-      funds.push({ ...ALTERNATIVE_FUNDS[0], category: "Alternative", allocation: Math.round(allocation.alternatives * 0.6) });
-      funds.push({ ...ALTERNATIVE_FUNDS[1], category: "Alternative", allocation: Math.round(allocation.alternatives * 0.4) });
+      funds.push({ ...ALTERNATIVE_FUNDS[0], category: "Real Estate", allocation: Math.round(allocation.alternatives * 0.6) });
+      funds.push({ ...ALTERNATIVE_FUNDS[1], category: "Commodity", allocation: Math.round(allocation.alternatives * 0.4) });
     } else {
-      funds.push({ ...ALTERNATIVE_FUNDS[0], category: "Alternative", allocation: allocation.alternatives });
+      funds.push({ ...ALTERNATIVE_FUNDS[0], category: "Real Estate", allocation: allocation.alternatives });
     }
   }
 
   // Cash
   if (allocation.cash > 0) {
-    funds.push({ ...CASH_EQUIVALENTS[0], category: "Cash", allocation: allocation.cash });
+    funds.push({ ...CASH_EQUIVALENTS[0], category: "Money Market", allocation: allocation.cash });
   }
 
   return funds;
