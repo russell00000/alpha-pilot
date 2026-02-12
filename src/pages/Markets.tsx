@@ -23,7 +23,7 @@ interface MarketData {
 }
 
 const tabs = [
-  { id: "stocks", label: "Stocks", icon: BarChart3, count: 100, description: "Top US equities" },
+  { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
   { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
   { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
@@ -503,8 +503,7 @@ const Markets = () => {
             </h1>
           </div>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Access real-time data for thousands of stocks, ETFs, mutual funds, and cryptocurrencies. 
-            Browse the top 100 stocks or search by ticker symbol.
+            Access real-time data for thousands of stocks, ETFs, mutual funds, and cryptocurrencies.
           </p>
           
           {/* Main Search Bar */}
@@ -656,10 +655,10 @@ const Markets = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold text-foreground">
-                {activeTab === "stocks" ? "Top 100 Stocks" :
+                {activeTab === "stocks" ? "Stocks" :
                  activeTab === "crypto" ? "Cryptocurrencies" :
-                 activeTab === "etf" ? "Top ETFs" :
-                 "Top Mutual Funds"}
+                 activeTab === "etf" ? "ETFs" :
+                 "Mutual Funds"}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString()}`}
