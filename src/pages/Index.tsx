@@ -13,7 +13,7 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-40"
+        className="fixed inset-0 pointer-events-none opacity-100"
         style={{ 
           backgroundImage: `url(${financeBg})`,
           backgroundSize: 'cover',
@@ -22,7 +22,7 @@ const Index = () => {
         }} 
       />
       {/* Dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-background/70" />
+      <div className="fixed inset-0 pointer-events-none bg-background/40" />
       
       <Header />
       
