@@ -49,9 +49,9 @@ export default function TradeDialog({
     fetchPrice();
   }, [open, symbol]);
 
-  const qty = parseInt(quantity) || 0;
+  const qty = parseFloat(quantity) || 0;
   const totalCost = qty * (price || 0);
-  const maxBuyable = price ? Math.floor(cashBalance / price) : 0;
+  const maxBuyable = price ? Math.floor((cashBalance / price) * 10000) / 10000 : 0;
 
   const handleExecute = async () => {
     if (!price || qty <= 0) return;
@@ -87,19 +87,21 @@ export default function TradeDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Shares</Label>
+            <Label>Quantity</Label>
             <Input
               type="number"
-              min="1"
+              min="0.0001"
+              step="any"
               max={isBuy ? maxBuyable : maxShares}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
               {isBuy
-                ? `Available cash: $${cashBalance.toFixed(2)} · Max shares: ${maxBuyable}`
-                : `Shares owned: ${maxShares || 0}`}
+                ? `Available cash: $${cashBalance.toFixed(2)} · Max: ${maxBuyable}`
+                : `Owned: ${maxShares || 0}`}
             </p>
+            <p className="text-xs text-muted-foreground/60">Fractional shares supported</p>
           </div>
 
           {price && qty > 0 && (
