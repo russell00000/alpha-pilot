@@ -90,7 +90,7 @@ const Practice = () => {
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Briefcase className="h-4 w-4 text-primary" />
                 </div>
-                <span className="text-sm text-muted-foreground">Total Value</span>
+                <span className="text-sm text-muted-foreground">Total Gains</span>
               </div>
               <p className="text-2xl font-bold text-foreground">
                 {loading ? "—" : `$${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -114,7 +114,7 @@ const Practice = () => {
                 <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
-                <span className="text-sm text-muted-foreground">Invested</span>
+                <span className="text-sm text-muted-foreground">Volatility/Risk Analysis</span>
               </div>
               <p className="text-2xl font-bold text-foreground">
                 {loading ? "—" : `$${holdingsValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
