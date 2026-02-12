@@ -68,7 +68,7 @@ const AIChat = () => {
   };
 
   return (
-    <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-sm flex flex-col h-full min-h-[500px]">
+    <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-sm flex flex-col h-full min-h-[340px] max-h-[400px]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border/20">
         <Sparkles className="w-3.5 h-3.5 text-primary" />
