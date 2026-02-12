@@ -76,12 +76,13 @@ ${philosophy.asset_allocation_rules}
 ${philosophy.market_insights_style}
 
 ## CRITICAL RULES YOU MUST FOLLOW:
-1. **INDIVIDUAL STOCKS vs ETFs ARE DIFFERENT** - The allocation rules specify INDIVIDUAL STOCKS (like AAPL, NVDA, MSFT, GOOGL) separately from ETFs (like SPY, QQQ, VTI).
-2. For AGGRESSIVE profiles: You MUST recommend 50-70% in INDIVIDUAL STOCK TICKERS (not ETFs). ETFs should only be 10-30% max.
-3. For MODERATE profiles: Individual stocks 25-45%, ETFs 35-55%.
-4. For CONSERVATIVE profiles: Individual stocks 0-15%, ETFs 50-70%.
-5. **DO NOT substitute ETFs for individual stocks** - They are NOT interchangeable. If the rules say "individual stocks", you must recommend actual company stock tickers.
-6. Always include the "type" field to distinguish between "stock" (individual company) and "etf".
+1. **NEVER include cryptocurrency or stablecoins** (e.g. BTC, ETH, USDC, USDT, SOL, etc.) in any portfolio. Crypto assets must never appear in holdings or alternatives. If a user's profile suggests alternatives, use REITs, commodities, or gold instead.
+2. **INDIVIDUAL STOCKS vs ETFs ARE DIFFERENT** - The allocation rules specify INDIVIDUAL STOCKS (like AAPL, NVDA, MSFT, GOOGL) separately from ETFs (like SPY, QQQ, VTI).
+3. For AGGRESSIVE profiles: You MUST recommend 50-70% in INDIVIDUAL STOCK TICKERS (not ETFs). ETFs should only be 10-30% max.
+4. For MODERATE profiles: Individual stocks 25-45%, ETFs 35-55%.
+5. For CONSERVATIVE profiles: Individual stocks 0-15%, ETFs 50-70%.
+6. **DO NOT substitute ETFs for individual stocks** - They are NOT interchangeable. If the rules say "individual stocks", you must recommend actual company stock tickers.
+7. Always include the "type" field to distinguish between "stock" (individual company) and "etf".
 
 You must respond with ONLY valid JSON matching this exact structure (no markdown, no code blocks, just raw JSON):
 {
@@ -192,6 +193,22 @@ Based on the creator's investing philosophy, provide a tailored portfolio alloca
     // Normalize to "funds" for backward compatibility with frontend
     if (recommendation.holdings && !recommendation.funds) {
       recommendation.funds = recommendation.holdings;
+    }
+
+    // Strip any crypto/stablecoin holdings that may have slipped through
+    const CRYPTO_BLACKLIST = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC", "USDC", "USDT", "DAI", "BUSD", "WBTC", "SHIB"]);
+    recommendation.funds = recommendation.funds.filter((f: any) => !CRYPTO_BLACKLIST.has(f.symbol?.toUpperCase()));
+
+    // Redistribute any removed allocation proportionally
+    const totalAlloc = recommendation.funds.reduce((sum: number, f: any) => sum + (f.allocation || 0), 0);
+    if (totalAlloc > 0 && totalAlloc < 100) {
+      const scale = 100 / totalAlloc;
+      recommendation.funds.forEach((f: any) => { f.allocation = Math.round(f.allocation * scale); });
+      // Fix rounding
+      const diff = 100 - recommendation.funds.reduce((sum: number, f: any) => sum + f.allocation, 0);
+      if (diff !== 0 && recommendation.funds.length > 0) {
+        recommendation.funds[0].allocation += diff;
+      }
     }
 
     console.log("Generated recommendation:", recommendation);
