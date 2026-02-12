@@ -15,16 +15,16 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 210 100% 60%;
+    --primary: 38 90% 55%;
     --primary-foreground: 240 10% 4%;
 
     --secondary: 240 6% 10%;
-    --secondary-foreground: 0 0% 85%;
+    --secondary-foreground: 40 20% 90%;
 
     --muted: 240 6% 12%;
-    --muted-foreground: 240 5% 50%;
+    --muted-foreground: 40 10% 60%;
 
-    --accent: 210 100% 60%;
+    --accent: 30 80% 50%;
     --accent-foreground: 240 10% 4%;
 
     --destructive: 0 72% 51%;
@@ -38,19 +38,17 @@
 
     --border: 240 6% 15%;
     --input: 240 6% 15%;
-    --ring: 210 100% 60%;
-
-    --radius: 0.625rem;
+    --ring: 38 90% 55%;
 
     /* Premium gradient tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(210 100% 60%) 0%, hsl(220 90% 50%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(38 90% 55%) 0%, hsl(28 85% 45%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(240 10% 7%) 0%, hsl(240 10% 5%) 100%);
-    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(210 100% 60% / 0.06) 0%, transparent 50%);
-    --gradient-glow: radial-gradient(circle at 50% 50%, hsl(210 100% 60% / 0.1) 0%, transparent 60%);
+    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(38 90% 55% / 0.08) 0%, transparent 50%);
+    --gradient-glow: radial-gradient(circle at 50% 50%, hsl(38 90% 55% / 0.12) 0%, transparent 60%);
     --gradient-subtle: linear-gradient(180deg, hsl(240 10% 8%) 0%, hsl(240 10% 4%) 100%);
     
     /* Refined shadows */
-    --shadow-glow: 0 0 80px hsl(210 100% 60% / 0.08);
+    --shadow-glow: 0 0 80px hsl(38 90% 55% / 0.1);
     --shadow-card: 0 2px 16px hsl(0 0% 0% / 0.25);
     --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.35);
     --shadow-subtle: 0 1px 3px hsl(0 0% 0% / 0.12);
@@ -60,12 +58,12 @@
 
     --sidebar-background: 240 10% 5%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary: 38 90% 55%;
     --sidebar-primary-foreground: 240 10% 4%;
     --sidebar-accent: 240 6% 10%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 240 6% 15%;
-    --sidebar-ring: 210 100% 60%;
+    --sidebar-ring: 38 90% 55%;
   }
 
   .dark {
@@ -103,7 +101,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, hsl(210 100% 60% / 0.02) 0%, transparent 40%);
+    background: linear-gradient(180deg, hsl(38 90% 55% / 0.03) 0%, transparent 40%);
     pointer-events: none;
   }
 
@@ -131,7 +129,7 @@
 
   .btn-hover-lift:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px hsl(210 100% 60% / 0.2);
+    box-shadow: 0 4px 12px hsl(38 90% 55% / 0.2);
   }
 
   /* Subtle card hover */

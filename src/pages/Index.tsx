@@ -29,10 +29,10 @@ const Index = () => {
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <h1 className="text-3xl md:text-5xl font-semibold text-foreground tracking-tight max-w-3xl animate-fade-in">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight max-w-3xl animate-fade-in drop-shadow-[0_2px_30px_hsl(38_90%_55%/0.15)]">
             Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground mt-4 max-w-xl animate-fade-in" style={{ animationDelay: "100ms" }}>
+          <p className="text-lg md:text-xl text-secondary-foreground/80 mt-6 max-w-xl animate-fade-in font-light" style={{ animationDelay: "100ms" }}>
             We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
           </p>
           <div className="flex items-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
