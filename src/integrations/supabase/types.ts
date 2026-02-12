@@ -145,6 +145,99 @@ export type Database = {
           },
         ]
       }
+      practice_holdings: {
+        Row: {
+          avg_cost_basis: number
+          created_at: string
+          id: string
+          name: string
+          quantity: number
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_cost_basis?: number
+          created_at?: string
+          id?: string
+          name: string
+          quantity?: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_cost_basis?: number
+          created_at?: string
+          id?: string
+          name?: string
+          quantity?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      practice_portfolios: {
+        Row: {
+          cash_balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      practice_trades: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price_per_share: number
+          quantity: number
+          symbol: string
+          total_amount: number
+          trade_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price_per_share: number
+          quantity: number
+          symbol: string
+          total_amount: number
+          trade_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price_per_share?: number
+          quantity?: number
+          symbol?: string
+          total_amount?: number
+          trade_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
