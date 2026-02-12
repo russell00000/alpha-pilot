@@ -30,12 +30,26 @@ interface RecommendationProps {
   onRetakeAssessment: () => void;
 }
 
-const COLORS = {
-  stocks: "hsl(var(--primary))",
-  bonds: "hsl(var(--chart-2))",
-  cash: "hsl(var(--chart-4))",
-  alternatives: "hsl(var(--chart-5))",
+const CATEGORY_COLORS: Record<string, string> = {
+  "Stock ETF": "hsl(217, 91%, 60%)",        // Vivid blue
+  "International ETF": "hsl(262, 83%, 58%)", // Purple
+  "Dividend ETF": "hsl(142, 71%, 45%)",      // Green
+  "Sector ETF": "hsl(199, 89%, 48%)",        // Cyan
+  "Bond ETF": "hsl(25, 95%, 53%)",           // Orange
+  "Treasury ETF": "hsl(45, 93%, 47%)",       // Amber
+  "TIPS ETF": "hsl(14, 87%, 55%)",           // Red-orange
+  "Real Estate": "hsl(340, 82%, 52%)",       // Pink
+  "Commodity": "hsl(48, 96%, 53%)",          // Gold
+  "Money Market": "hsl(173, 80%, 40%)",      // Teal
+  // Fallbacks for older data
+  "Stock": "hsl(217, 91%, 60%)",
+  "Bond": "hsl(25, 95%, 53%)",
+  "ETF": "hsl(199, 89%, 48%)",
+  "Cash": "hsl(173, 80%, 40%)",
+  "Alternative": "hsl(340, 82%, 52%)",
 };
+
+const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
 
 const PortfolioRecommendation = ({
   allocation,
@@ -47,12 +61,16 @@ const PortfolioRecommendation = ({
   goal,
   onRetakeAssessment,
 }: RecommendationProps) => {
-  const pieData = [
-    { name: "Stocks", value: allocation.stocks, color: COLORS.stocks },
-    { name: "Bonds", value: allocation.bonds, color: COLORS.bonds },
-    { name: "Cash", value: allocation.cash, color: COLORS.cash },
-    { name: "Alternatives", value: allocation.alternatives, color: COLORS.alternatives },
-  ].filter((item) => item.value > 0);
+  // Build pie data from individual fund categories for granular breakdown
+  const categoryMap = new Map<string, number>();
+  funds.forEach((fund) => {
+    const existing = categoryMap.get(fund.category) || 0;
+    categoryMap.set(fund.category, existing + fund.allocation);
+  });
+  const pieData = Array.from(categoryMap.entries())
+    .map(([name, value]) => ({ name, value, color: getColor(name) }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
 
   const formatRiskProfile = (risk: string) => {
     const map: Record<string, string> = {
@@ -157,36 +175,39 @@ const PortfolioRecommendation = ({
         {/* Pie Chart */}
         <div className="glass-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Asset Allocation</h3>
-          <div className="h-64">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
+                  innerRadius={55}
+                  outerRadius={100}
+                  paddingAngle={3}
                   dataKey="value"
-                  label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
-                  labelLine={false}
+                  stroke="hsl(var(--background))"
+                  strokeWidth={2}
+                  animationBegin={0}
+                  animationDuration={800}
                 >
                   {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
+          <div className="grid grid-cols-2 gap-2 mt-4">
             {pieData.map((entry) => (
-              <div key={entry.name} className="flex items-center gap-2">
+              <div key={entry.name} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/30 transition-colors">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
                   style={{ backgroundColor: entry.color }}
                 />
-                <span className="text-sm text-muted-foreground">{entry.name}</span>
+                <span className="text-sm text-muted-foreground truncate">{entry.name}</span>
+                <span className="text-sm font-medium text-foreground ml-auto">{entry.value}%</span>
               </div>
             ))}
           </div>
@@ -257,14 +278,13 @@ const PortfolioRecommendation = ({
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className={cn(
-                        "px-2 py-1 rounded-full text-xs font-medium",
-                        fund.category === "Stock" && "bg-primary/10 text-primary",
-                        fund.category === "Bond" && "bg-chart-2/20 text-chart-2",
-                        fund.category === "ETF" && "bg-chart-3/20 text-chart-3",
-                        fund.category === "Cash" && "bg-chart-4/20 text-chart-4",
-                        fund.category === "Alternative" && "bg-chart-5/20 text-chart-5"
-                      )}>
+                      <span
+                        className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: `${getColor(fund.category)}20`,
+                          color: getColor(fund.category),
+                        }}
+                      >
                         {fund.category}
                       </span>
                     </td>
