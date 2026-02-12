@@ -52,7 +52,7 @@ export default function SecuritySearch({ onBuy }: SecuritySearchProps) {
       {results.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-card divide-y divide-border/40 max-h-80 overflow-y-auto">
           {results.map((s) => (
-            <div key={s.symbol} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+            <div key={s.symbol} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => onBuy(s.symbol, s.name)}>
               <div className="flex items-center gap-3">
                 <img
                   src={`https://assets.parqet.com/logos/symbol/${s.symbol}`}
@@ -65,12 +65,7 @@ export default function SecuritySearch({ onBuy }: SecuritySearchProps) {
                   <p className="text-xs text-muted-foreground">{s.name}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded">{s.type}</span>
-                <Button size="sm" variant="outline" onClick={() => onBuy(s.symbol, s.name)}>
-                  Trade
-                </Button>
-              </div>
+              <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded">{s.type}</span>
             </div>
           ))}
         </div>
