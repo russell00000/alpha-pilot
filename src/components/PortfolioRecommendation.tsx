@@ -365,6 +365,9 @@ const PortfolioRecommendation = ({
                         <div>
                           <p className="font-semibold text-foreground">{fund.symbol}</p>
                           <p className="text-sm text-muted-foreground truncate max-w-[180px]">{fund.name}</p>
+                          {fund.description && (
+                            <p className="text-xs text-muted-foreground/70 mt-0.5 max-w-[260px]">{fund.description}</p>
+                          )}
                         </div>
                       </div>
                     </td>
