@@ -147,6 +147,67 @@ interface QuoteData {
   marketCap: number;
 }
 
+// Extract potential ticker symbols from user messages
+function extractTickers(messages: { role: string; content: string }[]): string[] {
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+  // Match uppercase words 1-5 chars that look like tickers, also handle $TICKER notation
+  const tickerPattern = /\$?([A-Z]{1,5})\b/g;
+  const found: string[] = [];
+  let match;
+  while ((match = tickerPattern.exec(lastUserMsg.toUpperCase())) !== null) {
+    const ticker = match[1];
+    // Skip common English words
+    const skipWords = new Set(["I", "A", "THE", "AND", "OR", "FOR", "IN", "ON", "AT", "TO", "IS", "IT", "OF", "MY", "ME", "DO", "IF", "SO", "UP", "AN", "AS", "BY", "WE", "HE", "BE", "NO", "AM", "US", "GO", "HI", "OK", "BUY", "SELL", "HOLD", "ANY", "ALL", "CAN", "HAS", "HOW", "WHY", "NOT", "BUT", "ARE", "WAS", "HAS", "ITS", "YOU", "YOUR", "WHAT", "BEST", "GOOD", "LIKE", "THINK", "ABOUT", "WOULD", "SHOULD", "PRICE", "STOCK", "TODAY"]);
+    if (!skipWords.has(ticker) && ticker.length >= 2) {
+      found.push(ticker);
+    }
+  }
+  return [...new Set(found)];
+}
+
+// On-demand lookup for tickers not in our pre-fetched set
+async function fetchOnDemandQuotes(tickers: string[], existingSymbols: Set<string>): Promise<string> {
+  const missing = tickers.filter(t => !existingSymbols.has(t) && !existingSymbols.has(t + "-USD"));
+  if (missing.length === 0) return "";
+  
+  console.log("On-demand lookup for tickers:", missing);
+  
+  const results: string[] = [];
+  for (const ticker of missing.slice(0, 5)) {
+    // Try the ticker as-is, and also with -USD for potential crypto
+    for (const sym of [ticker, `${ticker}-USD`]) {
+      try {
+        const response = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`,
+          { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
+        );
+        if (!response.ok) continue;
+        const data = await response.json();
+        const result = data.chart?.result?.[0];
+        if (!result) continue;
+        
+        const meta = result.meta;
+        const price = meta.regularMarketPrice || meta.previousClose;
+        if (!price) continue;
+        
+        const previousClose = meta.chartPreviousClose || meta.previousClose;
+        const change = price - previousClose;
+        const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+        const changeStr = changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`;
+        const distFromHigh = meta.fiftyTwoWeekHigh ? ((price - meta.fiftyTwoWeekHigh) / meta.fiftyTwoWeekHigh * 100).toFixed(1) : 'N/A';
+        
+        results.push(`${ticker} (${meta.shortName || meta.longName || ticker}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}`);
+        break; // Found data, no need to try -USD variant
+      } catch (e) {
+        console.log(`On-demand fetch failed for ${sym}:`, e);
+      }
+    }
+  }
+  
+  if (results.length === 0) return "";
+  return `\n\nON-DEMAND LOOKUPS (real-time data for requested tickers):\n${results.join('\n')}\n`;
+}
+
 // Fetch detailed quote data from Yahoo Finance
 async function fetchQuote(symbol: string): Promise<QuoteData | null> {
   try {
@@ -270,7 +331,11 @@ serve(async (req) => {
 
     console.log("Processing chat request with", messages.length, "messages");
 
-    // Fetch philosophy and market data
+    // Extract tickers from user message for on-demand lookup
+    const requestedTickers = extractTickers(messages);
+    console.log("Detected tickers in message:", requestedTickers);
+
+    // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
       fetchPhilosophy(),
       fetchMarketData()
@@ -278,21 +343,31 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched market data:", marketData ? "success" : "none");
 
+    // Build set of symbols we already have data for
+    const allKnownSymbols = new Set([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO]);
+    
+    // Fetch on-demand data for any tickers not in our pre-fetched set
+    const onDemandData = await fetchOnDemandQuotes(requestedTickers, allKnownSymbols);
+    if (onDemandData) {
+      console.log("On-demand data fetched successfully");
+    }
+
     const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who knows EVERY security that exists or has ever existed.
 
 ${philosophy}
 
 ## ABSOLUTE RULES (NEVER VIOLATE THESE)
 1. You KNOW every stock, ETF, mutual fund, crypto, and company ticker that exists. NEVER say you "can't find", "don't recognize", or "don't have data" for ANY ticker. This is your #1 rule.
-2. If a ticker is in the LIVE MARKET DATA below, use its exact price.
-3. If a ticker is NOT in the live data, you STILL know it from your training. Provide your analysis with approximate pricing and label it as "~approximate". Examples: NBIS (Nebius Group, traded on NASDAQ), PLTR (Palantir), ANY ticker the user asks about.
+2. If a ticker is in the LIVE MARKET DATA or ON-DEMAND LOOKUPS below, use its exact price. This is REAL-TIME data—always prefer it.
+3. If a ticker is NOT in any data below, you STILL know it from your training. Provide your analysis with approximate pricing and label it as "~approximate".
 4. NEVER claim a publicly traded stock is "private" or "not traded". If a user asks about a ticker, assume it IS publicly traded unless you are 100% certain it is not.
 5. ALWAYS provide: current/approximate price, Buy/Hold/Sell rating, price target, and brief analysis.
 6. Sound human: use "I'd" and "you" naturally.
 7. If you're genuinely unsure what company a ticker refers to, make your best guess and ask the user to confirm—but NEVER refuse to analyze.
 
 ## LIVE MARKET DATA (use exact prices when the ticker appears here)
-${marketData}`;
+${marketData}
+${onDemandData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
