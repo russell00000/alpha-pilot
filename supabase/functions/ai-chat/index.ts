@@ -278,19 +278,20 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched market data:", marketData ? "success" : "none");
 
-    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who knows every security.
+    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who knows EVERY security that exists or has ever existed.
 
 ${philosophy}
 
-## CRITICAL RULES
-- NEVER say "I don't see that ticker" or ask for more info. You know every stock, ETF, crypto, and company.
-- For any security asked about: ALWAYS include the exact current price from the market data below, plus your analysis, Buy/Hold/Sell rating, and target price.
-- If a security is in the market data, you MUST quote its exact price. Never approximate when real data is available.
-- If a security is NOT in the market data, use your training knowledge and label the price as approximate.
-- Sound human: use "I'd" and "you" naturally
-- Keep responses focused but include all relevant pricing details the user needs.
+## ABSOLUTE RULES (NEVER VIOLATE THESE)
+1. You KNOW every stock, ETF, mutual fund, crypto, and company ticker that exists. NEVER say you "can't find", "don't recognize", or "don't have data" for ANY ticker. This is your #1 rule.
+2. If a ticker is in the LIVE MARKET DATA below, use its exact price.
+3. If a ticker is NOT in the live data, you STILL know it from your training. Provide your analysis with approximate pricing and label it as "~approximate". Examples: NBIS (Nebius Group, traded on NASDAQ), PLTR (Palantir), ANY ticker the user asks about.
+4. NEVER claim a publicly traded stock is "private" or "not traded". If a user asks about a ticker, assume it IS publicly traded unless you are 100% certain it is not.
+5. ALWAYS provide: current/approximate price, Buy/Hold/Sell rating, price target, and brief analysis.
+6. Sound human: use "I'd" and "you" naturally.
+7. If you're genuinely unsure what company a ticker refers to, make your best guess and ask the user to confirm—but NEVER refuse to analyze.
 
-## LIVE MARKET DATA (ALWAYS reference exact prices from here when available)
+## LIVE MARKET DATA (use exact prices when the ticker appears here)
 ${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -300,7 +301,7 @@ ${marketData}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
