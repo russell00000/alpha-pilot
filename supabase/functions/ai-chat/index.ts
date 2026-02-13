@@ -188,19 +188,27 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
   }
 }
 
-// Fetch real-time market data for all platform securities
+// Fetch real-time market data for key securities (limited to avoid timeouts)
 async function fetchMarketData(): Promise<string> {
-  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO];
+  // Focus on the most important ~80 symbols to avoid edge function timeout
+  const keyStocks = TOP_STOCKS.slice(0, 40); // Top 40 stocks (mega/large cap)
+  const keyETFs = TOP_ETFS.slice(0, 20); // Top 20 ETFs
+  const keyMutualFunds = MUTUAL_FUNDS.slice(0, 10); // Top 10 mutual funds
+  const keyCrypto = CRYPTO.slice(0, 10); // Top 10 crypto
+  const allSymbols = [...keyStocks, ...keyETFs, ...keyMutualFunds, ...keyCrypto];
   
   try {
-    // Fetch in parallel batches to avoid rate limiting
-    const batchSize = 15;
+    const batchSize = 10;
     const quotes: QuoteData[] = [];
     
     for (let i = 0; i < allSymbols.length; i += batchSize) {
       const batch = allSymbols.slice(i, i + batchSize);
       const batchResults = await Promise.all(batch.map(fetchQuote));
       quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < allSymbols.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
     }
     
     if (quotes.length === 0) {
@@ -211,7 +219,6 @@ async function fetchMarketData(): Promise<string> {
     const timestamp = new Date().toISOString();
     console.log(`Fetched ${quotes.length} market quotes`);
     
-    // Format data in categories for better AI understanding
     const stockQuotes = quotes.filter(q => TOP_STOCKS.includes(q.symbol));
     const etfQuotes = quotes.filter(q => TOP_ETFS.includes(q.symbol));
     const mutualFundQuotes = quotes.filter(q => MUTUAL_FUNDS.includes(q.symbol));
@@ -226,22 +233,18 @@ async function fetchMarketData(): Promise<string> {
     let marketDataStr = `\n\n=== REAL-TIME MARKET DATA (${timestamp}) ===\n\n`;
     
     if (stockQuotes.length > 0) {
-      marketDataStr += `TOP 100 STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
+      marketDataStr += `TOP STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
     }
-    
     if (etfQuotes.length > 0) {
       marketDataStr += `ETFs:\n${etfQuotes.map(formatQuote).join('\n')}\n\n`;
     }
-    
     if (mutualFundQuotes.length > 0) {
       marketDataStr += `MUTUAL FUNDS:\n${mutualFundQuotes.map(formatQuote).join('\n')}\n\n`;
     }
-    
     if (cryptoQuotes.length > 0) {
       marketDataStr += `CRYPTO:\n${cryptoQuotes.map(formatQuote).join('\n')}\n\n`;
     }
     
-    // Add market summary
     const sp500 = etfQuotes.find(q => q.symbol === 'SPY');
     const nasdaq = etfQuotes.find(q => q.symbol === 'QQQ');
     const btc = cryptoQuotes.find(q => q.symbol === 'BTC-USD');
@@ -252,6 +255,9 @@ async function fetchMarketData(): Promise<string> {
       if (nasdaq) marketDataStr += `NASDAQ (QQQ): ${nasdaq.changePercent >= 0 ? '+' : ''}${nasdaq.changePercent.toFixed(2)}%\n`;
       if (btc) marketDataStr += `Bitcoin: $${btc.price.toLocaleString()} (${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%)\n`;
     }
+    
+    // Note for AI: remind it can still analyze any security not in this list
+    marketDataStr += `\nNote: If a user asks about a security not listed above, use your training knowledge to provide analysis with approximate pricing.\n`;
     
     return marketDataStr;
   } catch (error) {
