@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
+// Treemap chart visualization
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
