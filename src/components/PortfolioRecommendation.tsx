@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface LiveMarketData {
   symbol: string;
@@ -70,6 +71,7 @@ const PortfolioRecommendation = ({
   goal,
   onRetakeAssessment,
 }: RecommendationProps) => {
+  const navigate = useNavigate();
   const [liveMarketData, setLiveMarketData] = useState<Record<string, LiveMarketData>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
@@ -338,7 +340,14 @@ const PortfolioRecommendation = ({
                 const totalGainPercent = dailyChangePercent;
 
                 return (
-                  <tr key={fund.symbol} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                  <tr
+                    key={fund.symbol}
+                    className={cn(
+                      "border-b border-border/50 transition-colors",
+                      fund.symbol !== "CASH" && "hover:bg-muted/20 cursor-pointer"
+                    )}
+                    onClick={() => fund.symbol !== "CASH" && navigate(`/stock/${fund.symbol}`)}
+                  >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         {fund.symbol === "CASH" ? (
