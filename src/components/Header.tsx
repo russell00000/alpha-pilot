@@ -1,8 +1,9 @@
-import { TrendingUp, Bell, User, Menu, Settings, ChevronDown } from "lucide-react";
+import { TrendingUp, Bell, User, Menu, Settings, ChevronDown, LogOut, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
   SheetContent,
@@ -26,7 +27,14 @@ const navItems = [
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -92,6 +100,11 @@ const Header = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-popover border-border/60">
+              {user && (
+                <div className="px-3 py-2 text-xs text-muted-foreground truncate border-b border-border/40 mb-1">
+                  {user.email}
+                </div>
+              )}
               <DropdownMenuItem asChild>
                 <Link to="/admin/philosophy" className="flex items-center gap-2.5 cursor-pointer">
                   <Settings className="w-4 h-4 text-muted-foreground" />
@@ -99,12 +112,19 @@ const Header = () => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-border/50" />
-              <DropdownMenuItem asChild>
-                <Link to="/auth" className="flex items-center gap-2.5 cursor-pointer">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Account</span>
-                </Link>
-              </DropdownMenuItem>
+              {user ? (
+                <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2.5 cursor-pointer text-red-500 focus:text-red-500">
+                  <LogOut className="w-4 h-4" />
+                  <span className="text-sm">Sign Out</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link to="/auth" className="flex items-center gap-2.5 cursor-pointer">
+                    <LogIn className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">Sign In</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
