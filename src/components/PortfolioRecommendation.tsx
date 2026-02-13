@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
-// Treemap chart visualization
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,21 +60,102 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
 
-const CustomTreemapContent = (props: any) => {
-  const { x, y, width, height, name, size, color } = props;
-  if (!width || !height || width < 2 || height < 2) return <g />;
-  const showLabel = width > 50 && height > 35;
-  const showPercent = width > 40 && height > 25;
+// Custom donut ring chart component matching reference design
+const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; value: number; color: string }[]; investmentAmount: number }) => {
+  const viewSize = 320;
+  const cx = viewSize / 2;
+  const cy = viewSize / 2;
+  const radius = 110;
+  const strokeWidth = 3;
+  const gap = 0.02; // gap in radians between segments
+
+  // Calculate arc segments
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  let currentAngle = -Math.PI / 2; // start at top
+
+  const segments = data.map((item) => {
+    const segAngle = (item.value / total) * (2 * Math.PI) - gap;
+    const startAngle = currentAngle + gap / 2;
+    const endAngle = startAngle + segAngle;
+    const midAngle = startAngle + segAngle / 2;
+
+    // Label position — placed in the middle of the segment, between ring and edge
+    const labelRadius = radius + 30;
+    const labelX = cx + Math.cos(midAngle) * labelRadius;
+    const labelY = cy + Math.sin(midAngle) * labelRadius;
+
+    const x1 = cx + Math.cos(startAngle) * radius;
+    const y1 = cy + Math.sin(startAngle) * radius;
+    const x2 = cx + Math.cos(endAngle) * radius;
+    const y2 = cy + Math.sin(endAngle) * radius;
+    const largeArc = segAngle > Math.PI ? 1 : 0;
+
+    const path = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+
+    currentAngle = endAngle + gap / 2;
+
+    return { ...item, path, labelX, labelY };
+  });
+
   return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={color} fillOpacity={0.85} />
-      {showLabel && (
-        <text x={x + width / 2} y={y + height / 2 - (showPercent ? 8 : 0)} textAnchor="middle" dominantBaseline="central" fill="hsl(0, 0%, 10%)" fontSize={width > 80 ? 13 : 11} fontWeight={600} style={{ pointerEvents: 'none' }}>{name}</text>
-      )}
-      {showPercent && showLabel && (
-        <text x={x + width / 2} y={y + height / 2 + 14} textAnchor="middle" dominantBaseline="central" fill="hsl(0, 0%, 20%)" fontSize={11} fontWeight={500} style={{ pointerEvents: 'none' }}>{size}%</text>
-      )}
-    </g>
+    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[300px] mx-auto">
+      {/* Arc segments — outline only, no fill */}
+      {segments.map((seg, i) => (
+        <path
+          key={i}
+          d={seg.path}
+          fill="none"
+          stroke={seg.color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+        />
+      ))}
+
+      {/* Category labels */}
+      {segments.map((seg, i) => (
+        <text
+          key={`label-${i}`}
+          x={seg.labelX}
+          y={seg.labelY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-muted-foreground"
+          fontSize={13}
+          fontWeight={400}
+          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+        >
+          {seg.name}
+        </text>
+      ))}
+
+      {/* Center dark circle */}
+      <circle cx={cx} cy={cy} r={50} className="fill-background" />
+      <circle cx={cx} cy={cy} r={50} fill="hsl(var(--foreground))" fillOpacity={0.08} />
+      <text
+        x={cx}
+        y={cy - 8}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-foreground"
+        fontSize={10}
+        fontWeight={600}
+        letterSpacing="0.1em"
+      >
+        ASSET
+      </text>
+      <text
+        x={cx}
+        y={cy + 8}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-foreground"
+        fontSize={10}
+        fontWeight={600}
+        letterSpacing="0.1em"
+      >
+        ALLOCATION
+      </text>
+    </svg>
   );
 };
 
@@ -137,13 +216,10 @@ const PortfolioRecommendation = ({
     const existing = categoryMap.get(fund.category) || 0;
     categoryMap.set(fund.category, existing + fund.allocation);
   });
-  const treemapData = Array.from(categoryMap.entries())
-    .map(([name, value]) => ({ name, size: value, color: getColor(name) }))
-    .filter((item) => item.size > 0)
-    .sort((a, b) => b.size - a.size);
-
-  // Keep pieData name for downstream usage (legend, breakdown)
-  const pieData = treemapData.map(d => ({ name: d.name, value: d.size, color: d.color }));
+  const pieData = Array.from(categoryMap.entries())
+    .map(([name, value]) => ({ name, value, color: getColor(name) }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
 
   const formatRiskProfile = (risk: string) => {
     const map: Record<string, string> = {
@@ -245,28 +321,17 @@ const PortfolioRecommendation = ({
 
       {/* Allocation Chart & Breakdown */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Treemap Chart */}
+        {/* Donut Ring Chart */}
         <div className="glass-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Asset Allocation</h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={treemapData}
-                dataKey="size"
-                aspectRatio={4 / 3}
-                stroke="hsl(var(--background))"
-                animationDuration={600}
-                content={<CustomTreemapContent />}
-              >
-                <Tooltip content={<CustomTooltip />} />
-              </Treemap>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-center h-72">
+            <DonutRingChart data={pieData} investmentAmount={investmentAmount} />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {pieData.map((entry) => (
               <div key={entry.name} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/30 transition-colors">
                 <div
-                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-sm text-muted-foreground truncate">{entry.name}</span>
