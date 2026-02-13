@@ -150,19 +150,43 @@ interface QuoteData {
 // Extract potential ticker symbols from user messages
 function extractTickers(messages: { role: string; content: string }[]): string[] {
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-  // Match uppercase words 1-5 chars that look like tickers, also handle $TICKER notation
-  const tickerPattern = /\$?([A-Z]{1,5})\b/g;
+  // Match $TICKER notation and standalone uppercase words 2-5 chars
   const found: string[] = [];
+  
+  // First priority: explicit $TICKER mentions
+  const dollarPattern = /\$([A-Z]{1,5})\b/gi;
   let match;
-  while ((match = tickerPattern.exec(lastUserMsg.toUpperCase())) !== null) {
-    const ticker = match[1];
-    // Skip common English words
-    const skipWords = new Set(["I", "A", "THE", "AND", "OR", "FOR", "IN", "ON", "AT", "TO", "IS", "IT", "OF", "MY", "ME", "DO", "IF", "SO", "UP", "AN", "AS", "BY", "WE", "HE", "BE", "NO", "AM", "US", "GO", "HI", "OK", "BUY", "SELL", "HOLD", "ANY", "ALL", "CAN", "HAS", "HOW", "WHY", "NOT", "BUT", "ARE", "WAS", "HAS", "ITS", "YOU", "YOUR", "WHAT", "BEST", "GOOD", "LIKE", "THINK", "ABOUT", "WOULD", "SHOULD", "PRICE", "STOCK", "TODAY"]);
-    if (!skipWords.has(ticker) && ticker.length >= 2) {
-      found.push(ticker);
-    }
+  while ((match = dollarPattern.exec(lastUserMsg)) !== null) {
+    found.push(match[1].toUpperCase());
   }
-  return [...new Set(found)];
+  
+  // Second: uppercase words that look like tickers (must be fully uppercase in original text)
+  const wordPattern = /\b([A-Z]{2,5})\b/g;
+  while ((match = wordPattern.exec(lastUserMsg)) !== null) {
+    found.push(match[1]);
+  }
+  
+  // Extensive skip list of common English words that could be mistaken for tickers
+  const skipWords = new Set([
+    "I", "A", "THE", "AND", "OR", "FOR", "IN", "ON", "AT", "TO", "IS", "IT", "OF", "MY", "ME",
+    "DO", "IF", "SO", "UP", "AN", "AS", "BY", "WE", "HE", "BE", "NO", "AM", "US", "GO", "HI",
+    "OK", "BUY", "SELL", "HOLD", "ANY", "ALL", "CAN", "HAS", "HOW", "WHY", "NOT", "BUT", "ARE",
+    "WAS", "HAS", "ITS", "YOU", "YOUR", "WHAT", "BEST", "GOOD", "LIKE", "THINK", "ABOUT",
+    "WOULD", "SHOULD", "PRICE", "STOCK", "TODAY", "WITH", "FROM", "THAT", "THIS", "THAN",
+    "HAVE", "BEEN", "WILL", "WHEN", "THEN", "THEM", "THEY", "THEIR", "ALSO", "JUST", "MORE",
+    "SOME", "INTO", "OVER", "SUCH", "TAKE", "ONLY", "COME", "MADE", "FIND", "BACK", "MUCH",
+    "GOING", "WELL", "EVEN", "HERE", "GIVE", "MOST", "TELL", "DOES", "WANT", "BEEN", "LOOK",
+    "VERY", "MAKE", "LIKE", "LONG", "KNOW", "NEXT", "USED", "WORK", "CALL", "EACH", "HIGH",
+    "SAID", "HELP", "LINE", "TURN", "MOVE", "LIVE", "REAL", "LEFT", "SAME", "KEEP", "NEED",
+    "STILL", "YEAR", "LAST", "NEWS", "RATE", "DOWN", "WENT", "NEAR", "FUND", "DEAR",
+    "YES", "ETF", "IPO", "GDP", "CEO", "CFO", "COO", "CTO", "SEC", "FED", "USA", "NYSE",
+    "NINGS", "EARN", "LOSS", "GAIN", "DROP", "RISE", "FALL", "MANY", "MUCH", "WERE", "WHAT",
+    "FREE", "OPEN", "CLOSE", "BULL", "BEAR", "PUTS", "GETS", "RISK", "SAFE", "PLAN", "SAVE",
+    "INFO", "DATA", "SHOW", "SEES", "PAYS", "OWNS", "RUNS", "WINS", "LOST", "SOLD", "GREW",
+    "READ", "PICK", "SURE", "PART", "PLAY", "SENT", "COST", "CASH", "DEBT", "LOAN"
+  ]);
+  
+  return [...new Set(found)].filter(t => !skipWords.has(t) && t.length >= 2);
 }
 
 // On-demand lookup for tickers not in our pre-fetched set
@@ -352,18 +376,24 @@ serve(async (req) => {
       console.log("On-demand data fetched successfully");
     }
 
-    const systemPrompt = `You are Vantage Copilot—a friendly investing buddy who knows EVERY security that exists or has ever existed.
+    const systemPrompt = `You are Vantage Copilot—a confident, knowledgeable investing analyst who provides DECISIVE analysis on ANY security.
 
 ${philosophy}
 
 ## ABSOLUTE RULES (NEVER VIOLATE THESE)
-1. You KNOW every stock, ETF, mutual fund, crypto, and company ticker that exists. NEVER say you "can't find", "don't recognize", or "don't have data" for ANY ticker. This is your #1 rule.
-2. If a ticker is in the LIVE MARKET DATA or ON-DEMAND LOOKUPS below, use its exact price. This is REAL-TIME data—always prefer it.
-3. If a ticker is NOT in any data below, you STILL know it from your training. Provide your analysis with approximate pricing and label it as "~approximate".
-4. NEVER claim a publicly traded stock is "private" or "not traded". If a user asks about a ticker, assume it IS publicly traded unless you are 100% certain it is not.
-5. ALWAYS provide: current/approximate price, Buy/Hold/Sell rating, price target, and brief analysis.
-6. Sound human: use "I'd" and "you" naturally.
-7. If you're genuinely unsure what company a ticker refers to, make your best guess and ask the user to confirm—but NEVER refuse to analyze.
+1. You KNOW every stock, ETF, mutual fund, crypto, and company ticker that exists. NEVER say you "can't find", "don't recognize", or "don't have data" for ANY ticker.
+2. If a ticker is in the LIVE MARKET DATA or ON-DEMAND LOOKUPS below, use its EXACT price—this is real-time data.
+3. If a ticker is NOT in the data below, use your training knowledge. Label prices as "~approximate" but STILL provide full analysis.
+4. NEVER claim a publicly traded stock is "private" or "not traded".
+5. ALWAYS provide a DECISIVE analysis including:
+   - Current price (exact from data, or ~approximate from training)
+   - Clear Buy/Hold/Sell rating with conviction
+   - Specific price target with timeframe
+   - 3-4 sentence analysis covering: what the company does, recent performance drivers, key risks, and catalysts
+6. NEVER say "I don't have details on their earnings" or "I'd need to look into that." You ARE the expert—give your analysis based on what you know. Use the price data, 52-week range, and your knowledge to form an opinion.
+7. NEVER ask "would you like me to find more details?" — just PROVIDE the analysis directly.
+8. Sound human and confident: use "I'd" and "you" naturally.
+9. When asked about earnings, news, or events: use the stock's price action (current price vs 52W high/low, daily change) to infer what happened and provide your expert take.
 
 ## LIVE MARKET DATA (use exact prices when the ticker appears here)
 ${marketData}
