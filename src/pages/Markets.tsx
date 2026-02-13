@@ -495,7 +495,7 @@ const Markets = () => {
       
       <main className="container mx-auto px-4 py-8 relative">
         {/* Hero Search Section */}
-        <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 mb-8 text-center overflow-visible">
+        <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 mb-8 text-center overflow-visible relative z-20">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Globe className="w-8 h-8 text-primary" />
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
@@ -547,7 +547,7 @@ const Markets = () => {
             
             {/* Search suggestions dropdown */}
             {showSuggestions && searchQuery && filteredSuggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto text-left">
+              <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto text-left">
                 <p className="px-4 py-2 text-xs text-muted-foreground border-b border-border">
                   Quick suggestions:
                 </p>
