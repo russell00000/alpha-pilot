@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,24 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
 
+const CustomTreemapContent = (props: any) => {
+  const { x, y, width, height, name, size, color } = props;
+  if (!width || !height || width < 2 || height < 2) return <g />;
+  const showLabel = width > 50 && height > 35;
+  const showPercent = width > 40 && height > 25;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={color} fillOpacity={0.85} />
+      {showLabel && (
+        <text x={x + width / 2} y={y + height / 2 - (showPercent ? 8 : 0)} textAnchor="middle" dominantBaseline="central" fill="hsl(0, 0%, 10%)" fontSize={width > 80 ? 13 : 11} fontWeight={600} style={{ pointerEvents: 'none' }}>{name}</text>
+      )}
+      {showPercent && showLabel && (
+        <text x={x + width / 2} y={y + height / 2 + 14} textAnchor="middle" dominantBaseline="central" fill="hsl(0, 0%, 20%)" fontSize={11} fontWeight={500} style={{ pointerEvents: 'none' }}>{size}%</text>
+      )}
+    </g>
+  );
+};
+
 const PortfolioRecommendation = ({
   allocation,
   funds,
@@ -118,10 +136,13 @@ const PortfolioRecommendation = ({
     const existing = categoryMap.get(fund.category) || 0;
     categoryMap.set(fund.category, existing + fund.allocation);
   });
-  const pieData = Array.from(categoryMap.entries())
-    .map(([name, value]) => ({ name, value, color: getColor(name) }))
-    .filter((item) => item.value > 0)
-    .sort((a, b) => b.value - a.value);
+  const treemapData = Array.from(categoryMap.entries())
+    .map(([name, value]) => ({ name, size: value, color: getColor(name) }))
+    .filter((item) => item.size > 0)
+    .sort((a, b) => b.size - a.size);
+
+  // Keep pieData name for downstream usage (legend, breakdown)
+  const pieData = treemapData.map(d => ({ name: d.name, value: d.size, color: d.color }));
 
   const formatRiskProfile = (risk: string) => {
     const map: Record<string, string> = {
@@ -223,31 +244,21 @@ const PortfolioRecommendation = ({
 
       {/* Allocation Chart & Breakdown */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Pie Chart */}
+        {/* Treemap Chart */}
         <div className="glass-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Asset Allocation</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={100}
-                  paddingAngle={3}
-                  dataKey="value"
-                  stroke="hsl(var(--background))"
-                  strokeWidth={2}
-                  animationBegin={0}
-                  animationDuration={800}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
+              <Treemap
+                data={treemapData}
+                dataKey="size"
+                aspectRatio={4 / 3}
+                stroke="hsl(var(--background))"
+                animationDuration={600}
+                content={<CustomTreemapContent />}
+              >
                 <Tooltip content={<CustomTooltip />} />
-              </PieChart>
+              </Treemap>
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
