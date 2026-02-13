@@ -188,27 +188,18 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
   }
 }
 
-// Fetch real-time market data for key securities (limited to avoid timeouts)
+// Fetch real-time market data for all platform securities
 async function fetchMarketData(): Promise<string> {
-  // Focus on the most important ~80 symbols to avoid edge function timeout
-  const keyStocks = TOP_STOCKS.slice(0, 40); // Top 40 stocks (mega/large cap)
-  const keyETFs = TOP_ETFS.slice(0, 20); // Top 20 ETFs
-  const keyMutualFunds = MUTUAL_FUNDS.slice(0, 10); // Top 10 mutual funds
-  const keyCrypto = CRYPTO.slice(0, 10); // Top 10 crypto
-  const allSymbols = [...keyStocks, ...keyETFs, ...keyMutualFunds, ...keyCrypto];
+  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO];
   
   try {
-    const batchSize = 10;
+    const batchSize = 15;
     const quotes: QuoteData[] = [];
     
     for (let i = 0; i < allSymbols.length; i += batchSize) {
       const batch = allSymbols.slice(i, i + batchSize);
       const batchResults = await Promise.all(batch.map(fetchQuote));
       quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
-      // Small delay between batches to avoid rate limiting
-      if (i + batchSize < allSymbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
     }
     
     if (quotes.length === 0) {
@@ -256,9 +247,6 @@ async function fetchMarketData(): Promise<string> {
       if (btc) marketDataStr += `Bitcoin: $${btc.price.toLocaleString()} (${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%)\n`;
     }
     
-    // Note for AI: remind it can still analyze any security not in this list
-    marketDataStr += `\nNote: If a user asks about a security not listed above, use your training knowledge to provide analysis with approximate pricing.\n`;
-    
     return marketDataStr;
   } catch (error) {
     console.error("Error fetching market data:", error);
@@ -296,11 +284,13 @@ ${philosophy}
 
 ## CRITICAL RULES
 - NEVER say "I don't see that ticker" or ask for more info. You know every stock, ETF, crypto, and company.
-- 2-3 sentences max. Get to the point fast.
-- For any security asked about: give your analysis + Buy/Hold/Sell + target price. Use approximate prices if needed.
+- For any security asked about: ALWAYS include the exact current price from the market data below, plus your analysis, Buy/Hold/Sell rating, and target price.
+- If a security is in the market data, you MUST quote its exact price. Never approximate when real data is available.
+- If a security is NOT in the market data, use your training knowledge and label the price as approximate.
 - Sound human: use "I'd" and "you" naturally
+- Keep responses focused but include all relevant pricing details the user needs.
 
-## LIVE MARKET DATA (use when available, otherwise use your knowledge)
+## LIVE MARKET DATA (ALWAYS reference exact prices from here when available)
 ${marketData}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
