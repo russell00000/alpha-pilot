@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,11 +8,13 @@ const corsHeaders = {
 };
 
 // Fetch the investing philosophy from the database
-async function fetchPhilosophy(): Promise<string> {
+async function fetchPhilosophy(authHeader: string): Promise<string> {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: philosophy, error } = await supabase
       .from("investing_philosophy")
@@ -345,13 +348,55 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("LOVABLE_API_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await authClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate input
+    const MessageSchema = z.object({
+      role: z.enum(["user", "assistant", "system"]),
+      content: z.string().min(1).max(8000),
+    });
+    const RequestSchema = z.object({
+      messages: z.array(MessageSchema).min(1).max(50),
+    });
+    let rawBody: unknown;
+    try { rawBody = await req.json(); } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const parsed = RequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request format" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { messages } = parsed.data;
 
     console.log("Processing chat request with", messages.length, "messages");
 
@@ -361,7 +406,7 @@ serve(async (req) => {
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
-      fetchPhilosophy(),
+      fetchPhilosophy(authHeader),
       fetchMarketData()
     ]);
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
@@ -439,7 +484,9 @@ ${onDemandData}`;
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      return new Response(JSON.stringify({ error: "AI service unavailable" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
@@ -466,7 +513,7 @@ ${onDemandData}`;
   } catch (error) {
     console.error("Error in ai-chat function:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error occurred" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

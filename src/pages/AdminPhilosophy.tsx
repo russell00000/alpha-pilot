@@ -19,30 +19,40 @@ interface Philosophy {
   updated_at: string;
 }
 
-const ADMIN_EMAIL = "8russelld7@gmail.com";
-
 const AdminPhilosophy = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [philosophy, setPhilosophy] = useState<Philosophy | null>(null);
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        navigate("/auth");
-      } else if (!isAdmin) {
-        navigate("/");
-      }
+    if (authLoading) return;
+    if (!user) {
+      navigate("/auth");
+      return;
     }
-  }, [user, authLoading, navigate, isAdmin]);
+    // Server-side role check via user_roles (RLS-enforced)
+    (async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (error || !data) {
+        setIsAdmin(false);
+        navigate("/");
+      } else {
+        setIsAdmin(true);
+      }
+    })();
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     const fetchPhilosophy = async () => {
-      if (!user) return;
+      if (!user || !isAdmin) return;
       
       const { data, error } = await supabase
         .from("investing_philosophy")
@@ -63,10 +73,10 @@ const AdminPhilosophy = () => {
       setLoading(false);
     };
 
-    if (user) {
+    if (user && isAdmin) {
       fetchPhilosophy();
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleSave = async () => {
     if (!philosophy) return;
@@ -102,7 +112,7 @@ const AdminPhilosophy = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || isAdmin === null || loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
