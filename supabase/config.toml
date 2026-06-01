@@ -1,16 +1,16 @@
 project_id = "mjnvjedokqxykhdwqpxl"
 
 [functions.ai-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.market-data]
 verify_jwt = false
 
 [functions.stock-analysis]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-portfolio]
-verify_jwt = false
+verify_jwt = true
 
 [functions.market-news]
 verify_jwt = false
