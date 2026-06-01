@@ -484,7 +484,9 @@ ${onDemandData}`;
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      return new Response(JSON.stringify({ error: "AI service unavailable" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
@@ -511,7 +513,7 @@ ${onDemandData}`;
   } catch (error) {
     console.error("Error in ai-chat function:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error occurred" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
