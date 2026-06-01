@@ -62,12 +62,12 @@ const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--m
 
 // Custom donut ring chart component matching reference design
 const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; value: number; color: string }[]; investmentAmount: number }) => {
-  const viewSize = 320;
+  const viewSize = 340;
   const cx = viewSize / 2;
   const cy = viewSize / 2;
-  const radius = 110;
-  const strokeWidth = 3;
-  const gap = 0.02; // gap in radians between segments
+  const radius = 130;
+  const strokeWidth = 4;
+  const gap = 0.04; // gap in radians between segments
 
   // Calculate arc segments
   const total = data.reduce((sum, d) => sum + d.value, 0);
@@ -79,8 +79,8 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
     const endAngle = startAngle + segAngle;
     const midAngle = startAngle + segAngle / 2;
 
-    // Label position — placed in the middle of the segment, between ring and edge
-    const labelRadius = radius + 30;
+    // Label position — placed INSIDE the ring, between center hub and arc
+    const labelRadius = 88;
     const labelX = cx + Math.cos(midAngle) * labelRadius;
     const labelY = cy + Math.sin(midAngle) * labelRadius;
 
@@ -119,9 +119,9 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
           y={seg.labelY}
           textAnchor="middle"
           dominantBaseline="central"
-          className="fill-muted-foreground"
-          fontSize={13}
-          fontWeight={400}
+          className="fill-foreground"
+          fontSize={15}
+          fontWeight={500}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
           {seg.name}
