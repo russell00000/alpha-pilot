@@ -1,23 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AssessmentData {
-  dateOfBirth: string;
-  riskTolerance: string;
-  investmentTimeline: string;
-  investmentGoal: string;
-  investmentExperience: string;
-  incomeStability: string;
-  investmentAmount: number;
-  recurringInvestment: boolean;
-  recurringAmount?: number;
-  recurringFrequency?: string;
-}
+const AssessmentSchema = z.object({
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).max(20),
+  riskTolerance: z.string().min(1).max(50),
+  investmentTimeline: z.string().min(1).max(50),
+  investmentGoal: z.string().min(1).max(100),
+  investmentExperience: z.string().min(1).max(50),
+  incomeStability: z.string().min(1).max(50),
+  investmentAmount: z.number().min(1).max(1_000_000_000),
+  recurringInvestment: z.boolean(),
+  recurringAmount: z.number().min(0).max(1_000_000_000).optional(),
+  recurringFrequency: z.string().max(50).optional(),
+});
+const RequestSchema = z.object({ assessment: AssessmentSchema });
+type AssessmentData = z.infer<typeof AssessmentSchema>;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -27,14 +30,53 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const { assessment } = await req.json() as { assessment: AssessmentData };
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate input
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const parsed = RequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const assessment: AssessmentData = parsed.data.assessment;
 
     console.log("Generating portfolio for assessment:", assessment);
 
@@ -47,7 +89,10 @@ serve(async (req) => {
 
     if (philError) {
       console.error("Error fetching philosophy:", philError);
-      throw new Error("Could not fetch investing philosophy");
+      return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log("Using philosophy:", philosophy);
@@ -219,7 +264,7 @@ Based on the creator's investing philosophy, provide a tailored portfolio alloca
   } catch (error) {
     console.error("Error in generate-portfolio:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
