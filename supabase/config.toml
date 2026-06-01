@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.stock-analysis]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-portfolio]
 verify_jwt = true
