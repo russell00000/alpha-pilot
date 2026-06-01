@@ -22,17 +22,17 @@ const Index = () => {
         }} 
       />
       {/* Dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-background/60" />
+      <div className="fixed inset-0 pointer-events-none bg-background/75" />
       
       <Header />
       
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight max-w-3xl animate-fade-in" style={{ textShadow: '0 2px 40px rgba(0,0,0,0.7), 0 0 80px rgba(255,255,255,0.08)' }}>
+          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight max-w-3xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
             Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/75 mt-6 max-w-xl animate-fade-in font-light" style={{ animationDelay: "100ms", textShadow: '0 1px 20px rgba(0,0,0,0.6)' }}>
+          <p className="text-lg md:text-xl text-white/95 mt-6 max-w-xl animate-fade-in font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
             We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
           </p>
           <div className="flex items-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
