@@ -119,9 +119,9 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
           y={seg.labelY}
           textAnchor="middle"
           dominantBaseline="central"
-          className="fill-muted-foreground"
-          fontSize={13}
-          fontWeight={400}
+          className="fill-foreground"
+          fontSize={15}
+          fontWeight={500}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
           {seg.name}
