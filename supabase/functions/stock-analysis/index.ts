@@ -17,14 +17,12 @@ const RequestSchema = z.object({
   volume: z.union([z.number(), z.string()]).optional(),
 });
 
-// Fetch the investing philosophy from the database using the user's session
-async function fetchPhilosophy(authHeader: string) {
+// Fetch the investing philosophy from the database (read-only, public endpoint)
+async function fetchPhilosophy() {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     const { data: philosophy, error } = await supabase
       .from("investing_philosophy")
@@ -58,25 +56,6 @@ serve(async (req) => {
       });
     }
 
-    // Require authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const authClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await authClient.auth.getUser();
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     let rawBody: unknown;
     try { rawBody = await req.json(); } catch {
       return new Response(JSON.stringify({ error: "Invalid JSON" }), {
@@ -94,7 +73,7 @@ serve(async (req) => {
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
     // Fetch the investing philosophy
-    const philosophy = await fetchPhilosophy(authHeader);
+    const philosophy = await fetchPhilosophy();
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
 
     const systemPrompt = `You are an expert investment analyst following a specific investing philosophy.
