@@ -13,88 +13,119 @@ interface NewsArticle {
   category: string;
   url: string;
   summary?: string;
+  image?: string;
+  domain?: string;
+}
+
+const CATEGORIES = ["general", "forex", "crypto", "merger"] as const;
+const PER_SOURCE_CAP = 2; // never more than N articles from the same outlet
+const MAX_ARTICLES = 18;
+
+function hostname(u: string): string {
+  try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+
+function timeAgo(epochSec: number): string {
+  const diffMs = Date.now() - epochSec * 1000;
+  const m = Math.floor(diffMs / 60000);
+  if (m < 1) return "Just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function classify(headline: string, summary: string): string {
+  const c = `${headline} ${summary}`.toLowerCase();
+  if (/(crypto|bitcoin|ethereum|btc|eth|solana)/.test(c)) return "Crypto";
+  if (/(tech|apple|google|nvidia|microsoft|\bai\b|semiconductor|chip|meta\b|amazon)/.test(c)) return "Tech";
+  if (/(fed|rate|inflation|economy|gdp|jobs|cpi|ppi|fomc)/.test(c)) return "Economy";
+  if (/(oil|gold|commodity|copper|natural gas|opec)/.test(c)) return "Commodities";
+  if (/(earn|revenue|profit|quarter|guidance|eps)/.test(c)) return "Earnings";
+  if (/(merger|acquisition|buyout|deal|spinoff)/.test(c)) return "M&A";
+  if (/(forex|dollar|yen|euro|currency|yuan)/.test(c)) return "Forex";
+  return "Markets";
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Fetching market news...");
-    
     const FINNHUB_API_KEY = Deno.env.get('FINNHUB_API_KEY');
-    
     if (!FINNHUB_API_KEY) {
-      console.error("FINNHUB_API_KEY not configured");
       throw new Error("News API not configured");
     }
 
-    // Fetch general market news from Finnhub
-    const newsResponse = await fetch(
-      `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API_KEY}`
+    // Pull from multiple Finnhub category feeds in parallel for source/topic variety.
+    const responses = await Promise.all(
+      CATEGORIES.map((c) =>
+        fetch(`https://finnhub.io/api/v1/news?category=${c}&token=${FINNHUB_API_KEY}`)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+      ),
     );
-    
-    if (!newsResponse.ok) {
-      console.error("Finnhub API error:", newsResponse.status);
-      throw new Error("Failed to fetch news");
-    }
-    
-    const newsData = await newsResponse.json();
-    console.log(`Received ${newsData.length} news articles`);
-    
-    // Transform and filter the news data
-    const articles: NewsArticle[] = newsData
-      .slice(0, 10) // Get top 10 articles
-      .map((article: any) => {
-        // Calculate time ago
-        const publishedTime = new Date(article.datetime * 1000);
-        const now = new Date();
-        const diffMs = now.getTime() - publishedTime.getTime();
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-        
-        let timeAgo;
-        if (diffHours < 1) {
-          timeAgo = `${diffMinutes}m ago`;
-        } else if (diffHours < 24) {
-          timeAgo = `${diffHours}h ago`;
-        } else {
-          const diffDays = Math.floor(diffHours / 24);
-          timeAgo = `${diffDays}d ago`;
-        }
-        
-        // Determine category based on keywords
-        let category = "Markets";
-        const headline = (article.headline || "").toLowerCase();
-        const summary = (article.summary || "").toLowerCase();
-        const content = headline + " " + summary;
-        
-        if (content.includes("crypto") || content.includes("bitcoin") || content.includes("ethereum")) {
-          category = "Crypto";
-        } else if (content.includes("tech") || content.includes("apple") || content.includes("google") || content.includes("nvidia") || content.includes("microsoft") || content.includes("ai") || content.includes("semiconductor")) {
-          category = "Tech";
-        } else if (content.includes("fed") || content.includes("rate") || content.includes("inflation") || content.includes("economy") || content.includes("gdp")) {
-          category = "Economy";
-        } else if (content.includes("oil") || content.includes("gold") || content.includes("commodity")) {
-          category = "Commodities";
-        } else if (content.includes("earn") || content.includes("revenue") || content.includes("profit") || content.includes("quarter")) {
-          category = "Earnings";
-        }
-        
-        return {
-          title: article.headline,
-          source: article.source,
-          time: timeAgo,
-          category,
-          url: article.url,
-          summary: article.summary?.substring(0, 150) + "...",
-        };
-      })
-      .filter((article: NewsArticle) => article.title && article.url);
 
-    console.log(`Returning ${articles.length} processed articles`);
+    const merged: any[] = [];
+    for (const list of responses) if (Array.isArray(list)) merged.push(...list);
+
+    // Dedupe by URL and by normalized headline.
+    const seenUrls = new Set<string>();
+    const seenTitles = new Set<string>();
+    const deduped: any[] = [];
+    for (const a of merged) {
+      if (!a?.url || !a?.headline) continue;
+      const urlKey = a.url.split("?")[0];
+      const titleKey = String(a.headline).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      if (seenUrls.has(urlKey) || seenTitles.has(titleKey)) continue;
+      seenUrls.add(urlKey);
+      seenTitles.add(titleKey);
+      deduped.push(a);
+    }
+
+    // Sort newest first.
+    deduped.sort((a, b) => (b.datetime ?? 0) - (a.datetime ?? 0));
+
+    // Round-robin by source so no outlet dominates the top of the list.
+    const bySource = new Map<string, any[]>();
+    for (const a of deduped) {
+      const key = (a.source || hostname(a.url) || "Unknown").toString();
+      if (!bySource.has(key)) bySource.set(key, []);
+      bySource.get(key)!.push(a);
+    }
+    const queues = Array.from(bySource.values());
+    const counts = new Map<string, number>();
+    const ordered: any[] = [];
+    let progressed = true;
+    while (ordered.length < MAX_ARTICLES && progressed) {
+      progressed = false;
+      for (const q of queues) {
+        if (!q.length) continue;
+        const next = q[0];
+        const src = (next.source || hostname(next.url) || "Unknown").toString();
+        if ((counts.get(src) ?? 0) >= PER_SOURCE_CAP) { q.shift(); continue; }
+        ordered.push(q.shift());
+        counts.set(src, (counts.get(src) ?? 0) + 1);
+        progressed = true;
+        if (ordered.length >= MAX_ARTICLES) break;
+      }
+    }
+
+    const articles: NewsArticle[] = ordered.map((a) => {
+      const domain = hostname(a.url);
+      const sum = (a.summary ?? "").toString();
+      return {
+        title: a.headline,
+        source: a.source || domain || "Unknown",
+        time: timeAgo(a.datetime ?? Math.floor(Date.now() / 1000)),
+        category: classify(a.headline ?? "", sum),
+        url: a.url,
+        summary: sum ? sum.substring(0, 180) + (sum.length > 180 ? "…" : "") : undefined,
+        image: a.image || undefined,
+        domain,
+      };
+    });
 
     return new Response(
       JSON.stringify({ data: articles }),
