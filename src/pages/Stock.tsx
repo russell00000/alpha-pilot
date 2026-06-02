@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 import {
   XAxis,
   YAxis,
