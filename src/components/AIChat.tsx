@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { ForecastChart, type ForecastData } from "./ForecastChart";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  forecasts?: ForecastData[];
 }
 
 const suggestedPrompts = [
@@ -52,7 +54,14 @@ const AIChat = () => {
 
       if (response.error) throw new Error(response.error.message);
 
-      setMessages((prev) => [...prev, { role: "assistant", content: response.data.response }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: response.data.response,
+          forecasts: response.data.forecasts ?? [],
+        },
+      ]);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
@@ -94,12 +103,21 @@ const AIChat = () => {
               {message.role === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
             <div className={cn(
-              "max-w-[85%] rounded-2xl px-3.5 py-2.5 border",
+              "rounded-2xl px-3.5 py-2.5 border",
               message.role === "user"
-                ? "bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
-                : "bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
+                ? "max-w-[85%] bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
+                : message.forecasts && message.forecasts.length > 0
+                  ? "w-full bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
+                  : "max-w-[85%] bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
             )}>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              {message.forecasts && message.forecasts.length > 0 && (
+                <div className="space-y-3 mt-3">
+                  {message.forecasts.map((f) => (
+                    <ForecastChart key={f.symbol} forecast={f} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
