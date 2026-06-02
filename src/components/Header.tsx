@@ -18,10 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navItems = [
-  { label: "Dashboard", href: "/" },
-  { label: "Markets", href: "/markets" },
-  { label: "Portfolio", href: "/portfolio" },
-  { label: "Chat", href: "/chat" },
+  { label: "Dashboard", href: "/", prefetch: () => import("@/pages/Index") },
+  { label: "Markets", href: "/markets", prefetch: () => import("@/pages/Markets") },
+  { label: "Portfolio", href: "/portfolio", prefetch: () => import("@/pages/Portfolio") },
+  { label: "Chat", href: "/chat", prefetch: () => import("@/pages/Chat") },
 ];
 
 const Header = () => {
@@ -52,7 +52,12 @@ const Header = () => {
             {navItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
-                <Link key={item.href} to={item.href}>
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onMouseEnter={() => item.prefetch?.()}
+                  onFocus={() => item.prefetch?.()}
+                >
                   <button
                     className={cn(
                       "relative px-5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ease-out",
