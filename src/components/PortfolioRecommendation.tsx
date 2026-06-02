@@ -56,6 +56,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ETF": "hsl(18, 88%, 60%)",
   "Cash": "hsl(150, 65%, 50%)",
   "Alternative": "hsl(320, 75%, 62%)",
+  "Cash + Alternatives": "hsl(150, 65%, 50%)",
 };
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
