@@ -100,12 +100,12 @@ const TrendingNews = () => {
           ))}
         </div>
       ) : (
-        <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide">
+        <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide animate-stagger">
           {news.slice(0, Math.max(news.length - 3, 1)).map((item, index) => (
             <div
               key={index}
               onClick={() => handleNewsClick(item.url)}
-              className="p-3.5 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/20 transition-all duration-200 cursor-pointer group"
+              className="p-3.5 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/30 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.03)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
             >
               <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200 leading-relaxed">
                 {item.title}
