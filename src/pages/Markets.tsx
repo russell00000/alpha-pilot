@@ -411,16 +411,6 @@ const Markets = () => {
     setVisibleRows(30);
   }, [activeTab, searchQuery, searchResults.length]);
 
-  useEffect(() => {
-    if (visibleRows >= displayData.length) return;
-
-    const timer = window.setTimeout(() => {
-      setVisibleRows((count) => Math.min(count + 30, displayData.length));
-    }, 120);
-
-    return () => window.clearTimeout(timer);
-  }, [displayData.length, visibleRows]);
-
   // Filter suggestions from all available assets including cryptos
   const cryptoAssets = [
     { symbol: "BTC", name: "Bitcoin", type: "crypto" },
@@ -841,6 +831,14 @@ const Markets = () => {
             </table>
           </div>
         </div>
+
+        {visibleRows < displayData.length && (
+          <div className="flex justify-center mt-4">
+            <Button variant="outline" size="sm" onClick={() => setVisibleRows((count) => Math.min(count + 30, displayData.length))}>
+              Load more assets
+            </Button>
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="mt-6 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20">
