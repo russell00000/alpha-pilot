@@ -90,7 +90,7 @@ const AIChat = () => {
   };
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col h-full min-h-[420px] max-h-[480px] overflow-hidden">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col h-full min-h-[420px] max-h-[640px] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
@@ -106,7 +106,7 @@ const AIChat = () => {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 scrollbar-hide">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-hide">
         {messages.map((message, index) => (
           <div key={index} className={cn("flex gap-2.5 animate-fade-in", message.role === "user" ? "flex-row-reverse" : "")}>
             <div className={cn(
@@ -116,14 +116,14 @@ const AIChat = () => {
               {message.role === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
             <div className={cn(
-              "rounded-2xl px-3.5 py-2.5 border",
+              "rounded-2xl px-3 py-2 border",
               message.role === "user"
-                ? "max-w-[85%] bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
+                ? "max-w-[92%] bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
                 : message.forecasts && message.forecasts.length > 0
                   ? "w-full bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
-                  : "max-w-[85%] bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
+                  : "max-w-[92%] bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
             )}>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm leading-snug whitespace-pre-line">{message.content}</p>
               {message.forecasts && message.forecasts.length > 0 && (
                 <div className="space-y-3 mt-3">
                   {message.forecasts.map((f) => (
