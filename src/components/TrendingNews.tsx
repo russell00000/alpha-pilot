@@ -67,9 +67,9 @@ const TrendingNews = () => {
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">News</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Live updates"}
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Latest Intelligence</h2>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium mt-1.5">
+            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Global market impact reports"}
           </p>
         </div>
         <Button
@@ -100,25 +100,33 @@ const TrendingNews = () => {
           ))}
         </div>
       ) : (
-        <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide animate-stagger">
+        <div className="space-y-3 flex-1 overflow-y-auto scrollbar-hide animate-stagger">
           {news.slice(0, Math.max(news.length - 3, 1)).map((item, index) => (
             <div
               key={index}
               onClick={() => handleNewsClick(item.url)}
-              className="p-3.5 rounded-xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/30 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.03)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
+              className="flex gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.15] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
             >
-              <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200 leading-relaxed">
-                {item.title}
-              </p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary/8 text-primary font-medium">
-                  {item.category}
-                </span>
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {item.time}
-                </span>
-                <span className="text-[11px] text-muted-foreground">· {item.source}</span>
+              <div className="hidden md:flex w-16 h-16 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-white/[0.08] transition-colors">
+                <ExternalLink className="w-5 h-5 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" strokeWidth={1.5} />
+              </div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 rounded-full bg-white/[0.08] text-foreground font-bold">
+                    {item.category}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" />
+                    {item.time}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/70">· {item.source}</span>
+                </div>
+                <p className="text-base font-semibold text-foreground line-clamp-2 group-hover:text-foreground/90 transition-colors leading-snug">
+                  {item.title}
+                </p>
+                {item.summary && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.summary}</p>
+                )}
               </div>
             </div>
           ))}

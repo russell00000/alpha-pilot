@@ -38,10 +38,12 @@ const QuickActions = () => {
         <button
           key={action.label}
           onClick={() => handleAction(action)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] active:scale-[0.97] transition-all duration-300 ease-out whitespace-nowrap group"
+          className="flex items-center gap-2.5 pl-2 pr-5 py-2 rounded-full bg-white/[0.03] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/25 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)] active:scale-[0.97] transition-all duration-300 ease-out whitespace-nowrap group"
         >
-          <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
-          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-200">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.06] group-hover:bg-white/[0.12] transition-colors duration-200">
+            <action.icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
+          </span>
+          <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors duration-200">
             {action.label}
           </span>
         </button>

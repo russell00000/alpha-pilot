@@ -29,24 +29,26 @@ const Index = () => {
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight max-w-4xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] leading-[1.05]">
+          <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-muted-foreground mb-6 animate-fade-in px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+            AI · Investing Copilot
+          </span>
+          <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight max-w-5xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] leading-[1.02]" style={{ animationDelay: "50ms" }}>
             Welcome to{" "}
-            <span className="bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
-              Vantage Portfolio
+            <span className="bg-gradient-to-b from-white via-white to-zinc-500 bg-clip-text text-transparent">
+              Vantage
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-white/90 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
-            We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
+          <p className="text-lg md:text-xl text-white/80 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
+            Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "200ms" }}>
             <Link to="/portfolio">
               <Button
                 size="lg"
-                className="gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-zinc-100 text-black hover:bg-white hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+                className="group gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-white text-black hover:bg-zinc-200 hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]"
               >
-                <Zap className="w-4 h-4" />
                 Get Started
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link to="/markets">

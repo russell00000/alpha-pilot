@@ -80,9 +80,9 @@ const MarketOverview = () => {
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Top Movers</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Real-time data"}
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Top Movers</h2>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium mt-1.5">
+            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Institutional data stream"}
           </p>
         </div>
         <Button 
@@ -134,12 +134,12 @@ const MarketOverview = () => {
         <div className="text-center py-12 text-muted-foreground text-sm">Unable to load market data</div>
       )}
 
-      <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-border/20">
+      <div className="flex items-center gap-2 mt-5 px-3 py-1.5 bg-white/[0.03] border border-white/[0.06] rounded-full w-fit">
         <span className="relative flex h-1.5 w-1.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success"></span>
         </span>
-        <span className="text-xs text-muted-foreground">Live · 60s refresh</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground">Live · 60s Refresh</span>
       </div>
     </div>
   );
