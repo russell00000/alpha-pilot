@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useRef, useState, useCallback } from "react";
 import Header from "@/components/Header";
 import QuickActions from "@/components/QuickActions";
 import { Link } from "react-router-dom";
@@ -13,6 +13,33 @@ const TrendingNews = lazy(() => import("@/components/TrendingNews"));
 const panelFallback = <div className="min-h-[420px] rounded-3xl bg-background/40 border border-border/20" />;
 
 const Index = () => {
+  // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
+  const [chatPct, setChatPct] = useState(40);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const onDragStart = useCallback((e: React.PointerEvent) => {
+    draggingRef.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const onDragMove = useCallback((e: React.PointerEvent) => {
+    if (!draggingRef.current || !rowRef.current) return;
+    const rect = rowRef.current.getBoundingClientRect();
+    const rightFromEdge = rect.right - e.clientX;
+    const pct = (rightFromEdge / rect.width) * 100;
+    setChatPct(Math.min(60, Math.max(28, pct)));
+  }, []);
+
+  const onDragEnd = useCallback((e: React.PointerEvent) => {
+    draggingRef.current = false;
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }, []);
+
   return (
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
@@ -72,14 +99,35 @@ const Index = () => {
           <QuickActions />
         </section>
 
-        {/* Market Overview + AI Chat */}
-        <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
-          <div className="lg:col-span-3 animate-fade-in rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40" style={{ animationDelay: "100ms" }}>
+        {/* Market Overview + AI Chat (resizable split on lg+) */}
+        <section ref={rowRef} className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-12">
+          <div
+            className="animate-fade-in rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40 w-full lg:w-auto lg:flex-1 min-w-0"
+            style={{ animationDelay: "100ms" }}
+          >
             <Suspense fallback={panelFallback}>
               <MarketOverview />
             </Suspense>
           </div>
-          <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
+
+          {/* Drag handle — visible on lg+ */}
+          <div
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerCancel={onDragEnd}
+            className="hidden lg:flex items-center justify-center w-2 -mx-2 cursor-col-resize group/handle touch-none"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panels"
+          >
+            <div className="h-20 w-1 rounded-full bg-white/10 group-hover/handle:bg-white/30 transition-colors" />
+          </div>
+
+          <div
+            className="animate-fade-in w-full lg:w-auto min-w-0"
+            style={{ animationDelay: "150ms", flexBasis: `${chatPct}%`, flexGrow: 0, flexShrink: 0 }}
+          >
             <Suspense fallback={panelFallback}>
               <AIChat />
             </Suspense>
