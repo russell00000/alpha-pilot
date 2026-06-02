@@ -50,6 +50,17 @@ interface StockAnalysis {
   reasoning: string;
   priceTarget: number;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  thesis?: string;
+  businessOverview?: string;
+  fundamentals?: string;
+  technicals?: string;
+  bullCase?: string[];
+  bearCase?: string[];
+  catalysts?: string[];
+  bullTarget?: number;
+  bearTarget?: number;
+  priceTargetRationale?: string;
+  positionSizing?: string;
 }
 
 interface HistoricalDataPoint {
