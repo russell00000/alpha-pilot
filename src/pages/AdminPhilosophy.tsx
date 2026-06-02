@@ -78,7 +78,7 @@ const AdminPhilosophy = () => {
     
     setSaving(true);
     
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("investing_philosophy")
       .update({
         philosophy_text: philosophy.philosophy_text,
@@ -88,15 +88,16 @@ const AdminPhilosophy = () => {
         updated_at: new Date().toISOString(),
         updated_by: user?.id,
       })
-      .eq("id", philosophy.id);
+      .eq("id", philosophy.id)
+      .select();
 
     setSaving(false);
 
-    if (error) {
+    if (error || !updated || updated.length === 0) {
       console.error("Error saving philosophy:", error);
       toast({
         title: "Error",
-        description: "Failed to save changes",
+        description: error?.message || "No rows updated — you may not have admin access.",
         variant: "destructive",
       });
     } else {
