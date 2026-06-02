@@ -112,7 +112,7 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   const segments = labeled;
 
   return (
-    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[300px] mx-auto">
+    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[340px] mx-auto">
       {/* Arc segments — outline only, no fill */}
       {segments.map((seg, i) => (
         <path
@@ -131,10 +131,10 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
           key={`label-${i}`}
           x={seg.labelX}
           y={seg.labelY}
-          textAnchor="middle"
+          textAnchor={seg.labelX > cx + 4 ? "start" : seg.labelX < cx - 4 ? "end" : "middle"}
           dominantBaseline="central"
           className="fill-foreground"
-          fontSize={15}
+          fontSize={13}
           fontWeight={500}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
