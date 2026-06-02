@@ -116,14 +116,14 @@ const AIChat = () => {
               {message.role === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
             <div className={cn(
-              "rounded-2xl px-3.5 py-2.5 border",
+              "rounded-2xl px-3 py-2 border",
               message.role === "user"
-                ? "max-w-[85%] bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
+                ? "max-w-[92%] bg-primary text-primary-foreground rounded-tr-sm border-primary/20"
                 : message.forecasts && message.forecasts.length > 0
                   ? "w-full bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
-                  : "max-w-[85%] bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
+                  : "max-w-[92%] bg-white/[0.04] text-foreground rounded-tl-sm border-white/[0.06]"
             )}>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm leading-snug whitespace-pre-line">{message.content}</p>
               {message.forecasts && message.forecasts.length > 0 && (
                 <div className="space-y-3 mt-3">
                   {message.forecasts.map((f) => (
