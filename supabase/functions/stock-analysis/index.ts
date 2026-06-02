@@ -256,6 +256,16 @@ serve(async (req) => {
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched fundamentals:", fundamentals ? "success" : "none");
 
+    const currentPrice = Number.parseFloat(String(price)) || Number(fundamentals?.regularMarketPrice) || 0;
+    const analysisCacheKey = `analysis:${symbol.toUpperCase()}:${Math.round(currentPrice * 100)}`;
+    const cachedAnalysis = cacheGet<unknown>(analysisCacheKey, 15 * 60 * 1000);
+    if (cachedAnalysis) {
+      return new Response(
+        JSON.stringify({ data: cachedAnalysis }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const systemPrompt = `You are an expert investment analyst following a specific investing philosophy.
 
 ## YOUR INVESTING PHILOSOPHY
@@ -265,25 +275,21 @@ ${philosophy?.philosophy_text || "Focus on capital preservation and growth throu
 ${philosophy?.risk_guidance || "Risk should be balanced with reward potential. Ideal risk to reward ratio is 1:3."}
 
 ## ANALYSIS REQUIREMENTS
-You are producing an in-depth equity research note. Be rigorous, decisive, and specific.
+You are producing a concise equity research note. Be rigorous, decisive, and specific.
 You will be given a FUNDAMENTALS JSON block with real, current data pulled directly from the market.
 CRITICAL ACCURACY RULES:
 - Use ONLY the numbers provided in the FUNDAMENTALS block. Do not invent EPS, P/E, growth rates, margins, debt, FCF, market cap, or analyst targets.
 - If a specific metric is missing (null/undefined), say "not disclosed" rather than guessing.
 - When you cite a number, it must match the FUNDAMENTALS block (you may round sensibly, e.g. 2.345B -> $2.35B).
 - Reconcile your price target math with the actual trailingEps / forwardEps / revenueTTM / freeCashflow given. Show the arithmetic.
-- When you reference sector comps, only name comps you are confident exist in the same sector/industry as the company. Do not fabricate multiples for comps — frame them as "typical sector range" if you don't have exact figures.
 - Compare your base target to the analyst consensus targetMeanPrice when available, and explain the gap.
 Cover, at minimum:
-1. A clear investment thesis (2-3 sentences) — what is the core view and why.
-2. Business overview — what the company does, primary revenue drivers, competitive moat.
-3. Fundamental analysis — valuation (P/E vs sector & history), growth, margins, balance sheet, cash flow quality. Reference concrete numbers when possible.
-4. Technical & price-action read — trend vs 52-week range, momentum, support/resistance inferred from 52w high/low, volume context.
-5. Bull case — 3-4 specific catalysts or drivers that could push the stock to the upside target.
-6. Bear case — 3-4 specific risks or headwinds that could derail the thesis.
-7. Catalysts to watch — upcoming events, earnings, macro, product cycles.
-8. Price target derivation — show the math. Pick a primary valuation method (forward P/E, EV/EBITDA, EV/Sales, DCF, or sum-of-the-parts) appropriate to the sector, state the multiple or discount rate used, the forward earnings/revenue/FCF estimate it is applied to, and how that produces the base, bull, and bear targets. Reference 1-2 named comps where useful. Numbers must reconcile with the targets you return.
-9. Position sizing & risk — suggest how this fits a portfolio given the risk level.
+1. A clear investment thesis.
+2. Business overview.
+3. Fundamental analysis with concrete metrics.
+4. Technical read from current price, 52-week high/low, and volume.
+5. Bull case, bear case, catalysts, risk, and position sizing.
+6. Price target derivation — pick the fastest reliable method from the supplied data and show the math.
 Be decisive. Never hedge with "it depends" — take a stance grounded in the data.
 
 ## COMMUNICATION STYLE
@@ -323,22 +329,22 @@ Provide your analysis in the following JSON format only, no other text:
 
 Return ONLY the JSON. Be decisive, specific, and grounded in the investing philosophy.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 3200,
+        max_tokens: 1800,
         response_format: { type: "json_object" },
       }),
-    });
+    }, 12000);
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -378,14 +384,10 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       // Return a default analysis if parsing fails
-      analysis = {
-        recommendation: "HOLD",
-        confidence: "LOW",
-        reasoning: "Unable to generate analysis at this time.",
-        priceTarget: parseFloat(price) || 0,
-        riskLevel: "MEDIUM"
-      };
+      analysis = fallbackAnalysis(symbol, currentPrice, fundamentals);
     }
+
+    cacheSet(analysisCacheKey, analysis);
 
     return new Response(
       JSON.stringify({ data: analysis }),
