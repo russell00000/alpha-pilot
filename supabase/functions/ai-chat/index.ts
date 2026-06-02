@@ -810,18 +810,18 @@ serve(async (req) => {
     const requestedTickers = extractTickers(messages);
     console.log("Detected tickers in message:", requestedTickers);
 
-    // Also resolve free-text company names → symbols via Yahoo Finance search.
+    // Only do the slower free-text name → symbol resolution when we couldn't
+    // pull any tickers out of the user message directly. Saves ~300-800ms.
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
     let resolvedFromName: string[] = [];
-    if (lastUserMsg.trim().length > 0) {
-      // Strip $TICKER notation and obvious filler before searching by name
+    if (requestedTickers.length === 0 && lastUserMsg.trim().length > 0) {
       const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
       if (nameQuery.length >= 3) {
         resolvedFromName = await resolveSymbols(nameQuery);
         console.log("Resolved from name:", resolvedFromName);
       }
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 4)]));
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 2)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
@@ -845,7 +845,7 @@ serve(async (req) => {
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    const forecastTickers = allRequested.slice(0, 4);
+    const forecastTickers = allRequested.slice(0, 2);
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
@@ -957,7 +957,7 @@ ${onDemandData}${forecastBlock}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
