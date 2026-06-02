@@ -50,6 +50,7 @@ const Markets = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
+  const [visibleRows, setVisibleRows] = useState(30);
   const { toast } = useToast();
 
   // Map to store fetched prices
@@ -404,6 +405,21 @@ const Markets = () => {
   };
 
   const displayData = getDisplayData();
+  const visibleDisplayData = displayData.slice(0, visibleRows);
+
+  useEffect(() => {
+    setVisibleRows(30);
+  }, [activeTab, searchQuery, searchResults.length]);
+
+  useEffect(() => {
+    if (visibleRows >= displayData.length) return;
+
+    const timer = window.setTimeout(() => {
+      setVisibleRows((count) => Math.min(count + 30, displayData.length));
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [displayData.length, visibleRows]);
 
   // Filter suggestions from all available assets including cryptos
   const cryptoAssets = [
@@ -733,7 +749,7 @@ const Markets = () => {
                     </td>
                   </tr>
                 ) : (
-                  displayData.map((item, index) => {
+                  visibleDisplayData.map((item, index) => {
                     const isPositive = item.change >= 0;
                     const hasPrice = item.price !== "—";
                     const isLoadingThis = loadingSymbol === item.symbol;
@@ -757,6 +773,8 @@ const Markets = () => {
                               <img
                                 src={`https://assets.parqet.com/logos/symbol/${item.symbol}`}
                                 alt={item.symbol}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   const target = e.currentTarget;
