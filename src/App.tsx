@@ -15,8 +15,6 @@ const Stock = lazy(() => import("./pages/Stock"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AdminPhilosophy = lazy(() => import("./pages/AdminPhilosophy"));
 const Alerts = lazy(() => import("./pages/Alerts"));
-const Practice = lazy(() => import("./pages/Practice"));
-const PracticeRisk = lazy(() => import("./pages/PracticeRisk"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
