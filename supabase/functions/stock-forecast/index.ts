@@ -12,20 +12,49 @@ const SECTOR_ETF_MAP: Record<string, string> = {
   "Utilities": "XLU", "Real Estate": "XLRE", "Communication Services": "XLC",
 };
 
-async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+// ----- In-memory cache (per edge instance) -----
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { ts: number; data: unknown }>();
+function cacheGet<T>(key: string): T | null {
+  const e = cache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > CACHE_TTL_MS) { cache.delete(key); return null; }
+  return e.data as T;
+}
+function cacheSet(key: string, data: unknown) {
+  cache.set(key, { ts: Date.now(), data });
+}
+
+interface PriceSeries { closes: number[]; timestamps: number[] }
+
+async function fetchPriceSeries(sym: string, range = "3y"): Promise<PriceSeries> {
+  const key = `prices:${sym}:${range}`;
+  const cached = cacheGet<PriceSeries>(key);
+  if (cached) return cached;
   try {
     const r = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=${range}`,
       { headers: { "User-Agent": "Mozilla/5.0" } },
     );
-    if (!r.ok) return [];
+    if (!r.ok) return { closes: [], timestamps: [] };
     const data = await r.json();
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-    return (closes as Array<number | null>).filter(
-      (c): c is number => typeof c === "number" && c > 0,
-    );
+    const result = data?.chart?.result?.[0];
+    const rawCloses = (result?.indicators?.quote?.[0]?.close ?? []) as Array<number | null>;
+    const rawTs = (result?.timestamp ?? []) as number[];
+    const closes: number[] = [];
+    const timestamps: number[] = [];
+    for (let i = 0; i < rawCloses.length; i++) {
+      const c = rawCloses[i];
+      if (typeof c === "number" && c > 0) {
+        closes.push(c);
+        timestamps.push(rawTs[i] ?? 0);
+      }
+    }
+    const out = { closes, timestamps };
+    cacheSet(key, out);
+    return out;
   } catch {
-    return [];
+    return { closes: [], timestamps: [] };
   }
 }
 
@@ -42,13 +71,17 @@ const cagr = (p: number[], y: number) => {
 };
 const sma = (p: number[], w: number) =>
   p.length < w ? null : p.slice(-w).reduce((a, b) => a + b, 0) / w;
-const volatility = (p: number[]) => {
+// EWMA-style volatility: weight recent regime more heavily (lambda=0.94 RiskMetrics-style).
+const volatility = (p: number[], windowDays = 252) => {
   if (p.length < 30) return null;
+  const slice = p.slice(-Math.min(windowDays, p.length));
   const r: number[] = [];
-  for (let i = 1; i < p.length; i++) if (p[i - 1] > 0) r.push(Math.log(p[i] / p[i - 1]));
-  const m = r.reduce((a, b) => a + b, 0) / r.length;
-  const v = r.reduce((a, b) => a + (b - m) ** 2, 0) / r.length;
-  return Math.sqrt(v) * Math.sqrt(252) * 100;
+  for (let i = 1; i < slice.length; i++) if (slice[i - 1] > 0) r.push(Math.log(slice[i] / slice[i - 1]));
+  if (r.length < 20) return null;
+  const lambda = 0.94;
+  let variance = r.reduce((a, b) => a + b * b, 0) / r.length;
+  for (const x of r) variance = lambda * variance + (1 - lambda) * x * x;
+  return Math.sqrt(variance) * Math.sqrt(252) * 100;
 };
 const maxDD = (p: number[]) => {
   if (p.length < 30) return null;
@@ -81,23 +114,32 @@ const rsi = (p: number[], period = 14) => {
   return 100 - 100 / (1 + ag / al);
 };
 
+// Parse % strings like "12.3%" or "+8%" into number; null otherwise.
+function parsePct(s?: string): number | null {
+  if (!s) return null;
+  const m = s.match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
 async function buildForecast(symbol: string) {
+  const cacheKey = `forecast:${symbol}`;
+  const cached = cacheGet<unknown>(cacheKey);
+  if (cached) return cached;
+
   const candidates = symbol.includes("-") ? [symbol] : [symbol, `${symbol}-USD`];
   for (const sym of candidates) {
-    const prices = await fetchPrices(sym, "5y");
-    if (prices.length < 30) continue;
-    const cp = prices[prices.length - 1];
-
-    const [summaryResp, newsResp] = await Promise.all([
+    // Parallelize: prices + fundamentals + (sector benchmark fetched lazily after sector known)
+    const [series, summaryResp] = await Promise.all([
+      fetchPriceSeries(sym, "3y"),
       fetch(
         `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,summaryDetail,defaultKeyStatistics,financialData,recommendationTrend,upgradeDowngradeHistory,price`,
         { headers: { "User-Agent": "Mozilla/5.0" } },
       ),
-      fetch(
-        `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=3`,
-        { headers: { "User-Agent": "Mozilla/5.0" } },
-      ),
     ]);
+    const prices = series.closes;
+    const timestamps = series.timestamps;
+    if (prices.length < 30) continue;
+    const cp = prices[prices.length - 1];
 
     let sector: string | undefined, industry: string | undefined, name = sym;
     let forwardPE: string | undefined, earningsGrowth: string | undefined, revenueGrowth: string | undefined;
@@ -129,8 +171,6 @@ async function buildForecast(symbol: string) {
       }
     }
 
-    if (newsResp.ok) await newsResp.json().catch(() => null);
-
     const sma50 = sma(prices, 50);
     const sma200 = sma(prices, 200);
     const trend =
@@ -145,41 +185,135 @@ async function buildForecast(symbol: string) {
         : "INSUFFICIENT HISTORY";
 
     const return1Y = ret(prices, 252);
+    const return3M = ret(prices, 63);
     const cagr3Y = cagr(prices, 3);
     const cagr5Y = cagr(prices, 5);
-    const annualVol = volatility(prices);
+    const annualVolFast = volatility(prices, 63); // 3-month regime
+    const annualVolLong = volatility(prices, 252); // 1Y baseline
+    const annualVol =
+      annualVolFast != null && annualVolLong != null
+        ? annualVolFast * 0.6 + annualVolLong * 0.4
+        : annualVolLong ?? annualVolFast;
     const ddVal = maxDD(prices);
     const sharpeVal = sharpe(prices);
     const rsiVal = rsi(prices);
 
-    // Compute targets
-    let base = targetMean ?? null;
-    if (!base) {
-      const c = cagr3Y ?? cagr5Y;
-      base = c != null ? cp * (1 + c / 100) : cp * 1.08;
-    }
-    const momentum = ret(prices, 63) ?? 0;
-    const trendBoost = trend.includes("STRONG UPTREND") ? 0.05 : trend.includes("DOWNTREND") ? -0.05 : 0;
-    base = base * (1 + Math.max(-0.15, Math.min(0.15, (momentum / 100) * 0.3 + trendBoost)));
-    const vol = annualVol ?? 25;
-    const bull = targetHigh ?? base * (1 + vol / 100);
-    const bear = targetLow ?? base * (1 - vol / 100);
+    // Kick off sector benchmark fetch in parallel with forecast math.
+    const benchSym = sector ? SECTOR_ETF_MAP[sector] : undefined;
+    const benchPromise = benchSym
+      ? fetchPriceSeries(benchSym, "2y").then(s => s.closes)
+      : Promise.resolve<number[]>([]);
 
+    // ---------- BLENDED DRIFT MODEL ----------
+    // Convert each signal to an annualized expected return, then weight-blend.
+    // 1) Analyst implied annual return (12-mo target → annualized).
+    const analystImplied = targetMean ? ((targetMean - cp) / cp) * 100 : null;
+    // 2) Long-run base rate (3Y CAGR, fall back to 5Y).
+    const baseRate = cagr3Y ?? cagr5Y ?? return1Y ?? 8;
+    // 3) Forward EPS growth as a proxy for fundamental drift.
+    const epsGrowth = parsePct(earningsGrowth);
+    // 4) Recent momentum (3M return annualized but dampened — momentum mean-reverts).
+    const momentumAnn = return3M != null ? Math.max(-30, Math.min(30, (return3M ?? 0) * 2)) : 0;
+    // 5) Trend regime adjustment.
+    const regime =
+      trend === "STRONG UPTREND" ? 4 :
+      trend === "ABOVE LONG-TERM TREND" ? 1 :
+      trend === "BELOW LONG-TERM TREND" ? -1 :
+      trend === "DOWNTREND" ? -4 : 0;
+    // 6) Mean-reversion correction from RSI extremes.
+    const rsiAdj = rsiVal == null ? 0 : rsiVal > 70 ? -3 : rsiVal < 30 ? 3 : 0;
+
+    // Weights: analyst > base rate > eps > momentum > regime/rsi.
+    // Skip missing signals by re-normalizing weights.
+    const signals: Array<{ value: number; w: number }> = [];
+    if (analystImplied != null) signals.push({ value: analystImplied, w: 0.40 });
+    signals.push({ value: baseRate, w: 0.25 });
+    if (epsGrowth != null) signals.push({ value: Math.max(-30, Math.min(60, epsGrowth)), w: 0.15 });
+    signals.push({ value: momentumAnn, w: 0.10 });
+    signals.push({ value: regime + rsiAdj, w: 0.10 });
+    const wSum = signals.reduce((a, s) => a + s.w, 0);
+    let driftAnnPct = signals.reduce((a, s) => a + s.value * s.w, 0) / wSum;
+    // Cap extremes — no model should imply > 80% or < -40% in 12 months.
+    driftAnnPct = Math.max(-40, Math.min(80, driftAnnPct));
+
+    // ---------- GBM-STYLE PROJECTION ----------
+    // mu = annualized log drift; sigma = annualized log vol.
+    const mu = Math.log(1 + driftAnnPct / 100);
+    const sigma = (annualVol ?? 25) / 100;
+    // 1.28 sigma ≈ 80% confidence interval (top/bottom decile).
+    const Z = 1.282;
+    // 12 monthly projection points (and one weekly resolution series for the chart).
+    const projectionWeekly: Array<{ t: number; date: number; base: number; bull: number; bear: number }> = [];
+    const nowSec = Math.floor(Date.now() / 1000);
+    const weeks = 52;
+    for (let i = 0; i <= weeks; i++) {
+      const tYears = i / 52;
+      const baseP = cp * Math.exp(mu * tYears);
+      const sd = sigma * Math.sqrt(tYears);
+      const bullP = baseP * Math.exp(Z * sd);
+      const bearP = baseP * Math.exp(-Z * sd);
+      projectionWeekly.push({
+        t: i,
+        date: nowSec + i * 7 * 86400,
+        base: +baseP.toFixed(2),
+        bull: +bullP.toFixed(2),
+        bear: +bearP.toFixed(2),
+      });
+    }
+    const last = projectionWeekly[projectionWeekly.length - 1];
+    let base = last.base;
+    let bull = last.bull;
+    let bear = last.bear;
+
+    // If analyst high/low exist and our band is tighter than analyst dispersion,
+    // widen toward analyst extremes (analysts often capture qualitative scenarios our vol model misses).
+    if (targetHigh && targetHigh > bull) {
+      bull = (bull + targetHigh) / 2;
+      // Rescale the weekly bull path
+      const scale = bull / last.bull;
+      for (const p of projectionWeekly) {
+        p.bull = +(cp + (p.bull - cp) * scale).toFixed(2);
+      }
+    }
+    if (targetLow && targetLow < bear) {
+      bear = (bear + targetLow) / 2;
+      const scale = bear / last.bear;
+      for (const p of projectionWeekly) {
+        p.bear = +(cp + (p.bear - cp) * scale).toFixed(2);
+      }
+    }
+
+    // Confidence: scale on analyst count, signal alignment, and band width.
+    const bandPct = ((bull - bear) / cp) * 100;
     const aligned =
-      (trend.includes("UPTREND") && (targetMean ?? cp) > cp) ||
-      (trend.includes("DOWNTREND") && (targetMean ?? cp) < cp);
-    const confidence =
-      (numAnalysts ?? 0) >= 15 && aligned ? "High" : (numAnalysts ?? 0) >= 8 ? "Medium" : "Low";
+      analystImplied != null &&
+      ((analystImplied > 0 && trend.includes("UPTREND")) ||
+        (analystImplied < 0 && trend.includes("DOWNTREND")));
+    const epsAligned = epsGrowth != null && analystImplied != null && Math.sign(epsGrowth) === Math.sign(analystImplied);
+    let confScore = 0;
+    if ((numAnalysts ?? 0) >= 20) confScore += 2;
+    else if ((numAnalysts ?? 0) >= 10) confScore += 1;
+    if (aligned) confScore += 1;
+    if (epsAligned) confScore += 1;
+    if (bandPct < 30) confScore += 1;
+    else if (bandPct > 80) confScore -= 1;
+    const confidence = confScore >= 4 ? "High" : confScore >= 2 ? "Medium" : "Low";
 
-    // Sector benchmark
-    let sectorBenchmark;
-    if (sector && SECTOR_ETF_MAP[sector]) {
-      const benchSym = SECTOR_ETF_MAP[sector];
-      const bp = await fetchPrices(benchSym, "2y");
-      sectorBenchmark = { symbol: benchSym, return1Y: ret(bp, 252), return3M: ret(bp, 63) };
-    }
+    // Recent history slice (last ~6 months daily) for the chart.
+    const HIST_DAYS = 126;
+    const histStart = Math.max(0, prices.length - HIST_DAYS);
+    const history = prices.slice(histStart).map((price, i) => ({
+      date: timestamps[histStart + i] ?? nowSec,
+      price: +price.toFixed(2),
+    }));
 
-    return {
+    // Resolve sector benchmark now (already in-flight).
+    const bp = await benchPromise;
+    const sectorBenchmark = benchSym
+      ? { symbol: benchSym, return1Y: ret(bp, 252), return3M: ret(bp, 63) }
+      : undefined;
+
+    const out = {
       symbol: sym,
       name,
       currentPrice: cp,
@@ -188,15 +322,23 @@ async function buildForecast(symbol: string) {
       bear: +bear.toFixed(2),
       confidence,
       indicators: {
-        return1Y, cagr3Y, cagr5Y, annualVol, maxDrawdown: ddVal,
+        return1Y, cagr3Y, cagr5Y,
+        annualVol: annualVol == null ? null : +annualVol.toFixed(1),
+        maxDrawdown: ddVal,
         sharpe: sharpeVal, rsi14: rsiVal, trend, forwardPE,
         earningsGrowth, revenueGrowth, targetMean, numAnalysts,
         upgradesLast90d, downgradesLast90d, sector,
+        driftAnnPct: +driftAnnPct.toFixed(1),
+        modelBandPct: +bandPct.toFixed(1),
       },
       sectorBenchmark,
       recommendationMean,
       industry,
+      history,
+      projection: projectionWeekly,
     };
+    cacheSet(cacheKey, out);
+    return out;
   }
   return null;
 }
