@@ -17,6 +17,159 @@ const RequestSchema = z.object({
   volume: z.union([z.number(), z.string()]).optional(),
 });
 
+// Fetch real fundamentals from Yahoo Finance so the model isn't hallucinating numbers.
+async function fetchFundamentals(symbol: string) {
+  const modules = [
+    "price",
+    "summaryDetail",
+    "defaultKeyStatistics",
+    "financialData",
+    "earnings",
+    "incomeStatementHistory",
+    "balanceSheetHistory",
+    "cashflowStatementHistory",
+    "assetProfile",
+    "recommendationTrend",
+  ].join(",");
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      console.log("Yahoo quoteSummary status:", res.status);
+      return null;
+    }
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return null;
+
+    const v = (x: any) => (x && typeof x === "object" && "raw" in x ? x.raw : x ?? null);
+    const fmt = (x: any) => (x && typeof x === "object" && "fmt" in x ? x.fmt : null);
+
+    const price = r.price ?? {};
+    const sd = r.summaryDetail ?? {};
+    const ks = r.defaultKeyStatistics ?? {};
+    const fd = r.financialData ?? {};
+    const ap = r.assetProfile ?? {};
+    const earn = r.earnings ?? {};
+    const isHist = r.incomeStatementHistory?.incomeStatementHistory ?? [];
+    const bsHist = r.balanceSheetHistory?.balanceSheetStatements ?? [];
+    const cfHist = r.cashflowStatementHistory?.cashflowStatements ?? [];
+    const recTrend = r.recommendationTrend?.trend?.[0] ?? null;
+
+    return {
+      companyName: v(price.longName) || v(price.shortName) || symbol,
+      sector: ap.sector || null,
+      industry: ap.industry || null,
+      country: ap.country || null,
+      employees: v(ap.fullTimeEmployees),
+      summary: ap.longBusinessSummary || null,
+      marketCap: v(price.marketCap),
+      marketCapFmt: fmt(price.marketCap),
+      currency: price.currency || "USD",
+      // valuation
+      trailingPE: v(sd.trailingPE),
+      forwardPE: v(sd.forwardPE) ?? v(ks.forwardPE),
+      pegRatio: v(ks.pegRatio),
+      priceToBook: v(ks.priceToBook),
+      priceToSales: v(sd.priceToSalesTrailing12Months),
+      enterpriseValue: v(ks.enterpriseValue),
+      evToRevenue: v(ks.enterpriseToRevenue),
+      evToEbitda: v(ks.enterpriseToEbitda),
+      // per-share
+      trailingEps: v(ks.trailingEps),
+      forwardEps: v(ks.forwardEps),
+      bookValue: v(ks.bookValue),
+      // profitability / growth
+      profitMargin: v(fd.profitMargins),
+      operatingMargin: v(fd.operatingMargins),
+      grossMargin: v(fd.grossMargins),
+      returnOnEquity: v(fd.returnOnEquity),
+      returnOnAssets: v(fd.returnOnAssets),
+      revenueGrowth: v(fd.revenueGrowth),
+      earningsGrowth: v(fd.earningsGrowth),
+      earningsQGrowthYoY: v(ks.earningsQuarterlyGrowth),
+      revenueTTM: v(fd.totalRevenue),
+      ebitda: v(fd.ebitda),
+      grossProfitTTM: v(fd.grossProfits),
+      // balance sheet / cash
+      totalCash: v(fd.totalCash),
+      totalDebt: v(fd.totalDebt),
+      debtToEquity: v(fd.debtToEquity),
+      currentRatio: v(fd.currentRatio),
+      quickRatio: v(fd.quickRatio),
+      freeCashflow: v(fd.freeCashflow),
+      operatingCashflow: v(fd.operatingCashflow),
+      // dividends
+      dividendYield: v(sd.dividendYield),
+      payoutRatio: v(sd.payoutRatio),
+      // analyst
+      targetMeanPrice: v(fd.targetMeanPrice),
+      targetHighPrice: v(fd.targetHighPrice),
+      targetLowPrice: v(fd.targetLowPrice),
+      numberOfAnalystOpinions: v(fd.numberOfAnalystOpinions),
+      recommendationKey: fd.recommendationKey || null,
+      recommendationMean: v(fd.recommendationMean),
+      analystTrend: recTrend
+        ? {
+            strongBuy: recTrend.strongBuy,
+            buy: recTrend.buy,
+            hold: recTrend.hold,
+            sell: recTrend.sell,
+            strongSell: recTrend.strongSell,
+          }
+        : null,
+      // risk
+      beta: v(sd.beta) ?? v(ks.beta),
+      shortPercentOfFloat: v(ks.shortPercentOfFloat),
+      heldPercentInsiders: v(ks.heldPercentInsiders),
+      heldPercentInstitutions: v(ks.heldPercentInstitutions),
+      // recent reports
+      recentIncome: isHist.slice(0, 3).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        totalRevenue: v(s.totalRevenue),
+        grossProfit: v(s.grossProfit),
+        operatingIncome: v(s.operatingIncome),
+        netIncome: v(s.netIncome),
+      })),
+      recentBalance: bsHist.slice(0, 2).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        totalAssets: v(s.totalAssets),
+        totalLiab: v(s.totalLiab),
+        totalStockholderEquity: v(s.totalStockholderEquity),
+        cash: v(s.cash),
+        longTermDebt: v(s.longTermDebt),
+      })),
+      recentCashflow: cfHist.slice(0, 3).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        operatingCashflow: v(s.totalCashFromOperatingActivities),
+        capex: v(s.capitalExpenditures),
+        freeCashflow:
+          (v(s.totalCashFromOperatingActivities) ?? 0) +
+          (v(s.capitalExpenditures) ?? 0),
+      })),
+      earningsHistory: earn?.financialsChart?.yearly?.map((y: any) => ({
+        year: y.date,
+        revenue: v(y.revenue),
+        earnings: v(y.earnings),
+      })) || [],
+      quarterlyEarnings: earn?.financialsChart?.quarterly?.map((q: any) => ({
+        quarter: q.date,
+        revenue: v(q.revenue),
+        earnings: v(q.earnings),
+      })) || [],
+    };
+  } catch (e) {
+    console.error("fetchFundamentals error:", e);
+    return null;
+  }
+}
+
 // Fetch the investing philosophy from the database (read-only, public endpoint)
 async function fetchPhilosophy() {
   try {
@@ -72,9 +225,13 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
-    // Fetch the investing philosophy
-    const philosophy = await fetchPhilosophy();
+    // Fetch philosophy + real fundamentals in parallel so the model has hard data to ground on.
+    const [philosophy, fundamentals] = await Promise.all([
+      fetchPhilosophy(),
+      fetchFundamentals(symbol),
+    ]);
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
+    console.log("Fetched fundamentals:", fundamentals ? "success" : "none");
 
     const systemPrompt = `You are an expert investment analyst following a specific investing philosophy.
 
@@ -86,6 +243,14 @@ ${philosophy?.risk_guidance || "Risk should be balanced with reward potential. I
 
 ## ANALYSIS REQUIREMENTS
 You are producing an in-depth equity research note. Be rigorous, decisive, and specific.
+You will be given a FUNDAMENTALS JSON block with real, current data pulled directly from the market.
+CRITICAL ACCURACY RULES:
+- Use ONLY the numbers provided in the FUNDAMENTALS block. Do not invent EPS, P/E, growth rates, margins, debt, FCF, market cap, or analyst targets.
+- If a specific metric is missing (null/undefined), say "not disclosed" rather than guessing.
+- When you cite a number, it must match the FUNDAMENTALS block (you may round sensibly, e.g. 2.345B -> $2.35B).
+- Reconcile your price target math with the actual trailingEps / forwardEps / revenueTTM / freeCashflow given. Show the arithmetic.
+- When you reference sector comps, only name comps you are confident exist in the same sector/industry as the company. Do not fabricate multiples for comps — frame them as "typical sector range" if you don't have exact figures.
+- Compare your base target to the analyst consensus targetMeanPrice when available, and explain the gap.
 Cover, at minimum:
 1. A clear investment thesis (2-3 sentences) — what is the core view and why.
 2. Business overview — what the company does, primary revenue drivers, competitive moat.
@@ -101,13 +266,17 @@ Be decisive. Never hedge with "it depends" — take a stance grounded in the dat
 ## COMMUNICATION STYLE
 ${philosophy?.market_insights_style || "Be helpful and informative, communicating at a level that beginners can understand. Be concise and professional."}`;
 
-    const userPrompt = `Produce a deep-dive research note on ${symbol}.
+    const userPrompt = `Produce a deep-dive research note on ${symbol}${fundamentals?.companyName ? ` (${fundamentals.companyName})` : ""}.
 
+## LIVE MARKET DATA
 Current Price: $${price}
-Daily Change: ${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2)}%
+Daily Change: ${changePercent !== undefined ? (changePercent > 0 ? '+' : '') + changePercent.toFixed(2) + '%' : 'n/a'}
 52-Week High: $${week52High}
 52-Week Low: $${week52Low}
 Volume: ${volume}
+
+## FUNDAMENTALS (real data — ground every number you cite to this block)
+${fundamentals ? JSON.stringify(fundamentals, null, 2) : "Fundamentals unavailable — clearly state that valuation work is based on limited public data and be conservative with specific numeric claims."}
 
 Provide your analysis in the following JSON format only, no other text:
 {
@@ -138,12 +307,12 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 2600,
+        max_tokens: 3200,
         response_format: { type: "json_object" },
       }),
     });
