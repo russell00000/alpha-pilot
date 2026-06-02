@@ -50,6 +50,17 @@ interface StockAnalysis {
   reasoning: string;
   priceTarget: number;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  thesis?: string;
+  businessOverview?: string;
+  fundamentals?: string;
+  technicals?: string;
+  bullCase?: string[];
+  bearCase?: string[];
+  catalysts?: string[];
+  bullTarget?: number;
+  bearTarget?: number;
+  priceTargetRationale?: string;
+  positionSizing?: string;
 }
 
 interface HistoricalDataPoint {
@@ -1315,6 +1326,80 @@ const Stock = () => {
                 </div>
               </div>
               <p className="text-muted-foreground">{stockAnalysis.reasoning}</p>
+
+              {stockAnalysis.thesis && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Investment Thesis</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.thesis}</p>
+                </div>
+              )}
+
+              {stockAnalysis.businessOverview && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Business Overview</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.businessOverview}</p>
+                </div>
+              )}
+
+              {stockAnalysis.fundamentals && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Fundamentals</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.fundamentals}</p>
+                </div>
+              )}
+
+              {stockAnalysis.technicals && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Technical View</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.technicals}</p>
+                </div>
+              )}
+
+              {(stockAnalysis.bullCase?.length || stockAnalysis.bearCase?.length) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {stockAnalysis.bullCase && stockAnalysis.bullCase.length > 0 && (
+                    <div className="rounded-lg border border-success/20 bg-success/5 p-4">
+                      <h4 className="text-sm font-semibold text-success mb-2 uppercase tracking-wider">Bull Case</h4>
+                      <ul className="space-y-1.5">
+                        {stockAnalysis.bullCase.map((item, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                            <span className="text-success mt-0.5">+</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {stockAnalysis.bearCase && stockAnalysis.bearCase.length > 0 && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                      <h4 className="text-sm font-semibold text-destructive mb-2 uppercase tracking-wider">Bear Case</h4>
+                      <ul className="space-y-1.5">
+                        {stockAnalysis.bearCase.map((item, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                            <span className="text-destructive mt-0.5">−</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {stockAnalysis.catalysts && stockAnalysis.catalysts.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2 uppercase tracking-wider">Catalysts to Watch</h4>
+                  <ul className="space-y-1.5">
+                    {stockAnalysis.catalysts.map((item, i) => (
+                      <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {stockAnalysis.priceTarget > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Price Target:</span>
@@ -1331,6 +1416,42 @@ const Stock = () => {
                   )}
                 </div>
               )}
+
+              {(stockAnalysis.bullTarget || stockAnalysis.bearTarget) && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {stockAnalysis.bearTarget ? (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Bear</div>
+                      <div className="font-semibold text-destructive">${stockAnalysis.bearTarget.toFixed(2)}</div>
+                    </div>
+                  ) : <div />}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Base</div>
+                    <div className="font-semibold text-primary">${stockAnalysis.priceTarget.toFixed(2)}</div>
+                  </div>
+                  {stockAnalysis.bullTarget ? (
+                    <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Bull</div>
+                      <div className="font-semibold text-success">${stockAnalysis.bullTarget.toFixed(2)}</div>
+                    </div>
+                  ) : <div />}
+                </div>
+              )}
+
+              {stockAnalysis.priceTargetRationale && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Price Target Rationale</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.priceTargetRationale}</p>
+                </div>
+              )}
+
+              {stockAnalysis.positionSizing && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Position Sizing</h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.positionSizing}</p>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground italic">
                 Analysis based on our research-driven investing methodology. For informational purposes only. Not financial advice.
               </p>
