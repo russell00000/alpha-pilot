@@ -94,7 +94,7 @@ Cover, at minimum:
 5. Bull case — 3-4 specific catalysts or drivers that could push the stock to the upside target.
 6. Bear case — 3-4 specific risks or headwinds that could derail the thesis.
 7. Catalysts to watch — upcoming events, earnings, macro, product cycles.
-8. Price target derivation — explain how you arrived at the target (multiple-based, DCF intuition, comp-based) and define a bull / base / bear scenario.
+8. Price target derivation — show the math. Pick a primary valuation method (forward P/E, EV/EBITDA, EV/Sales, DCF, or sum-of-the-parts) appropriate to the sector, state the multiple or discount rate used, the forward earnings/revenue/FCF estimate it is applied to, and how that produces the base, bull, and bear targets. Reference 1-2 named comps where useful. Numbers must reconcile with the targets you return.
 9. Position sizing & risk — suggest how this fits a portfolio given the risk level.
 Be decisive. Never hedge with "it depends" — take a stance grounded in the data.
 
@@ -124,7 +124,7 @@ Provide your analysis in the following JSON format only, no other text:
   "priceTarget": number (12-month base-case fair value),
   "bullTarget": number (upside scenario price),
   "bearTarget": number (downside scenario price),
-  "priceTargetRationale": "2-3 sentences explaining the methodology behind the price target (multiple-based, DCF intuition, comps).",
+  "priceTargetRationale": "4-6 sentences. MUST include: (a) primary valuation method chosen and WHY it fits this business, (b) the specific multiple/rate used and how it compares to the stock's own 5y history and 1-2 named sector comps, (c) the forward estimate it is applied to (e.g. FY26 EPS ~$X, FY26 revenue ~$Yb, mid-cycle FCF ~$Zb), (d) the arithmetic that produces the base target (e.g. '32x × $9.40 ≈ $300'), (e) what specifically shifts the multiple or estimate to derive bull and bear targets. No generic phrases like 'premium growth justifies premium multiple' without numbers.",
   "riskLevel": "LOW" or "MEDIUM" or "HIGH",
   "positionSizing": "1-2 sentence guidance on how this fits a diversified portfolio given the risk level."
 }
@@ -143,7 +143,7 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 2200,
+        max_tokens: 2600,
         response_format: { type: "json_object" },
       }),
     });
