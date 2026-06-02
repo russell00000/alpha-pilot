@@ -7,8 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ----- In-memory caches (per edge instance) -----
+const memCache = new Map<string, { ts: number; data: unknown }>();
+function cacheGet<T>(key: string, ttlMs: number): T | null {
+  const e = memCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > ttlMs) { memCache.delete(key); return null; }
+  return e.data as T;
+}
+function cacheSet(key: string, data: unknown) {
+  memCache.set(key, { ts: Date.now(), data });
+}
+
 // Fetch the investing philosophy from the database
 async function fetchPhilosophy(authHeader: string): Promise<string> {
+  const cached = cacheGet<string>("philosophy", 10 * 60 * 1000);
+  if (cached !== null) return cached;
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -24,10 +38,11 @@ async function fetchPhilosophy(authHeader: string): Promise<string> {
 
     if (error || !philosophy) {
       console.log("Failed to fetch philosophy:", error);
+      cacheSet("philosophy", "");
       return "";
     }
 
-    return `
+    const out = `
 ## INVESTING PHILOSOPHY
 ${philosophy.philosophy_text}
 
@@ -37,6 +52,8 @@ ${philosophy.risk_guidance}
 ## COMMUNICATION STYLE
 ${philosophy.market_insights_style}
 `;
+    cacheSet("philosophy", out);
+    return out;
   } catch (error) {
     console.error("Error fetching philosophy:", error);
     return "";
