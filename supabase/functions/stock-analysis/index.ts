@@ -19,7 +19,7 @@ const cacheGet = <T,>(key: string, ttlMs: number): T | null => {
 };
 const cacheSet = (key: string, data: unknown) => cache.set(key, { ts: Date.now(), data });
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3500) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -341,10 +341,11 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 1800,
+        // Output is shorter now (positionSizing removed) — smaller budget = faster completion.
+        max_tokens: 1300,
         response_format: { type: "json_object" },
       }),
-    }, 12000);
+    }, 11000);
 
     if (!response.ok) {
       if (response.status === 429) {
