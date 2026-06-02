@@ -7,6 +7,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const cache = new Map<string, { ts: number; data: unknown }>();
+const cacheGet = <T,>(key: string, ttlMs: number): T | null => {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > ttlMs) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+};
+const cacheSet = (key: string, data: unknown) => cache.set(key, { ts: Date.now(), data });
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const RequestSchema = z.object({
   symbol: z.string().min(1).max(15),
   price: z.union([z.number(), z.string()]).optional(),
@@ -19,21 +41,21 @@ const RequestSchema = z.object({
 
 // Fetch real fundamentals from Yahoo Finance so the model isn't hallucinating numbers.
 async function fetchFundamentals(symbol: string) {
+  const cacheKey = `fundamentals:${symbol.toUpperCase()}`;
+  const cached = cacheGet<unknown>(cacheKey, 10 * 60 * 1000);
+  if (cached) return cached;
+
   const modules = [
     "price",
     "summaryDetail",
     "defaultKeyStatistics",
     "financialData",
-    "earnings",
-    "incomeStatementHistory",
-    "balanceSheetHistory",
-    "cashflowStatementHistory",
     "assetProfile",
     "recommendationTrend",
   ].join(",");
   const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -56,22 +78,19 @@ async function fetchFundamentals(symbol: string) {
     const ks = r.defaultKeyStatistics ?? {};
     const fd = r.financialData ?? {};
     const ap = r.assetProfile ?? {};
-    const earn = r.earnings ?? {};
-    const isHist = r.incomeStatementHistory?.incomeStatementHistory ?? [];
-    const bsHist = r.balanceSheetHistory?.balanceSheetStatements ?? [];
-    const cfHist = r.cashflowStatementHistory?.cashflowStatements ?? [];
     const recTrend = r.recommendationTrend?.trend?.[0] ?? null;
 
-    return {
+    const out = {
       companyName: v(price.longName) || v(price.shortName) || symbol,
       sector: ap.sector || null,
       industry: ap.industry || null,
       country: ap.country || null,
-      employees: v(ap.fullTimeEmployees),
-      summary: ap.longBusinessSummary || null,
       marketCap: v(price.marketCap),
       marketCapFmt: fmt(price.marketCap),
       currency: price.currency || "USD",
+      regularMarketPrice: v(price.regularMarketPrice),
+      fiftyTwoWeekHigh: v(sd.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow: v(sd.fiftyTwoWeekLow),
       // valuation
       trailingPE: v(sd.trailingPE),
       forwardPE: v(sd.forwardPE) ?? v(ks.forwardPE),
@@ -129,41 +148,9 @@ async function fetchFundamentals(symbol: string) {
       shortPercentOfFloat: v(ks.shortPercentOfFloat),
       heldPercentInsiders: v(ks.heldPercentInsiders),
       heldPercentInstitutions: v(ks.heldPercentInstitutions),
-      // recent reports
-      recentIncome: isHist.slice(0, 3).map((s: any) => ({
-        endDate: fmt(s.endDate),
-        totalRevenue: v(s.totalRevenue),
-        grossProfit: v(s.grossProfit),
-        operatingIncome: v(s.operatingIncome),
-        netIncome: v(s.netIncome),
-      })),
-      recentBalance: bsHist.slice(0, 2).map((s: any) => ({
-        endDate: fmt(s.endDate),
-        totalAssets: v(s.totalAssets),
-        totalLiab: v(s.totalLiab),
-        totalStockholderEquity: v(s.totalStockholderEquity),
-        cash: v(s.cash),
-        longTermDebt: v(s.longTermDebt),
-      })),
-      recentCashflow: cfHist.slice(0, 3).map((s: any) => ({
-        endDate: fmt(s.endDate),
-        operatingCashflow: v(s.totalCashFromOperatingActivities),
-        capex: v(s.capitalExpenditures),
-        freeCashflow:
-          (v(s.totalCashFromOperatingActivities) ?? 0) +
-          (v(s.capitalExpenditures) ?? 0),
-      })),
-      earningsHistory: earn?.financialsChart?.yearly?.map((y: any) => ({
-        year: y.date,
-        revenue: v(y.revenue),
-        earnings: v(y.earnings),
-      })) || [],
-      quarterlyEarnings: earn?.financialsChart?.quarterly?.map((q: any) => ({
-        quarter: q.date,
-        revenue: v(q.revenue),
-        earnings: v(q.earnings),
-      })) || [],
     };
+    cacheSet(cacheKey, out);
+    return out;
   } catch (e) {
     console.error("fetchFundamentals error:", e);
     return null;
