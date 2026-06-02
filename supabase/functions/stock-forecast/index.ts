@@ -128,11 +128,11 @@ async function buildForecast(symbol: string) {
 
   const candidates = symbol.includes("-") ? [symbol] : [symbol, `${symbol}-USD`];
   for (const sym of candidates) {
-    // Parallelize: prices + fundamentals + (sector benchmark fetched lazily after sector known)
+    // Parallelize: prices + fundamentals. 2y window is plenty for CAGR/vol and ~2x faster from Yahoo.
     const [series, summaryResp] = await Promise.all([
-      fetchPriceSeries(sym, "3y"),
+      fetchPriceSeries(sym, "2y"),
       fetch(
-        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,summaryDetail,defaultKeyStatistics,financialData,recommendationTrend,upgradeDowngradeHistory,price`,
+        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,defaultKeyStatistics,financialData,upgradeDowngradeHistory,price`,
         { headers: { "User-Agent": "Mozilla/5.0" } },
       ),
     ]);
@@ -307,11 +307,15 @@ async function buildForecast(symbol: string) {
       price: +price.toFixed(2),
     }));
 
-    // Resolve sector benchmark now (already in-flight).
-    const bp = await benchPromise;
-    const sectorBenchmark = benchSym
-      ? { symbol: benchSym, return1Y: ret(bp, 252), return3M: ret(bp, 63) }
-      : undefined;
+    // Sector benchmark is nice-to-have — race it with a 600ms budget so it never blocks the response.
+    const bp = await Promise.race<number[]>([
+      benchPromise,
+      new Promise<number[]>((resolve) => setTimeout(() => resolve([]), 600)),
+    ]);
+    const sectorBenchmark =
+      benchSym && bp.length > 0
+        ? { symbol: benchSym, return1Y: ret(bp, 252), return3M: ret(bp, 63) }
+        : undefined;
 
     const out = {
       symbol: sym,
