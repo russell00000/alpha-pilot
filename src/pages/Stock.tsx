@@ -100,6 +100,8 @@ const Stock = () => {
   const [activeRange, setActiveRange] = useState("1M");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [insiderView, setInsiderView] = useState(false);
+  const [forecast, setForecast] = useState<ForecastData | null>(null);
+  const [isLoadingForecast, setIsLoadingForecast] = useState(false);
 
   // Fallback stock names
   const stockNames: Record<string, string> = {
