@@ -33,12 +33,12 @@ const QuickActions = () => {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
+    <div className="flex flex-wrap items-center justify-center gap-3 animate-stagger">
       {actions.map((action) => (
         <button
           key={action.label}
           onClick={() => handleAction(action)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-200 whitespace-nowrap group"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] active:scale-[0.97] transition-all duration-300 ease-out whitespace-nowrap group"
         >
           <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
           <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-200">

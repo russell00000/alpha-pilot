@@ -123,7 +123,7 @@ const MarketOverview = () => {
       {displayData.length > 0 && (
         <div className="grid grid-cols-2 gap-3 flex-1 animate-stagger">
           {displayData.map((item) => (
-            <div key={item.symbol} onClick={() => navigate(`/stock/${item.symbol}`)}>
+            <div key={item.symbol} onClick={() => navigate(`/stock/${item.symbol}`)} className="cursor-pointer">
               <MarketCard {...item} />
             </div>
           ))}
