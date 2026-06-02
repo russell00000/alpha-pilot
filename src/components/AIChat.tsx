@@ -14,6 +14,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   forecasts?: ForecastData[];
+  isError?: boolean;
 }
 
 const suggestedPrompts = [
@@ -52,8 +53,13 @@ const AIChat = () => {
     setIsLoading(true);
 
     try {
+      // Only send clean (non-error) history to the model so prior failed
+      // turns don't poison the response.
+      const history = [...messages, userMessage]
+        .filter((m) => !m.isError)
+        .map(({ role, content }) => ({ role, content }));
       const response = await supabase.functions.invoke("ai-chat", {
-        body: { messages: [...messages, userMessage] },
+        body: { messages: history },
       });
 
       if (response.error) throw new Error(response.error.message);
@@ -68,7 +74,10 @@ const AIChat = () => {
       ]);
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sorry, I encountered an error. Please try again.", isError: true },
+      ]);
     } finally {
       setIsLoading(false);
     }
