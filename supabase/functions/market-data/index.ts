@@ -645,7 +645,7 @@ async function fetchStockDetails(symbol: string): Promise<{ week52High: number; 
       ? `${symbol.toUpperCase()}-USD` 
       : symbol;
     
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1y`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
     console.log(`Fetching 52-week data for ${symbol} (${yahooSymbol})`);
     
     const response = await fetch(url, {
@@ -828,8 +828,8 @@ serve(async (req) => {
 
     // Fetch crypto data first (free, no rate limit concerns)
     if (type === "all" || type === "crypto") {
-      const cryptoData = await fetchCryptoData();
-      results.push(...cryptoData);
+      const cryptoPromise = fetchCryptoData();
+      // cryptoData will be added later
     }
 
     // Fetch stocks, ETFs, and mutual funds in parallel (cache absorbs rate-limit risk)
@@ -849,7 +849,8 @@ serve(async (req) => {
       for (const sym of ["VFIAX", "FXAIX", "VTSAX"]) stockJobs.push(fetchMutualFundQuote(sym));
     }
     if (stockJobs.length > 0) {
-      const settled = await Promise.all(stockJobs);
+      const [settled, cryptoData] = await Promise.all([Promise.all(stockJobs), cryptoPromise]);
+    if (cryptoData) results.push(...cryptoData);
       for (const r of settled) if (r) results.push(r);
     }
     
