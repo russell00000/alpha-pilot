@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Plus, Trash2, Mail, Search } from "lucide-react";
+import { Bell, Plus, Trash2, Mail, Search, TrendingUp, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,21 +139,53 @@ const Alerts = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Decorative gradient blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl animate-pulse" />
+        <div className="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+      </div>
+
       <Header />
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-primary/10">
-            <Bell className="w-6 h-6 text-primary" />
+      <main className="container mx-auto px-4 py-8 max-w-4xl relative">
+        {/* Hero */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative p-3.5 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-lg shadow-primary/10">
+            <Bell className="w-7 h-7 text-primary" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary animate-ping" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Price Alerts</h1>
-            <p className="text-muted-foreground">Get email notifications when prices hit your targets</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gradient">Price Alerts</h1>
+            <p className="text-muted-foreground">Never miss a move — get notified the instant prices hit your targets</p>
           </div>
         </div>
 
+        {/* Feature chips */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+          {[
+            { icon: Zap, label: "Real-time", desc: "Triggered within seconds" },
+            { icon: Shield, label: "Reliable", desc: "Delivered straight to inbox" },
+            { icon: TrendingUp, label: "Unlimited", desc: "Track every ticker you love" },
+          ].map((f) => (
+            <div
+              key={f.label}
+              className="group flex items-center gap-3 p-3 rounded-xl bg-card/40 border border-border/40 backdrop-blur-sm hover:border-primary/30 hover:bg-card/60 transition-all"
+            >
+              <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                <f.icon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{f.label}</p>
+                <p className="text-xs text-muted-foreground">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* Create Alert Form */}
-        <div className="glass-card p-6 mb-8">
+        <div className="glass-card !overflow-visible p-6 mb-8 relative">
+          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
           <h2 className="text-lg font-semibold text-foreground mb-4">Create New Alert</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Symbol Search with Autocomplete */}
