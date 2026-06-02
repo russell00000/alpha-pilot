@@ -95,7 +95,7 @@ const AIChat = ({ onResetSize }: AIChatProps) => {
   };
 
   return (
-    <div className="group/chat relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
+    <div ref={containerRef} className="group/chat relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
