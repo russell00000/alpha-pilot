@@ -18,7 +18,7 @@ interface MarketData {
 
 // In-memory cache with longer TTL to reduce API calls
 const cache: Map<string, { data: MarketData; timestamp: number }> = new Map();
-const CACHE_TTL = 300000; // 5 minutes cache for stocks (reduced API calls)
+const CACHE_TTL = 600000; // 10 minutes cache for stocks (most price moves are tiny intraday)
 const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 
 // Rate limit tracking
@@ -795,21 +795,24 @@ serve(async (req) => {
         }
       }
       
-      // Fetch mutual fund data from Yahoo Finance
-      for (const sym of mutualFundSymbols) {
-        const result = await fetchMutualFundQuote(sym);
-        if (result) results.push(result);
-      }
-      
-      // Fetch stock/ETF data from Finnhub
-      for (const sym of stockSymbols) {
-        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
-        if (result) results.push(result);
+      // Fetch mutual funds + stocks/ETFs fully in parallel
+      const parallelQuotes = await Promise.all([
+        ...mutualFundSymbols.map((sym) => fetchMutualFundQuote(sym)),
+        ...stockSymbols.map((sym) => fetchStockQuote(sym, FINNHUB_API_KEY)),
+      ]);
+      for (const q of parallelQuotes) {
+        if (q) results.push(q);
       }
       
       return new Response(
         JSON.stringify({ data: results }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120",
+          },
+        }
       );
     }
 
@@ -829,43 +832,25 @@ serve(async (req) => {
       results.push(...cryptoData);
     }
 
-    // Fetch top 30 stocks - use rate limiting and parallelization
+    // Fetch stocks, ETFs, and mutual funds in parallel (cache absorbs rate-limit risk)
+    const stockJobs: Promise<MarketData | null>[] = [];
     if (type === "all" || type === "stocks") {
       const topStocks = [
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM",
         "LLY", "MA", "JNJ", "XOM", "PG", "HD", "CVX", "MRK", "ABBV", "COST",
-        "PEP", "KO", "ADBE", "WMT", "CRM", "MCD", "BAC", "NFLX", "AMD", "CSCO"
+        "PEP", "KO", "ADBE", "WMT", "CRM", "MCD", "BAC", "NFLX", "AMD", "CSCO",
       ];
-      
-      // Fetch in smaller sequential batches to respect rate limits
-      for (let i = 0; i < topStocks.length; i += 5) {
-        const batch = topStocks.slice(i, i + 5);
-        const promises = batch.map(sym => fetchStockQuote(sym, FINNHUB_API_KEY));
-        const batchResults = await Promise.all(promises);
-        results.push(...batchResults.filter(Boolean) as MarketData[]);
-        // Small delay between batches
-        if (i + 5 < topStocks.length) {
-          await new Promise(r => setTimeout(r, 150));
-        }
-      }
+      for (const sym of topStocks) stockJobs.push(fetchStockQuote(sym, FINNHUB_API_KEY));
     }
-
-    // Fetch ETFs (limit to 3)
     if (type === "all" || type === "etf") {
-      const topETFs = ["SPY", "QQQ", "VOO"];
-      for (const sym of topETFs) {
-        const result = await fetchStockQuote(sym, FINNHUB_API_KEY);
-        if (result) results.push(result);
-      }
+      for (const sym of ["SPY", "QQQ", "VOO"]) stockJobs.push(fetchStockQuote(sym, FINNHUB_API_KEY));
     }
-
-    // Fetch Mutual Funds from Yahoo Finance (limit to 3)
     if (type === "all" || type === "mutual_fund") {
-      const topMutualFunds = ["VFIAX", "FXAIX", "VTSAX"];
-      for (const sym of topMutualFunds) {
-        const result = await fetchMutualFundQuote(sym);
-        if (result) results.push(result);
-      }
+      for (const sym of ["VFIAX", "FXAIX", "VTSAX"]) stockJobs.push(fetchMutualFundQuote(sym));
+    }
+    if (stockJobs.length > 0) {
+      const settled = await Promise.all(stockJobs);
+      for (const r of settled) if (r) results.push(r);
     }
     
     console.log(`Successfully returned ${results.length} quotes`);
@@ -876,7 +861,13 @@ serve(async (req) => {
         availableAssets: getAssetList(),
         cached: cache.size > 0
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
     );
   } catch (error) {
     console.error("Error in market-data function:", error);
