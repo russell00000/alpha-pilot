@@ -40,29 +40,29 @@ interface RecommendationProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Stock ETF": "hsl(215, 40%, 68%)",         // Slate blue
-  "International ETF": "hsl(270, 32%, 67%)", // Wisteria
-  "Dividend ETF": "hsl(145, 30%, 60%)",      // Sage
-  "Sector ETF": "hsl(22, 45%, 66%)",         // Warm terracotta
-  "Bond ETF": "hsl(48, 40%, 65%)",           // Wheat
-  "Treasury ETF": "hsl(175, 28%, 60%)",      // Celadon
-  "TIPS ETF": "hsl(355, 35%, 66%)",          // Dusty rose
-  "Real Estate": "hsl(310, 28%, 64%)",       // Orchid
-  "Commodity": "hsl(85, 28%, 60%)",          // Pistachio
-  "Money Market": "hsl(195, 32%, 64%)",      // Powder
+  "Stock ETF": "hsl(212, 88%, 62%)",          // Vivid blue
+  "International ETF": "hsl(268, 75%, 68%)",  // Vivid purple
+  "Dividend ETF": "hsl(150, 65%, 50%)",       // Emerald
+  "Sector ETF": "hsl(18, 88%, 60%)",          // Bright terracotta
+  "Bond ETF": "hsl(45, 95%, 58%)",            // Gold
+  "Treasury ETF": "hsl(180, 70%, 48%)",       // Teal
+  "TIPS ETF": "hsl(348, 82%, 62%)",           // Rose
+  "Real Estate": "hsl(320, 75%, 62%)",        // Magenta
+  "Commodity": "hsl(82, 60%, 52%)",           // Lime
+  "Money Market": "hsl(195, 80%, 58%)",       // Sky
   // Fallbacks for older data
-  "Stock": "hsl(215, 40%, 68%)",
-  "Bond": "hsl(48, 40%, 65%)",
-  "ETF": "hsl(22, 45%, 66%)",
-  "Cash": "hsl(175, 28%, 60%)",
-  "Alternative": "hsl(310, 28%, 64%)",
+  "Stock": "hsl(212, 88%, 62%)",
+  "Bond": "hsl(45, 95%, 58%)",
+  "ETF": "hsl(18, 88%, 60%)",
+  "Cash": "hsl(150, 65%, 50%)",
+  "Alternative": "hsl(320, 75%, 62%)",
 };
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
 
 // Custom donut ring chart component matching reference design
 const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; value: number; color: string }[]; investmentAmount: number }) => {
-  const viewSize = 340;
+  const viewSize = 400;
   const cx = viewSize / 2;
   const cy = viewSize / 2;
   const radius = 130;
@@ -73,16 +73,11 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   const total = data.reduce((sum, d) => sum + d.value, 0);
   let currentAngle = -Math.PI / 2; // start at top
 
-  const segments = data.map((item) => {
+  const rawSegments = data.map((item) => {
     const segAngle = (item.value / total) * (2 * Math.PI) - gap;
     const startAngle = currentAngle + gap / 2;
     const endAngle = startAngle + segAngle;
     const midAngle = startAngle + segAngle / 2;
-
-    // Label position — placed INSIDE the ring, between center hub and arc
-    const labelRadius = 88;
-    const labelX = cx + Math.cos(midAngle) * labelRadius;
-    const labelY = cy + Math.sin(midAngle) * labelRadius;
 
     const x1 = cx + Math.cos(startAngle) * radius;
     const y1 = cy + Math.sin(startAngle) * radius;
@@ -94,11 +89,30 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
 
     currentAngle = endAngle + gap / 2;
 
-    return { ...item, path, labelX, labelY };
+    return { ...item, path, midAngle, percent: (item.value / total) * 100 };
   });
 
+  // Place labels outside the ring, then resolve vertical overlaps for nearby small slices.
+  const labelRadius = radius + 22;
+  const labeled = rawSegments.map((seg) => ({
+    ...seg,
+    labelX: cx + Math.cos(seg.midAngle) * labelRadius,
+    labelY: cy + Math.sin(seg.midAngle) * labelRadius,
+  }));
+  // Resolve overlaps by nudging labels vertically when two are too close together.
+  const sorted = [...labeled].sort((a, b) => a.labelY - b.labelY);
+  const minGap = 16;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    if (Math.abs(cur.labelX - prev.labelX) < 80 && cur.labelY - prev.labelY < minGap) {
+      cur.labelY = prev.labelY + minGap;
+    }
+  }
+  const segments = labeled;
+
   return (
-    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[300px] mx-auto">
+    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[340px] mx-auto">
       {/* Arc segments — outline only, no fill */}
       {segments.map((seg, i) => (
         <path
@@ -117,10 +131,10 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
           key={`label-${i}`}
           x={seg.labelX}
           y={seg.labelY}
-          textAnchor="middle"
+          textAnchor={seg.labelX > cx + 4 ? "start" : seg.labelX < cx - 4 ? "end" : "middle"}
           dominantBaseline="central"
           className="fill-foreground"
-          fontSize={15}
+          fontSize={13}
           fontWeight={500}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
