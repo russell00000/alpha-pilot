@@ -1,7 +1,7 @@
 project_id = "mjnvjedokqxykhdwqpxl"
 
 [functions.ai-chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.market-data]
 verify_jwt = false
@@ -10,7 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-portfolio]
-verify_jwt = true
+verify_jwt = false
 
 [functions.market-news]
 verify_jwt = false
