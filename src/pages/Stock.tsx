@@ -1303,6 +1303,28 @@ const Stock = () => {
           </div>
         )}
 
+        {/* 12-Month Forecast */}
+        {(isLoadingForecast || forecast) && (
+          <div className="glass-card p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">12-Month Performance Forecast</h3>
+              {forecast?.indicators.numAnalysts ? (
+                <span className="text-xs text-muted-foreground">
+                  Based on {forecast.indicators.numAnalysts} analysts + 5Y price history
+                </span>
+              ) : null}
+            </div>
+            {isLoadingForecast && !forecast ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+                <span className="text-muted-foreground">Building forecast...</span>
+              </div>
+            ) : forecast ? (
+              <ForecastChart forecast={forecast} />
+            ) : null}
+          </div>
+        )}
+
         {/* Our Recommendation */}
         <div className="glass-card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
