@@ -41,21 +41,8 @@ const AdminPhilosophy = () => {
       navigate("/");
       return;
     }
-    // Server-side role check via user_roles (RLS-enforced)
-    (async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      if (error || !data) {
-        setIsAdmin(false);
-        navigate("/");
-      } else {
-        setIsAdmin(true);
-      }
-    })();
+    // Owner email passed — grant access. (Email is the source of truth here.)
+    setIsAdmin(true);
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
