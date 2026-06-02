@@ -200,7 +200,7 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
         
         if (data.data.length === 0) {
           toast({
@@ -231,7 +231,7 @@ const Markets = () => {
       });
 
       if (!error && data?.data?.[0]) {
-        setPriceCache(prev => ({ ...prev, [symbol]: data.data[0] }));
+        mergePriceCache({ [symbol]: data.data[0] });
       }
     } catch (err) {
       console.error("Error fetching stock:", err);
