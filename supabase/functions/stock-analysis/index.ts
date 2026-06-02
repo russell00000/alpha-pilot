@@ -138,12 +138,13 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 3500,
+        max_tokens: 2200,
+        response_format: { type: "json_object" },
       }),
     });
 
