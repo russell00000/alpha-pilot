@@ -373,6 +373,8 @@ async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
+  const cached = cacheGet<ForecastStats | null>(`forecast:${ticker}`, 10 * 60 * 1000);
+  if (cached !== null && cached !== undefined) return cached;
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
