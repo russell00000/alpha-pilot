@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import SparklineChart from "@/components/SparklineChart";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
-import financeBg from "@/assets/finance-bg.jpg";
+import financeBg from "@/assets/finance-bg.webp";
 
 interface MarketData {
   symbol: string;
@@ -50,14 +50,24 @@ const Markets = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
+  const [visibleRows, setVisibleRows] = useState(30);
   const { toast } = useToast();
 
   // Map to store fetched prices
   const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
+  const priceCacheRef = useRef<Record<string, MarketData>>({});
+
+  const mergePriceCache = useCallback((cache: Record<string, MarketData>) => {
+    setPriceCache(prev => {
+      const next = { ...prev, ...cache };
+      priceCacheRef.current = next;
+      return next;
+    });
+  }, []);
 
   // Batch fetch prices for multiple symbols
   const batchFetchPrices = useCallback(async (symbols: string[]) => {
-    const uncached = symbols.filter(s => !priceCache[s]);
+    const uncached = symbols.filter(s => !priceCacheRef.current[s]);
     if (uncached.length === 0) return;
 
     try {
@@ -70,12 +80,12 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
       }
     } catch (err) {
       console.error("Error batch fetching:", err);
     }
-  }, [priceCache]);
+  }, [mergePriceCache]);
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -94,14 +104,14 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
         setIsLoading(false);
       }
     } catch (err) {
       console.error("Error fetching market data:", err);
       setIsLoading(false);
     }
-  }, []);
+  }, [mergePriceCache]);
 
   useEffect(() => {
     // Fetch data in background - don't block UI with loading state
@@ -133,30 +143,28 @@ const Markets = () => {
       if (allSymbols.length === 0) return;
       
       // Filter out already cached symbols
-      const uncached = allSymbols.filter(s => !priceCache[s]);
+      const uncached = allSymbols.filter(s => !priceCacheRef.current[s]);
       if (uncached.length === 0) return;
       
-      // Load in very small batches with longer delays to avoid rate limits
-      const batchSize = 5;
-      for (let i = 0; i < Math.min(uncached.length, 20); i += batchSize) {
+      // Load visible prices quickly, then continue in controlled batches.
+      const batchSize = 10;
+      for (let i = 0; i < uncached.length; i += batchSize) {
         if (isCancelled) break;
         const batch = uncached.slice(i, i + batchSize);
         await batchFetchPrices(batch);
-        // 2 second delay between batches to stay well under rate limit
         if (i + batchSize < uncached.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 350));
         }
       }
     };
     
-    // Delay additional loading to let initial data load first
-    const timer = setTimeout(loadAdditionalPrices, 3000);
+    const timer = setTimeout(loadAdditionalPrices, 500);
     
     return () => { 
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [activeTab, batchFetchPrices, priceCache]);
+  }, [activeTab, batchFetchPrices]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -191,7 +199,7 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
         
         if (data.data.length === 0) {
           toast({
@@ -222,7 +230,7 @@ const Markets = () => {
       });
 
       if (!error && data?.data?.[0]) {
-        setPriceCache(prev => ({ ...prev, [symbol]: data.data[0] }));
+        mergePriceCache({ [symbol]: data.data[0] });
       }
     } catch (err) {
       console.error("Error fetching stock:", err);
@@ -397,6 +405,11 @@ const Markets = () => {
   };
 
   const displayData = getDisplayData();
+  const visibleDisplayData = displayData.slice(0, visibleRows);
+
+  useEffect(() => {
+    setVisibleRows(30);
+  }, [activeTab, searchQuery, searchResults.length]);
 
   // Filter suggestions from all available assets including cryptos
   const cryptoAssets = [
@@ -726,7 +739,7 @@ const Markets = () => {
                     </td>
                   </tr>
                 ) : (
-                  displayData.map((item, index) => {
+                  visibleDisplayData.map((item, index) => {
                     const isPositive = item.change >= 0;
                     const hasPrice = item.price !== "—";
                     const isLoadingThis = loadingSymbol === item.symbol;
@@ -750,6 +763,8 @@ const Markets = () => {
                               <img
                                 src={`https://assets.parqet.com/logos/symbol/${item.symbol}`}
                                 alt={item.symbol}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   const target = e.currentTarget;
@@ -816,6 +831,14 @@ const Markets = () => {
             </table>
           </div>
         </div>
+
+        {visibleRows < displayData.length && (
+          <div className="flex justify-center mt-4">
+            <Button variant="outline" size="sm" onClick={() => setVisibleRows((count) => Math.min(count + 30, displayData.length))}>
+              Load more assets
+            </Button>
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="mt-6 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20">
