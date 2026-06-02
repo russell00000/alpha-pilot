@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { isOwner } from "@/lib/owner";
 import {
   Sheet,
   SheetContent,
@@ -29,6 +30,7 @@ const Header = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const showPhilosophy = isOwner(user?.email);
 
   // Refs for sliding pill indicator
   const navRef = useRef<HTMLDivElement>(null);
@@ -154,13 +156,17 @@ const Header = () => {
                   {user.email}
                 </div>
               )}
-              <DropdownMenuItem asChild>
-                <Link to="/admin/philosophy" className="flex items-center gap-2.5 cursor-pointer">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">AI Philosophy</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border/50" />
+              {showPhilosophy && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/philosophy" className="flex items-center gap-2.5 cursor-pointer">
+                      <Settings className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">AI Philosophy</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/50" />
+                </>
+              )}
               {user ? (
                 <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2.5 cursor-pointer text-red-500 focus:text-red-500">
                   <LogOut className="w-4 h-4" />
@@ -210,23 +216,27 @@ const Header = () => {
                     </Button>
                   </Link>
                 ))}
-                <div className="h-px bg-border/40 my-2" />
-                <Link 
-                  to="/admin/philosophy"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors duration-200 h-9",
-                      location.pathname === "/admin/philosophy" && "text-foreground bg-secondary/60"
-                    )}
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    AI Settings
-                  </Button>
-                </Link>
+                {showPhilosophy && (
+                  <>
+                    <div className="h-px bg-border/40 my-2" />
+                    <Link 
+                      to="/admin/philosophy"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors duration-200 h-9",
+                          location.pathname === "/admin/philosophy" && "text-foreground bg-secondary/60"
+                        )}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        AI Settings
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

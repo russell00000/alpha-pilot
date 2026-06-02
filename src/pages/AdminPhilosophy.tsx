@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isOwner } from "@/lib/owner";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +32,13 @@ const AdminPhilosophy = () => {
     if (authLoading) return;
     if (!user) {
       navigate("/auth");
+      return;
+    }
+    // Hard gate: only the designated owner email can access this page,
+    // regardless of any admin role assignments in the database.
+    if (!isOwner(user.email)) {
+      setIsAdmin(false);
+      navigate("/");
       return;
     }
     // Server-side role check via user_roles (RLS-enforced)
