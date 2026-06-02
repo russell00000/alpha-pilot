@@ -2,7 +2,7 @@ import { TrendingUp, Bell, User, Menu, Settings, ChevronDown, LogOut, LogIn } fr
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
@@ -30,6 +30,39 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, signOut } = useAuth();
 
+  // Refs for sliding pill indicator
+  const navRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const [pill, setPill] = useState<{ left: number; width: number; visible: boolean }>({
+    left: 0,
+    width: 0,
+    visible: false,
+  });
+
+  useLayoutEffect(() => {
+    const el = itemRefs.current[location.pathname];
+    const nav = navRef.current;
+    if (el && nav) {
+      const navRect = nav.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      setPill({ left: r.left - navRect.left, width: r.width, visible: true });
+    } else {
+      setPill((p) => ({ ...p, visible: false }));
+    }
+  }, [location.pathname]);
+
+  // Prefetch all main routes on idle so the first navigation is instant
+  useEffect(() => {
+    const run = () => navItems.forEach((i) => i.prefetch?.());
+    const w = window as any;
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(run, { timeout: 1500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(run, 400);
+    return () => clearTimeout(t);
+  }, []);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -48,30 +81,42 @@ const Header = () => {
 
         {/* Desktop Nav - absolutely centered */}
         <nav className="hidden md:flex items-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="relative flex items-center bg-secondary/40 rounded-full p-1 border border-border/20">
+          <div
+            ref={navRef}
+            className="relative flex items-center bg-secondary/40 rounded-full p-1 border border-border/20"
+          >
+            {/* Sliding active pill */}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute top-1 bottom-1 rounded-full bg-secondary border border-border/40 shadow-sm",
+                "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform",
+                pill.visible ? "opacity-100" : "opacity-0"
+              )}
+              style={{
+                width: pill.width,
+                transform: `translateX(${pill.left}px)`,
+              }}
+            />
             {navItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   to={item.href}
+                  ref={(el) => (itemRefs.current[item.href] = el)}
                   onMouseEnter={() => item.prefetch?.()}
                   onFocus={() => item.prefetch?.()}
+                  className="relative"
                 >
                   <button
                     className={cn(
-                      "relative px-5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ease-out",
+                      "relative px-5 py-1.5 text-sm font-medium rounded-full transition-colors duration-200 ease-out",
                       isActive
                         ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground/80"
+                        : "text-muted-foreground hover:text-foreground/90"
                     )}
                   >
-                    {isActive && (
-                      <span
-                        className="absolute inset-0 rounded-full bg-secondary border border-border/40 shadow-sm"
-                        style={{ animation: "scale-in 0.25s ease-out" }}
-                      />
-                    )}
                     <span className="relative z-10">{item.label}</span>
                   </button>
                 </Link>
