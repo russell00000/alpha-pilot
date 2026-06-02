@@ -40,22 +40,22 @@ interface RecommendationProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Stock ETF": "hsl(215, 40%, 68%)",         // Slate blue
-  "International ETF": "hsl(270, 32%, 67%)", // Wisteria
-  "Dividend ETF": "hsl(145, 30%, 60%)",      // Sage
-  "Sector ETF": "hsl(22, 45%, 66%)",         // Warm terracotta
-  "Bond ETF": "hsl(48, 40%, 65%)",           // Wheat
-  "Treasury ETF": "hsl(175, 28%, 60%)",      // Celadon
-  "TIPS ETF": "hsl(355, 35%, 66%)",          // Dusty rose
-  "Real Estate": "hsl(310, 28%, 64%)",       // Orchid
-  "Commodity": "hsl(85, 28%, 60%)",          // Pistachio
-  "Money Market": "hsl(195, 32%, 64%)",      // Powder
+  "Stock ETF": "hsl(212, 88%, 62%)",          // Vivid blue
+  "International ETF": "hsl(268, 75%, 68%)",  // Vivid purple
+  "Dividend ETF": "hsl(150, 65%, 50%)",       // Emerald
+  "Sector ETF": "hsl(18, 88%, 60%)",          // Bright terracotta
+  "Bond ETF": "hsl(45, 95%, 58%)",            // Gold
+  "Treasury ETF": "hsl(180, 70%, 48%)",       // Teal
+  "TIPS ETF": "hsl(348, 82%, 62%)",           // Rose
+  "Real Estate": "hsl(320, 75%, 62%)",        // Magenta
+  "Commodity": "hsl(82, 60%, 52%)",           // Lime
+  "Money Market": "hsl(195, 80%, 58%)",       // Sky
   // Fallbacks for older data
-  "Stock": "hsl(215, 40%, 68%)",
-  "Bond": "hsl(48, 40%, 65%)",
-  "ETF": "hsl(22, 45%, 66%)",
-  "Cash": "hsl(175, 28%, 60%)",
-  "Alternative": "hsl(310, 28%, 64%)",
+  "Stock": "hsl(212, 88%, 62%)",
+  "Bond": "hsl(45, 95%, 58%)",
+  "ETF": "hsl(18, 88%, 60%)",
+  "Cash": "hsl(150, 65%, 50%)",
+  "Alternative": "hsl(320, 75%, 62%)",
 };
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
