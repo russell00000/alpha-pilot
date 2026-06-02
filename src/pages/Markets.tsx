@@ -145,21 +145,19 @@ const Markets = () => {
       const uncached = allSymbols.filter(s => !priceCacheRef.current[s]);
       if (uncached.length === 0) return;
       
-      // Load in very small batches with longer delays to avoid rate limits
-      const batchSize = 40;
-      for (let i = 0; i < Math.min(uncached.length, 100); i += batchSize) {
+      // Load visible prices quickly, then continue in controlled batches.
+      const batchSize = 10;
+      for (let i = 0; i < uncached.length; i += batchSize) {
         if (isCancelled) break;
         const batch = uncached.slice(i, i + batchSize);
         await batchFetchPrices(batch);
-        // 2 second delay between batches to stay well under rate limit
         if (i + batchSize < uncached.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 350));
         }
       }
     };
     
-    // Delay additional loading to let initial data load first
-    const timer = setTimeout(loadAdditionalPrices, 3000);
+    const timer = setTimeout(loadAdditionalPrices, 500);
     
     return () => { 
       isCancelled = true;
