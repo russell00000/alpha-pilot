@@ -587,7 +587,7 @@ const Stock = () => {
       return (
         <div className={cn(
           "bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl",
-          insiderView ? "min-w-[280px]" : "min-w-[200px]"
+          insiderView ? "min-w-[340px]" : "min-w-[200px]"
         )}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-muted-foreground text-xs font-medium">{data.displayDate}</p>
@@ -601,50 +601,50 @@ const Stock = () => {
           <p className="text-foreground font-bold text-2xl tracking-tight">${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           
           {/* OHLC Grid */}
-          <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-border/50">
+          <div className="grid grid-cols-4 gap-2 mt-3 pt-2 border-t border-border/50">
             <div className="text-center">
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Open</p>
-              <p className="text-xs font-medium text-foreground">${data.open?.toFixed(2)}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Open</p>
+              <p className="text-sm font-semibold text-foreground">${data.open?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-success uppercase tracking-wide">High</p>
-              <p className="text-xs font-medium text-success">${data.high?.toFixed(2)}</p>
+              <p className="text-[10px] text-success uppercase tracking-wide mb-0.5">High</p>
+              <p className="text-sm font-semibold text-success">${data.high?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-destructive uppercase tracking-wide">Low</p>
-              <p className="text-xs font-medium text-destructive">${data.low?.toFixed(2)}</p>
+              <p className="text-[10px] text-destructive uppercase tracking-wide mb-0.5">Low</p>
+              <p className="text-sm font-semibold text-destructive">${data.low?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Vol</p>
-              <p className="text-xs font-medium text-foreground">{data.volume?.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Vol</p>
+              <p className="text-sm font-semibold text-foreground">{data.volume?.toLocaleString()}</p>
             </div>
           </div>
           
           {/* Extended Technical Indicators - Insider View Only */}
           {insiderView && (
-            <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-border/30">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/30">
               <div className="text-center">
-                <p className="text-[9px] text-primary uppercase tracking-wide">SMA{maWindow}</p>
-                <p className="text-xs font-medium text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-primary uppercase tracking-wide mb-0.5">SMA {maWindow}</p>
+                <p className="text-sm font-semibold text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-amber-500 uppercase tracking-wide">EMA{emaWindow}</p>
-                <p className="text-xs font-medium text-amber-500">{data.ema ? `$${data.ema.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-amber-500 uppercase tracking-wide mb-0.5">EMA {emaWindow}</p>
+                <p className="text-sm font-semibold text-amber-500">{data.ema ? `$${data.ema.toFixed(2)}` : '—'}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-violet-500 uppercase tracking-wide">VWAP</p>
-                <p className="text-xs font-medium text-violet-500">{data.vwap ? `$${data.vwap.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-violet-500 uppercase tracking-wide mb-0.5">VWAP</p>
+                <p className="text-sm font-semibold text-violet-500">{data.vwap ? `$${data.vwap.toFixed(2)}` : '—'}</p>
               </div>
             </div>
           )}
           
           {/* RSI & Bollinger - Insider View Only */}
           {insiderView && (
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/30">
+            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-border/30">
               <div>
-                <p className="text-[9px] text-cyan-500 uppercase tracking-wide mb-1">RSI ({rsiPeriod})</p>
+                <p className="text-[10px] text-cyan-500 uppercase tracking-wide mb-1.5">RSI ({rsiPeriod})</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
                       className={cn(
                         "h-full rounded-full transition-all",
@@ -654,7 +654,7 @@ const Stock = () => {
                     />
                   </div>
                   <span className={cn(
-                    "text-xs font-medium",
+                    "text-sm font-semibold min-w-[24px] text-right",
                     data.rsi > 70 ? "text-destructive" : data.rsi < 30 ? "text-success" : "text-cyan-500"
                   )}>
                     {data.rsi?.toFixed(0) || '—'}
@@ -662,15 +662,15 @@ const Stock = () => {
                 </div>
               </div>
               <div>
-                <p className="text-[9px] text-pink-500 uppercase tracking-wide mb-1">Bollinger</p>
-                <div className="text-[10px] space-y-0.5">
+                <p className="text-[10px] text-pink-500 uppercase tracking-wide mb-1.5">Bollinger</p>
+                <div className="text-xs space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Upper</span>
-                    <span className="text-pink-500">{data.bbUpper ? `$${data.bbUpper.toFixed(2)}` : '—'}</span>
+                    <span className="text-pink-500 font-medium">{data.bbUpper ? `$${data.bbUpper.toFixed(2)}` : '—'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Lower</span>
-                    <span className="text-pink-500">{data.bbLower ? `$${data.bbLower.toFixed(2)}` : '—'}</span>
+                    <span className="text-pink-500 font-medium">{data.bbLower ? `$${data.bbLower.toFixed(2)}` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -1122,27 +1122,27 @@ const Stock = () => {
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 pt-2 border-t border-border/20">
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
-                <span className="text-[10px] text-muted-foreground">Price</span>
+                <span className="text-xs text-muted-foreground">Price</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
-                <span className="text-[10px] text-muted-foreground">SMA{maWindow}</span>
+                <span className="text-xs text-muted-foreground">SMA {maWindow}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-amber-500" />
-                <span className="text-[10px] text-muted-foreground">EMA{emaWindow}</span>
+                <span className="text-xs text-muted-foreground">EMA {emaWindow}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-violet-500" />
-                <span className="text-[10px] text-muted-foreground">VWAP</span>
+                <span className="text-xs text-muted-foreground">VWAP</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-pink-500" style={{ opacity: 0.5 }} />
-                <span className="text-[10px] text-muted-foreground">BB</span>
+                <span className="text-xs text-muted-foreground">Bollinger</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded opacity-15 bg-pink-500" />
-                <span className="text-[10px] text-muted-foreground">BB Band</span>
+                <span className="text-xs text-muted-foreground">BB Band</span>
               </div>
             </div>
           )}
@@ -1150,14 +1150,14 @@ const Stock = () => {
           {/* Technical Indicators Panel - Insider View only */}
           {insiderView && latestData && (
             <div className="mt-4 pt-4 border-t border-border/30">
-              <h4 className="text-sm font-semibold text-foreground mb-3">Technical Indicators</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <h4 className="text-base font-semibold text-foreground mb-4">Technical Indicators</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* RSI */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">RSI ({rsiPeriod})</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-muted-foreground">RSI ({rsiPeriod})</span>
                     <span className={cn(
-                      "text-xs px-1.5 py-0.5 rounded font-medium",
+                      "text-xs px-2 py-0.5 rounded font-semibold",
                       currentRSI && currentRSI > 70 ? "bg-destructive/10 text-destructive" :
                       currentRSI && currentRSI < 30 ? "bg-success/10 text-success" :
                       "bg-secondary text-muted-foreground"
@@ -1177,21 +1177,21 @@ const Stock = () => {
                         style={{ width: `${currentRSI || 0}%` }}
                       />
                     </div>
-                    <span className="text-sm font-bold text-foreground min-w-[32px] text-right">{currentRSI?.toFixed(0) || '—'}</span>
+                    <span className="text-base font-bold text-foreground min-w-[36px] text-right">{currentRSI?.toFixed(0) || '—'}</span>
                   </div>
-                  <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
                     <span>30</span>
                     <span>70</span>
                   </div>
                 </div>
                 
                 {/* VWAP vs Price */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">VWAP Position</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">VWAP Position</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-foreground">${currentVWAP?.toFixed(2) || '—'}</div>
+                    <div className="text-xl font-bold text-foreground">${currentVWAP?.toFixed(2) || '—'}</div>
                     <div className={cn(
-                      "text-xs font-medium mt-1",
+                      "text-xs font-semibold mt-1.5",
                       priceVsVWAP && parseFloat(priceVsVWAP) > 0 ? "text-success" : "text-destructive"
                     )}>
                       {priceVsVWAP ? `${parseFloat(priceVsVWAP) > 0 ? '+' : ''}${priceVsVWAP}% vs price` : '—'}
@@ -1200,22 +1200,22 @@ const Stock = () => {
                 </div>
                 
                 {/* Support Level */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">Support Level</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">Support Level</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-success">${support.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xl font-bold text-success">${support.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1.5">
                       {latestData.price > support ? `${((latestData.price - support) / support * 100).toFixed(1)}% above` : 'At support'}
                     </div>
                   </div>
                 </div>
                 
                 {/* Resistance Level */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">Resistance Level</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">Resistance Level</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-destructive">${resistance.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xl font-bold text-destructive">${resistance.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1.5">
                       {latestData.price < resistance ? `${((resistance - latestData.price) / latestData.price * 100).toFixed(1)}% below` : 'At resistance'}
                     </div>
                   </div>
@@ -1223,31 +1223,31 @@ const Stock = () => {
               </div>
               
               {/* Moving Averages Summary */}
-              <div className="mt-3 grid grid-cols-3 gap-3">
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-primary uppercase">SMA{maWindow}</span>
-                  <div className="text-sm font-semibold text-foreground">${latestData.ma?.toFixed(2) || '—'}</div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-primary uppercase tracking-wide">SMA {maWindow}</span>
+                  <div className="text-base font-semibold text-foreground mt-1">${latestData.ma?.toFixed(2) || '—'}</div>
                   {latestData.ma && (
-                    <span className={cn("text-[10px]", latestData.price > latestData.ma ? "text-success" : "text-destructive")}>
+                    <span className={cn("text-xs font-medium", latestData.price > latestData.ma ? "text-success" : "text-destructive")}>
                       {latestData.price > latestData.ma ? 'Above' : 'Below'}
                     </span>
                   )}
                 </div>
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-amber-500 uppercase">EMA{emaWindow}</span>
-                  <div className="text-sm font-semibold text-foreground">${latestData.ema?.toFixed(2) || '—'}</div>
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-amber-500 uppercase tracking-wide">EMA {emaWindow}</span>
+                  <div className="text-base font-semibold text-foreground mt-1">${latestData.ema?.toFixed(2) || '—'}</div>
                   {latestData.ema && (
-                    <span className={cn("text-[10px]", latestData.price > latestData.ema ? "text-success" : "text-destructive")}>
+                    <span className={cn("text-xs font-medium", latestData.price > latestData.ema ? "text-success" : "text-destructive")}>
                       {latestData.price > latestData.ema ? 'Above' : 'Below'}
                     </span>
                   )}
                 </div>
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-pink-500 uppercase">BB Width</span>
-                  <div className="text-sm font-semibold text-foreground">
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-pink-500 uppercase tracking-wide">BB Width</span>
+                  <div className="text-base font-semibold text-foreground mt-1">
                     {latestData.bbUpper && latestData.bbLower ? `$${(latestData.bbUpper - latestData.bbLower).toFixed(2)}` : '—'}
                   </div>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {latestData.bbUpper && latestData.bbLower ? `${((latestData.bbUpper - latestData.bbLower) / latestData.price * 100).toFixed(1)}%` : ''}
                   </span>
                 </div>
