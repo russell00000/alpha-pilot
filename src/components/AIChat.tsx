@@ -193,6 +193,21 @@ const AIChat = ({ onResetSize }: AIChatProps) => {
             <Send className="w-3.5 h-3.5" strokeWidth={2.5} />
           </Button>
         </div>
+        {onResetSize && (
+          <button
+            type="button"
+            onClick={() => {
+              onResetSize();
+              if (containerRef.current) {
+                containerRef.current.style.height = "640px";
+              }
+            }}
+            className="mt-2 flex items-center justify-center gap-1 text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors w-full"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset sizing
+          </button>
+        )}
       </form>
       {/* Resize hint */}
       <div className="pointer-events-none absolute bottom-1 right-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 opacity-0 group-hover/chat:opacity-100 transition-opacity">
