@@ -1327,7 +1327,13 @@ const Stock = () => {
                 <span className="text-muted-foreground">Building forecast...</span>
               </div>
             ) : forecast ? (
-              <ForecastChart forecast={forecast} />
+              <Suspense
+                fallback={
+                  <div className="h-64 rounded-xl border border-white/[0.06] bg-black/20 animate-pulse" />
+                }
+              >
+                <ForecastChart forecast={forecast} />
+              </Suspense>
             ) : null}
           </div>
         )}
