@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,10 +54,19 @@ const Markets = () => {
 
   // Map to store fetched prices
   const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
+  const priceCacheRef = useRef<Record<string, MarketData>>({});
+
+  const mergePriceCache = useCallback((cache: Record<string, MarketData>) => {
+    setPriceCache(prev => {
+      const next = { ...prev, ...cache };
+      priceCacheRef.current = next;
+      return next;
+    });
+  }, []);
 
   // Batch fetch prices for multiple symbols
   const batchFetchPrices = useCallback(async (symbols: string[]) => {
-    const uncached = symbols.filter(s => !priceCache[s]);
+    const uncached = symbols.filter(s => !priceCacheRef.current[s]);
     if (uncached.length === 0) return;
 
     try {
@@ -70,12 +79,12 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
       }
     } catch (err) {
       console.error("Error batch fetching:", err);
     }
-  }, [priceCache]);
+  }, [mergePriceCache]);
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -94,14 +103,14 @@ const Markets = () => {
         data.data.forEach((item: MarketData) => {
           cache[item.symbol] = item;
         });
-        setPriceCache(prev => ({ ...prev, ...cache }));
+        mergePriceCache(cache);
         setIsLoading(false);
       }
     } catch (err) {
       console.error("Error fetching market data:", err);
       setIsLoading(false);
     }
-  }, []);
+  }, [mergePriceCache]);
 
   useEffect(() => {
     // Fetch data in background - don't block UI with loading state
@@ -133,7 +142,7 @@ const Markets = () => {
       if (allSymbols.length === 0) return;
       
       // Filter out already cached symbols
-      const uncached = allSymbols.filter(s => !priceCache[s]);
+      const uncached = allSymbols.filter(s => !priceCacheRef.current[s]);
       if (uncached.length === 0) return;
       
       // Load in very small batches with longer delays to avoid rate limits
@@ -156,7 +165,7 @@ const Markets = () => {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [activeTab, batchFetchPrices, priceCache]);
+  }, [activeTab, batchFetchPrices]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
