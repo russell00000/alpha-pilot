@@ -1122,27 +1122,27 @@ const Stock = () => {
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 pt-2 border-t border-border/20">
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded" style={{ background: chartColor }} />
-                <span className="text-[10px] text-muted-foreground">Price</span>
+                <span className="text-xs text-muted-foreground">Price</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-primary" style={{ opacity: 0.7 }} />
-                <span className="text-[10px] text-muted-foreground">SMA{maWindow}</span>
+                <span className="text-xs text-muted-foreground">SMA {maWindow}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-amber-500" />
-                <span className="text-[10px] text-muted-foreground">EMA{emaWindow}</span>
+                <span className="text-xs text-muted-foreground">EMA {emaWindow}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-violet-500" />
-                <span className="text-[10px] text-muted-foreground">VWAP</span>
+                <span className="text-xs text-muted-foreground">VWAP</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-0.5 rounded bg-pink-500" style={{ opacity: 0.5 }} />
-                <span className="text-[10px] text-muted-foreground">BB</span>
+                <span className="text-xs text-muted-foreground">Bollinger</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded opacity-15 bg-pink-500" />
-                <span className="text-[10px] text-muted-foreground">BB Band</span>
+                <span className="text-xs text-muted-foreground">BB Band</span>
               </div>
             </div>
           )}
@@ -1150,14 +1150,14 @@ const Stock = () => {
           {/* Technical Indicators Panel - Insider View only */}
           {insiderView && latestData && (
             <div className="mt-4 pt-4 border-t border-border/30">
-              <h4 className="text-sm font-semibold text-foreground mb-3">Technical Indicators</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <h4 className="text-base font-semibold text-foreground mb-4">Technical Indicators</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* RSI */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">RSI ({rsiPeriod})</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-muted-foreground">RSI ({rsiPeriod})</span>
                     <span className={cn(
-                      "text-xs px-1.5 py-0.5 rounded font-medium",
+                      "text-xs px-2 py-0.5 rounded font-semibold",
                       currentRSI && currentRSI > 70 ? "bg-destructive/10 text-destructive" :
                       currentRSI && currentRSI < 30 ? "bg-success/10 text-success" :
                       "bg-secondary text-muted-foreground"
@@ -1177,21 +1177,21 @@ const Stock = () => {
                         style={{ width: `${currentRSI || 0}%` }}
                       />
                     </div>
-                    <span className="text-sm font-bold text-foreground min-w-[32px] text-right">{currentRSI?.toFixed(0) || '—'}</span>
+                    <span className="text-base font-bold text-foreground min-w-[36px] text-right">{currentRSI?.toFixed(0) || '—'}</span>
                   </div>
-                  <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
                     <span>30</span>
                     <span>70</span>
                   </div>
                 </div>
                 
                 {/* VWAP vs Price */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">VWAP Position</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">VWAP Position</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-foreground">${currentVWAP?.toFixed(2) || '—'}</div>
+                    <div className="text-xl font-bold text-foreground">${currentVWAP?.toFixed(2) || '—'}</div>
                     <div className={cn(
-                      "text-xs font-medium mt-1",
+                      "text-xs font-semibold mt-1.5",
                       priceVsVWAP && parseFloat(priceVsVWAP) > 0 ? "text-success" : "text-destructive"
                     )}>
                       {priceVsVWAP ? `${parseFloat(priceVsVWAP) > 0 ? '+' : ''}${priceVsVWAP}% vs price` : '—'}
@@ -1200,22 +1200,22 @@ const Stock = () => {
                 </div>
                 
                 {/* Support Level */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">Support Level</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">Support Level</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-success">${support.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xl font-bold text-success">${support.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1.5">
                       {latestData.price > support ? `${((latestData.price - support) / support * 100).toFixed(1)}% above` : 'At support'}
                     </div>
                   </div>
                 </div>
                 
                 {/* Resistance Level */}
-                <div className="bg-secondary/30 rounded-lg p-3">
-                  <span className="text-xs text-muted-foreground">Resistance Level</span>
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <span className="text-sm font-medium text-muted-foreground">Resistance Level</span>
                   <div className="mt-2">
-                    <div className="text-lg font-bold text-destructive">${resistance.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xl font-bold text-destructive">${resistance.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-1.5">
                       {latestData.price < resistance ? `${((resistance - latestData.price) / latestData.price * 100).toFixed(1)}% below` : 'At resistance'}
                     </div>
                   </div>
@@ -1223,31 +1223,31 @@ const Stock = () => {
               </div>
               
               {/* Moving Averages Summary */}
-              <div className="mt-3 grid grid-cols-3 gap-3">
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-primary uppercase">SMA{maWindow}</span>
-                  <div className="text-sm font-semibold text-foreground">${latestData.ma?.toFixed(2) || '—'}</div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-primary uppercase tracking-wide">SMA {maWindow}</span>
+                  <div className="text-base font-semibold text-foreground mt-1">${latestData.ma?.toFixed(2) || '—'}</div>
                   {latestData.ma && (
-                    <span className={cn("text-[10px]", latestData.price > latestData.ma ? "text-success" : "text-destructive")}>
+                    <span className={cn("text-xs font-medium", latestData.price > latestData.ma ? "text-success" : "text-destructive")}>
                       {latestData.price > latestData.ma ? 'Above' : 'Below'}
                     </span>
                   )}
                 </div>
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-amber-500 uppercase">EMA{emaWindow}</span>
-                  <div className="text-sm font-semibold text-foreground">${latestData.ema?.toFixed(2) || '—'}</div>
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-amber-500 uppercase tracking-wide">EMA {emaWindow}</span>
+                  <div className="text-base font-semibold text-foreground mt-1">${latestData.ema?.toFixed(2) || '—'}</div>
                   {latestData.ema && (
-                    <span className={cn("text-[10px]", latestData.price > latestData.ema ? "text-success" : "text-destructive")}>
+                    <span className={cn("text-xs font-medium", latestData.price > latestData.ema ? "text-success" : "text-destructive")}>
                       {latestData.price > latestData.ema ? 'Above' : 'Below'}
                     </span>
                   )}
                 </div>
-                <div className="bg-secondary/20 rounded-lg p-2 text-center">
-                  <span className="text-[10px] text-pink-500 uppercase">BB Width</span>
-                  <div className="text-sm font-semibold text-foreground">
+                <div className="bg-secondary/20 rounded-lg p-3 text-center">
+                  <span className="text-[11px] font-medium text-pink-500 uppercase tracking-wide">BB Width</span>
+                  <div className="text-base font-semibold text-foreground mt-1">
                     {latestData.bbUpper && latestData.bbLower ? `$${(latestData.bbUpper - latestData.bbLower).toFixed(2)}` : '—'}
                   </div>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {latestData.bbUpper && latestData.bbLower ? `${((latestData.bbUpper - latestData.bbLower) / latestData.price * 100).toFixed(1)}%` : ''}
                   </span>
                 </div>
