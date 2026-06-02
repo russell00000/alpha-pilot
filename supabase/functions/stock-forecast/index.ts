@@ -13,7 +13,7 @@ const SECTOR_ETF_MAP: Record<string, string> = {
 };
 
 // ----- In-memory cache (per edge instance) -----
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30m forecasts; price moves slowly at 12-mo horizon
 const cache = new Map<string, { ts: number; data: unknown }>();
 function cacheGet<T>(key: string): T | null {
   const e = cache.get(key);
