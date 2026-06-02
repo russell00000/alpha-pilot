@@ -713,66 +713,29 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
 
 // Fetch real-time market data for all platform securities
 async function fetchMarketData(): Promise<string> {
-  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO];
-  
-  try {
-    const batchSize = 15;
-    const quotes: QuoteData[] = [];
-    
-    for (let i = 0; i < allSymbols.length; i += batchSize) {
-      const batch = allSymbols.slice(i, i + batchSize);
-      const batchResults = await Promise.all(batch.map(fetchQuote));
-      quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
-    }
-    
-    if (quotes.length === 0) {
-      console.log("No market data fetched");
-      return "";
-    }
+  // Only fetch a small set of macro benchmarks — quoting 400+ tickers per chat
+  // request was the dominant latency. Specific tickers the user asks about
+  // still get a live on-demand fetch later in the pipeline.
+  const cached = cacheGet<string>("marketSummary", 60 * 1000);
+  if (cached !== null) return cached;
 
-    const timestamp = new Date().toISOString();
-    console.log(`Fetched ${quotes.length} market quotes`);
-    
-    const stockQuotes = quotes.filter(q => TOP_STOCKS.includes(q.symbol));
-    const etfQuotes = quotes.filter(q => TOP_ETFS.includes(q.symbol));
-    const mutualFundQuotes = quotes.filter(q => MUTUAL_FUNDS.includes(q.symbol));
-    const cryptoQuotes = quotes.filter(q => CRYPTO.includes(q.symbol));
-    
-    const formatQuote = (q: QuoteData) => {
-      const changeStr = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
-      const distFromHigh = q.high52Week ? ((q.price - q.high52Week) / q.high52Week * 100).toFixed(1) : 'N/A';
-      return `${q.symbol} (${q.name}): $${q.price.toFixed(2)} ${changeStr}, 52W High: $${q.high52Week?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${q.low52Week?.toFixed(2) || 'N/A'}`;
+  const BENCHMARKS = ["SPY", "QQQ", "DIA", "IWM", "GLD", "TLT", "BTC-USD", "ETH-USD"];
+  try {
+    const results = await Promise.all(BENCHMARKS.map(fetchQuote));
+    const quotes = results.filter((q): q is QuoteData => q !== null);
+    if (quotes.length === 0) { cacheSet("marketSummary", ""); return ""; }
+
+    const fmt = (q: QuoteData) => {
+      const c = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
+      return `${q.symbol} (${q.name}): $${q.price.toFixed(2)} ${c}`;
     };
-    
-    let marketDataStr = `\n\n=== REAL-TIME MARKET DATA (${timestamp}) ===\n\n`;
-    
-    if (stockQuotes.length > 0) {
-      marketDataStr += `TOP STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (etfQuotes.length > 0) {
-      marketDataStr += `ETFs:\n${etfQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (mutualFundQuotes.length > 0) {
-      marketDataStr += `MUTUAL FUNDS:\n${mutualFundQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (cryptoQuotes.length > 0) {
-      marketDataStr += `CRYPTO:\n${cryptoQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    
-    const sp500 = etfQuotes.find(q => q.symbol === 'SPY');
-    const nasdaq = etfQuotes.find(q => q.symbol === 'QQQ');
-    const btc = cryptoQuotes.find(q => q.symbol === 'BTC-USD');
-    
-    if (sp500 || nasdaq) {
-      marketDataStr += `MARKET SUMMARY:\n`;
-      if (sp500) marketDataStr += `S&P 500 (SPY): ${sp500.changePercent >= 0 ? '+' : ''}${sp500.changePercent.toFixed(2)}%\n`;
-      if (nasdaq) marketDataStr += `NASDAQ (QQQ): ${nasdaq.changePercent >= 0 ? '+' : ''}${nasdaq.changePercent.toFixed(2)}%\n`;
-      if (btc) marketDataStr += `Bitcoin: $${btc.price.toLocaleString()} (${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%)\n`;
-    }
-    
-    return marketDataStr;
-  } catch (error) {
-    console.error("Error fetching market data:", error);
+    const out =
+      `\n\n=== MARKET SUMMARY (${new Date().toISOString()}) ===\n` +
+      quotes.map(fmt).join("\n") + "\n";
+    cacheSet("marketSummary", out);
+    return out;
+  } catch (e) {
+    console.error("Error fetching market summary:", e);
     return "";
   }
 }
