@@ -230,6 +230,11 @@ const PortfolioRecommendation = ({
     const existing = categoryMap.get(fund.category) || 0;
     categoryMap.set(fund.category, existing + fund.allocation);
   });
+  // Merge Cash + Alternative into a single allocation slice
+  const cashValue = (categoryMap.get("Cash") || 0) + (categoryMap.get("Alternative") || 0);
+  categoryMap.delete("Cash");
+  categoryMap.delete("Alternative");
+  if (cashValue > 0) categoryMap.set("Cash + Alternatives", cashValue);
   const pieData = Array.from(categoryMap.entries())
     .map(([name, value]) => ({ name, value, color: getColor(name) }))
     .filter((item) => item.value > 0)
