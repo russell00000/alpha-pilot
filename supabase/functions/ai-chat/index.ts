@@ -852,6 +852,20 @@ serve(async (req) => {
       console.log("On-demand data fetched successfully");
     }
 
+    // Fetch deep forecasting stats for the (up to 4) tickers the user is asking about.
+    // This powers data-driven performance predictions (returns, vol, drawdown, momentum,
+    // analyst targets, forward EPS estimates, sector benchmark, news signals).
+    let forecastBlock = "";
+    const forecastTickers = allRequested.slice(0, 4);
+    if (forecastTickers.length > 0) {
+      const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
+      const formatted = forecasts.filter((f): f is ForecastStats => !!f).map(formatForecast);
+      if (formatted.length > 0) {
+        forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from 5Y daily history + analyst data) ===\n\n${formatted.join('\n\n')}\n`;
+      }
+      console.log(`Built forecast block for ${formatted.length} ticker(s)`);
+    }
+
     const systemPrompt = `You are Vantage Copilot—a sharp, conversational investing buddy. You talk like a knowledgeable friend, not a textbook. Keep it concise and real.
 
 ${philosophy}
@@ -863,23 +877,37 @@ ${philosophy}
 4. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
 5. When relevant, weave in 1 specific data point from the live profile or headlines so the answer feels current ("Recent headline: ...").
 
-## PRICE TARGETS (DATA-DRIVEN)
-- Derive targets from the REAL data: current price, 52W high/low, daily change%, and distance from 52W high.
-- Analyze growth trajectory: if trending up (positive change%, recovering toward 52W high), targets should reflect continued momentum.
-- If in a downtrend (far from 52W high, negative change%), be realistic—target a recovery level, not blind optimism.
-- Use the 52W range as your anchor: a stock 30% below 52W high with strong fundamentals might target a move back toward that high. Near 52W high? Target 5-15% above.
-- NEVER set a Buy/Hold target below the current price. For Sell: target below current price at a support level.
+## PERFORMANCE FORECASTING FRAMEWORK (use the PERFORMANCE FORECAST INPUTS block)
+When the user asks how a security will perform, where it's headed, a price target, or whether to buy/sell/hold, you MUST anchor your answer in the computed stats below. Don't hand-wave.
+
+Synthesize a forecast from FIVE signal categories (weight roughly equally):
+  1) Historical trajectory — 3Y/5Y CAGR sets a base-rate expectation. A stock that has compounded at 25%/yr won't suddenly do 5%.
+  2) Momentum & trend — 1M/3M/6M/1Y returns, price vs SMA50/SMA200, RSI14. RSI > 70 = overbought caution; < 30 = oversold bounce setup. Trend label tells you regime.
+  3) Risk profile — annualized vol, max drawdown, Sharpe. Use these to bracket your forecast (e.g. "expect ±vol% swings, drawdowns up to maxDD% are normal").
+  4) Forward fundamentals — Fwd P/E, PEG, EPS/Revenue growth, next-quarter & next-year EPS estimates. These drive the medium-term price.
+  5) Analyst consensus & industry signals — consensus rating, mean/high/low targets and implied upside, recent upgrades/downgrades, sector ETF performance, news headlines. Recent upgrades + bullish headlines = tailwind; downgrades + sector lagging = headwind.
+
+Then output an explicit, numerical forecast:
+  • 12-month base-case target price + % upside (start from analyst mean target, adjust ±10–20% based on whether momentum/trend/EPS growth confirm or contradict).
+  • Bull case and bear case targets (use analyst high/low as guides; tighten with vol/drawdown context).
+  • Expected annualized return range (anchor to 3Y/5Y CAGR, adjusted for current regime and forward EPS growth).
+  • Confidence level (High / Medium / Low) — High only if trajectory, momentum, fundamentals, AND analyst signals all align.
+
+Hard rules:
+  - NEVER set a Buy/Hold base-case target below current price. For Sell: base case must be below current price at a support level (use SMA200 or 52W low as anchor).
+  - If forecast inputs are missing for a ticker, fall back to 52W range + live quote logic and say so briefly.
+  - Always cite at least 2 specific numbers from the forecast block (e.g. "5Y CAGR of 31%, Sharpe of 1.4, analyst target $X implies +Y%").
 
 ## RESPONSE STYLE
 - CONCISE: 2-3 short paragraphs max. No bullet-point walls or numbered lists unless asked.
 - CONVERSATIONAL: talk like a smart friend. "Hey, so SMCI's sitting at $847 right now..." not "Super Micro Computer Inc. is currently trading at..."
-- Lead with your take: rating + price + target in the first sentence. Then a quick "why" in 1-2 sentences.
+- Lead with your take: rating + current price + 12-mo base-case target in the first sentence. Then a quick "why" backed by 2 stats. Then bull/bear range + confidence.
 - Use data to tell a story: "It's pulled back 31% from its high of $1229, which honestly looks like a solid entry if you believe in AI infrastructure."
 - NEVER say "I don't have details" or ask "would you like more?" — just give your take.
 
 ## LIVE MARKET DATA
 ${marketData}
-${onDemandData}`;
+${onDemandData}${forecastBlock}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
