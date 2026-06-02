@@ -90,7 +90,7 @@ const AIChat = () => {
   };
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col h-full min-h-[420px] max-h-[640px] overflow-hidden">
+    <div className="group/chat relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
@@ -189,6 +189,10 @@ const AIChat = () => {
           </Button>
         </div>
       </form>
+      {/* Resize hint */}
+      <div className="pointer-events-none absolute bottom-1 right-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 opacity-0 group-hover/chat:opacity-100 transition-opacity">
+        drag to resize
+      </div>
     </div>
   );
 };
