@@ -56,17 +56,18 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ETF": "hsl(18, 88%, 60%)",
   "Cash": "hsl(150, 65%, 50%)",
   "Alternative": "hsl(320, 75%, 62%)",
+  "Cash + Alternatives": "hsl(150, 65%, 50%)",
 };
 
 const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--muted-foreground))";
 
 // Custom donut ring chart component matching reference design
 const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; value: number; color: string }[]; investmentAmount: number }) => {
-  const viewSize = 400;
+  const viewSize = 440;
   const cx = viewSize / 2;
   const cy = viewSize / 2;
-  const radius = 130;
-  const strokeWidth = 4;
+  const radius = 165;
+  const strokeWidth = 6;
   const gap = 0.04; // gap in radians between segments
 
   // Calculate arc segments
@@ -93,7 +94,7 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   });
 
   // Place labels outside the ring, then resolve vertical overlaps for nearby small slices.
-  const labelRadius = radius + 22;
+  const labelRadius = radius + 28;
   const labeled = rawSegments.map((seg) => ({
     ...seg,
     labelX: cx + Math.cos(seg.midAngle) * labelRadius,
@@ -101,7 +102,7 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   }));
   // Resolve overlaps by nudging labels vertically when two are too close together.
   const sorted = [...labeled].sort((a, b) => a.labelY - b.labelY);
-  const minGap = 16;
+  const minGap = 20;
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const cur = sorted[i];
@@ -112,7 +113,7 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   const segments = labeled;
 
   return (
-    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[340px] mx-auto">
+    <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[440px] mx-auto">
       {/* Arc segments — outline only, no fill */}
       {segments.map((seg, i) => (
         <path
@@ -134,7 +135,7 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
           textAnchor={seg.labelX > cx + 4 ? "start" : seg.labelX < cx - 4 ? "end" : "middle"}
           dominantBaseline="central"
           className="fill-foreground"
-          fontSize={13}
+          fontSize={17}
           fontWeight={500}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
@@ -143,15 +144,15 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
       ))}
 
       {/* Center dark circle */}
-      <circle cx={cx} cy={cy} r={50} className="fill-background" />
-      <circle cx={cx} cy={cy} r={50} fill="hsl(var(--foreground))" fillOpacity={0.08} />
+      <circle cx={cx} cy={cy} r={64} className="fill-background" />
+      <circle cx={cx} cy={cy} r={64} fill="hsl(var(--foreground))" fillOpacity={0.08} />
       <text
         x={cx}
-        y={cy - 8}
+        y={cy - 10}
         textAnchor="middle"
         dominantBaseline="central"
         className="fill-foreground"
-        fontSize={10}
+        fontSize={13}
         fontWeight={600}
         letterSpacing="0.1em"
       >
@@ -159,11 +160,11 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
       </text>
       <text
         x={cx}
-        y={cy + 8}
+        y={cy + 10}
         textAnchor="middle"
         dominantBaseline="central"
         className="fill-foreground"
-        fontSize={10}
+        fontSize={13}
         fontWeight={600}
         letterSpacing="0.1em"
       >
@@ -230,6 +231,11 @@ const PortfolioRecommendation = ({
     const existing = categoryMap.get(fund.category) || 0;
     categoryMap.set(fund.category, existing + fund.allocation);
   });
+  // Merge Cash + Alternative into a single allocation slice
+  const cashValue = (categoryMap.get("Cash") || 0) + (categoryMap.get("Alternative") || 0);
+  categoryMap.delete("Cash");
+  categoryMap.delete("Alternative");
+  if (cashValue > 0) categoryMap.set("Cash + Alternatives", cashValue);
   const pieData = Array.from(categoryMap.entries())
     .map(([name, value]) => ({ name, value, color: getColor(name) }))
     .filter((item) => item.value > 0)
