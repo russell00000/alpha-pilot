@@ -587,7 +587,7 @@ const Stock = () => {
       return (
         <div className={cn(
           "bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl",
-          insiderView ? "min-w-[280px]" : "min-w-[200px]"
+          insiderView ? "min-w-[340px]" : "min-w-[200px]"
         )}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-muted-foreground text-xs font-medium">{data.displayDate}</p>
@@ -601,50 +601,50 @@ const Stock = () => {
           <p className="text-foreground font-bold text-2xl tracking-tight">${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           
           {/* OHLC Grid */}
-          <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-border/50">
+          <div className="grid grid-cols-4 gap-2 mt-3 pt-2 border-t border-border/50">
             <div className="text-center">
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Open</p>
-              <p className="text-xs font-medium text-foreground">${data.open?.toFixed(2)}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Open</p>
+              <p className="text-sm font-semibold text-foreground">${data.open?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-success uppercase tracking-wide">High</p>
-              <p className="text-xs font-medium text-success">${data.high?.toFixed(2)}</p>
+              <p className="text-[10px] text-success uppercase tracking-wide mb-0.5">High</p>
+              <p className="text-sm font-semibold text-success">${data.high?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-destructive uppercase tracking-wide">Low</p>
-              <p className="text-xs font-medium text-destructive">${data.low?.toFixed(2)}</p>
+              <p className="text-[10px] text-destructive uppercase tracking-wide mb-0.5">Low</p>
+              <p className="text-sm font-semibold text-destructive">${data.low?.toFixed(2)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Vol</p>
-              <p className="text-xs font-medium text-foreground">{data.volume?.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Vol</p>
+              <p className="text-sm font-semibold text-foreground">{data.volume?.toLocaleString()}</p>
             </div>
           </div>
           
           {/* Extended Technical Indicators - Insider View Only */}
           {insiderView && (
-            <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-border/30">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/30">
               <div className="text-center">
-                <p className="text-[9px] text-primary uppercase tracking-wide">SMA{maWindow}</p>
-                <p className="text-xs font-medium text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-primary uppercase tracking-wide mb-0.5">SMA {maWindow}</p>
+                <p className="text-sm font-semibold text-primary">{data.ma ? `$${data.ma.toFixed(2)}` : '—'}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-amber-500 uppercase tracking-wide">EMA{emaWindow}</p>
-                <p className="text-xs font-medium text-amber-500">{data.ema ? `$${data.ema.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-amber-500 uppercase tracking-wide mb-0.5">EMA {emaWindow}</p>
+                <p className="text-sm font-semibold text-amber-500">{data.ema ? `$${data.ema.toFixed(2)}` : '—'}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-violet-500 uppercase tracking-wide">VWAP</p>
-                <p className="text-xs font-medium text-violet-500">{data.vwap ? `$${data.vwap.toFixed(2)}` : '—'}</p>
+                <p className="text-[10px] text-violet-500 uppercase tracking-wide mb-0.5">VWAP</p>
+                <p className="text-sm font-semibold text-violet-500">{data.vwap ? `$${data.vwap.toFixed(2)}` : '—'}</p>
               </div>
             </div>
           )}
           
           {/* RSI & Bollinger - Insider View Only */}
           {insiderView && (
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/30">
+            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-border/30">
               <div>
-                <p className="text-[9px] text-cyan-500 uppercase tracking-wide mb-1">RSI ({rsiPeriod})</p>
+                <p className="text-[10px] text-cyan-500 uppercase tracking-wide mb-1.5">RSI ({rsiPeriod})</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
                       className={cn(
                         "h-full rounded-full transition-all",
@@ -654,7 +654,7 @@ const Stock = () => {
                     />
                   </div>
                   <span className={cn(
-                    "text-xs font-medium",
+                    "text-sm font-semibold min-w-[24px] text-right",
                     data.rsi > 70 ? "text-destructive" : data.rsi < 30 ? "text-success" : "text-cyan-500"
                   )}>
                     {data.rsi?.toFixed(0) || '—'}
@@ -662,15 +662,15 @@ const Stock = () => {
                 </div>
               </div>
               <div>
-                <p className="text-[9px] text-pink-500 uppercase tracking-wide mb-1">Bollinger</p>
-                <div className="text-[10px] space-y-0.5">
+                <p className="text-[10px] text-pink-500 uppercase tracking-wide mb-1.5">Bollinger</p>
+                <div className="text-xs space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Upper</span>
-                    <span className="text-pink-500">{data.bbUpper ? `$${data.bbUpper.toFixed(2)}` : '—'}</span>
+                    <span className="text-pink-500 font-medium">{data.bbUpper ? `$${data.bbUpper.toFixed(2)}` : '—'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Lower</span>
-                    <span className="text-pink-500">{data.bbLower ? `$${data.bbLower.toFixed(2)}` : '—'}</span>
+                    <span className="text-pink-500 font-medium">{data.bbLower ? `$${data.bbLower.toFixed(2)}` : '—'}</span>
                   </div>
                 </div>
               </div>
