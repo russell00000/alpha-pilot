@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,11 @@ const suggestedPrompts = [
   "Best ETFs for beginners?",
 ];
 
-const AIChat = () => {
+interface AIChatProps {
+  onResetSize?: () => void;
+}
+
+const AIChat = ({ onResetSize }: AIChatProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -35,6 +39,7 @@ const AIChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!hasInteracted) return;
@@ -90,7 +95,7 @@ const AIChat = () => {
   };
 
   return (
-    <div className="group/chat relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
+    <div ref={containerRef} className="group/chat relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
@@ -188,6 +193,21 @@ const AIChat = () => {
             <Send className="w-3.5 h-3.5" strokeWidth={2.5} />
           </Button>
         </div>
+        {onResetSize && (
+          <button
+            type="button"
+            onClick={() => {
+              onResetSize();
+              if (containerRef.current) {
+                containerRef.current.style.height = "640px";
+              }
+            }}
+            className="mt-2 flex items-center justify-center gap-1 text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors w-full"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset sizing
+          </button>
+        )}
       </form>
       {/* Resize hint */}
       <div className="pointer-events-none absolute bottom-1 right-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 opacity-0 group-hover/chat:opacity-100 transition-opacity">

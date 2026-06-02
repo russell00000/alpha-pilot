@@ -129,7 +129,7 @@ const Index = () => {
             style={{ animationDelay: "150ms", flexBasis: `${chatPct}%`, flexGrow: 0, flexShrink: 0 }}
           >
             <Suspense fallback={panelFallback}>
-              <AIChat />
+              <AIChat onResetSize={() => setChatPct(40)} />
             </Suspense>
           </div>
         </section>
