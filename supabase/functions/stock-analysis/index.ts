@@ -17,6 +17,159 @@ const RequestSchema = z.object({
   volume: z.union([z.number(), z.string()]).optional(),
 });
 
+// Fetch real fundamentals from Yahoo Finance so the model isn't hallucinating numbers.
+async function fetchFundamentals(symbol: string) {
+  const modules = [
+    "price",
+    "summaryDetail",
+    "defaultKeyStatistics",
+    "financialData",
+    "earnings",
+    "incomeStatementHistory",
+    "balanceSheetHistory",
+    "cashflowStatementHistory",
+    "assetProfile",
+    "recommendationTrend",
+  ].join(",");
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      console.log("Yahoo quoteSummary status:", res.status);
+      return null;
+    }
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return null;
+
+    const v = (x: any) => (x && typeof x === "object" && "raw" in x ? x.raw : x ?? null);
+    const fmt = (x: any) => (x && typeof x === "object" && "fmt" in x ? x.fmt : null);
+
+    const price = r.price ?? {};
+    const sd = r.summaryDetail ?? {};
+    const ks = r.defaultKeyStatistics ?? {};
+    const fd = r.financialData ?? {};
+    const ap = r.assetProfile ?? {};
+    const earn = r.earnings ?? {};
+    const isHist = r.incomeStatementHistory?.incomeStatementHistory ?? [];
+    const bsHist = r.balanceSheetHistory?.balanceSheetStatements ?? [];
+    const cfHist = r.cashflowStatementHistory?.cashflowStatements ?? [];
+    const recTrend = r.recommendationTrend?.trend?.[0] ?? null;
+
+    return {
+      companyName: v(price.longName) || v(price.shortName) || symbol,
+      sector: ap.sector || null,
+      industry: ap.industry || null,
+      country: ap.country || null,
+      employees: v(ap.fullTimeEmployees),
+      summary: ap.longBusinessSummary || null,
+      marketCap: v(price.marketCap),
+      marketCapFmt: fmt(price.marketCap),
+      currency: price.currency || "USD",
+      // valuation
+      trailingPE: v(sd.trailingPE),
+      forwardPE: v(sd.forwardPE) ?? v(ks.forwardPE),
+      pegRatio: v(ks.pegRatio),
+      priceToBook: v(ks.priceToBook),
+      priceToSales: v(sd.priceToSalesTrailing12Months),
+      enterpriseValue: v(ks.enterpriseValue),
+      evToRevenue: v(ks.enterpriseToRevenue),
+      evToEbitda: v(ks.enterpriseToEbitda),
+      // per-share
+      trailingEps: v(ks.trailingEps),
+      forwardEps: v(ks.forwardEps),
+      bookValue: v(ks.bookValue),
+      // profitability / growth
+      profitMargin: v(fd.profitMargins),
+      operatingMargin: v(fd.operatingMargins),
+      grossMargin: v(fd.grossMargins),
+      returnOnEquity: v(fd.returnOnEquity),
+      returnOnAssets: v(fd.returnOnAssets),
+      revenueGrowth: v(fd.revenueGrowth),
+      earningsGrowth: v(fd.earningsGrowth),
+      earningsQGrowthYoY: v(ks.earningsQuarterlyGrowth),
+      revenueTTM: v(fd.totalRevenue),
+      ebitda: v(fd.ebitda),
+      grossProfitTTM: v(fd.grossProfits),
+      // balance sheet / cash
+      totalCash: v(fd.totalCash),
+      totalDebt: v(fd.totalDebt),
+      debtToEquity: v(fd.debtToEquity),
+      currentRatio: v(fd.currentRatio),
+      quickRatio: v(fd.quickRatio),
+      freeCashflow: v(fd.freeCashflow),
+      operatingCashflow: v(fd.operatingCashflow),
+      // dividends
+      dividendYield: v(sd.dividendYield),
+      payoutRatio: v(sd.payoutRatio),
+      // analyst
+      targetMeanPrice: v(fd.targetMeanPrice),
+      targetHighPrice: v(fd.targetHighPrice),
+      targetLowPrice: v(fd.targetLowPrice),
+      numberOfAnalystOpinions: v(fd.numberOfAnalystOpinions),
+      recommendationKey: fd.recommendationKey || null,
+      recommendationMean: v(fd.recommendationMean),
+      analystTrend: recTrend
+        ? {
+            strongBuy: recTrend.strongBuy,
+            buy: recTrend.buy,
+            hold: recTrend.hold,
+            sell: recTrend.sell,
+            strongSell: recTrend.strongSell,
+          }
+        : null,
+      // risk
+      beta: v(sd.beta) ?? v(ks.beta),
+      shortPercentOfFloat: v(ks.shortPercentOfFloat),
+      heldPercentInsiders: v(ks.heldPercentInsiders),
+      heldPercentInstitutions: v(ks.heldPercentInstitutions),
+      // recent reports
+      recentIncome: isHist.slice(0, 3).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        totalRevenue: v(s.totalRevenue),
+        grossProfit: v(s.grossProfit),
+        operatingIncome: v(s.operatingIncome),
+        netIncome: v(s.netIncome),
+      })),
+      recentBalance: bsHist.slice(0, 2).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        totalAssets: v(s.totalAssets),
+        totalLiab: v(s.totalLiab),
+        totalStockholderEquity: v(s.totalStockholderEquity),
+        cash: v(s.cash),
+        longTermDebt: v(s.longTermDebt),
+      })),
+      recentCashflow: cfHist.slice(0, 3).map((s: any) => ({
+        endDate: fmt(s.endDate),
+        operatingCashflow: v(s.totalCashFromOperatingActivities),
+        capex: v(s.capitalExpenditures),
+        freeCashflow:
+          (v(s.totalCashFromOperatingActivities) ?? 0) +
+          (v(s.capitalExpenditures) ?? 0),
+      })),
+      earningsHistory: earn?.financialsChart?.yearly?.map((y: any) => ({
+        year: y.date,
+        revenue: v(y.revenue),
+        earnings: v(y.earnings),
+      })) || [],
+      quarterlyEarnings: earn?.financialsChart?.quarterly?.map((q: any) => ({
+        quarter: q.date,
+        revenue: v(q.revenue),
+        earnings: v(q.earnings),
+      })) || [],
+    };
+  } catch (e) {
+    console.error("fetchFundamentals error:", e);
+    return null;
+  }
+}
+
 // Fetch the investing philosophy from the database (read-only, public endpoint)
 async function fetchPhilosophy() {
   try {
