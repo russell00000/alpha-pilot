@@ -9,7 +9,7 @@ const normalizeSeries = (series: number[]) => {
 
   // Avoid flat-line when min≈max
   if (max - min < 0.0001) {
-    return series.map((_, i) => ({ value: 50, index: i }));
+    return series.map((_, i) => ({ x: i, y: 50 }));
   }
 
   // Add a tiny padding so the line doesn't stick to edges
