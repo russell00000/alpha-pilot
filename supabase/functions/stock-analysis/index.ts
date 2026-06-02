@@ -225,9 +225,13 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbol}: price=${price}, change=${changePercent}%, 52wHigh=${week52High}, 52wLow=${week52Low}`);
 
-    // Fetch the investing philosophy
-    const philosophy = await fetchPhilosophy();
+    // Fetch philosophy + real fundamentals in parallel so the model has hard data to ground on.
+    const [philosophy, fundamentals] = await Promise.all([
+      fetchPhilosophy(),
+      fetchFundamentals(symbol),
+    ]);
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
+    console.log("Fetched fundamentals:", fundamentals ? "success" : "none");
 
     const systemPrompt = `You are an expert investment analyst following a specific investing philosophy.
 
@@ -239,6 +243,14 @@ ${philosophy?.risk_guidance || "Risk should be balanced with reward potential. I
 
 ## ANALYSIS REQUIREMENTS
 You are producing an in-depth equity research note. Be rigorous, decisive, and specific.
+You will be given a FUNDAMENTALS JSON block with real, current data pulled directly from the market.
+CRITICAL ACCURACY RULES:
+- Use ONLY the numbers provided in the FUNDAMENTALS block. Do not invent EPS, P/E, growth rates, margins, debt, FCF, market cap, or analyst targets.
+- If a specific metric is missing (null/undefined), say "not disclosed" rather than guessing.
+- When you cite a number, it must match the FUNDAMENTALS block (you may round sensibly, e.g. 2.345B -> $2.35B).
+- Reconcile your price target math with the actual trailingEps / forwardEps / revenueTTM / freeCashflow given. Show the arithmetic.
+- When you reference sector comps, only name comps you are confident exist in the same sector/industry as the company. Do not fabricate multiples for comps — frame them as "typical sector range" if you don't have exact figures.
+- Compare your base target to the analyst consensus targetMeanPrice when available, and explain the gap.
 Cover, at minimum:
 1. A clear investment thesis (2-3 sentences) — what is the core view and why.
 2. Business overview — what the company does, primary revenue drivers, competitive moat.
@@ -254,13 +266,17 @@ Be decisive. Never hedge with "it depends" — take a stance grounded in the dat
 ## COMMUNICATION STYLE
 ${philosophy?.market_insights_style || "Be helpful and informative, communicating at a level that beginners can understand. Be concise and professional."}`;
 
-    const userPrompt = `Produce a deep-dive research note on ${symbol}.
+    const userPrompt = `Produce a deep-dive research note on ${symbol}${fundamentals?.companyName ? ` (${fundamentals.companyName})` : ""}.
 
+## LIVE MARKET DATA
 Current Price: $${price}
-Daily Change: ${changePercent > 0 ? '+' : ''}${changePercent?.toFixed(2)}%
+Daily Change: ${changePercent !== undefined ? (changePercent > 0 ? '+' : '') + changePercent.toFixed(2) + '%' : 'n/a'}
 52-Week High: $${week52High}
 52-Week Low: $${week52Low}
 Volume: ${volume}
+
+## FUNDAMENTALS (real data — ground every number you cite to this block)
+${fundamentals ? JSON.stringify(fundamentals, null, 2) : "Fundamentals unavailable — clearly state that valuation work is based on limited public data and be conservative with specific numeric claims."}
 
 Provide your analysis in the following JSON format only, no other text:
 {
@@ -291,12 +307,12 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 2600,
+        max_tokens: 3200,
         response_format: { type: "json_object" },
       }),
     });
