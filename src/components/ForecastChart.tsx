@@ -324,7 +324,8 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
           <span className="w-3 h-[2px] bg-foreground" /> Actual
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-[2px] bg-primary" style={{ borderTop: "2px dashed hsl(var(--primary))" }} /> Projected base
+          <svg width="14" height="6"><line x1="0" y1="3" x2="14" y2="3" stroke="hsl(var(--primary))" strokeWidth="2" strokeDasharray="4 2" /></svg>
+          Projected base
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-2 rounded-sm bg-gradient-to-b from-success/40 via-primary/20 to-destructive/40" />
