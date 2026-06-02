@@ -378,7 +378,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
-      const prices = await fetchPrices(sym, "5y");
+      const prices = await fetchPrices(sym, "2y");
       if (prices.length < 30) continue;
       const currentPrice = prices[prices.length - 1];
 
@@ -479,7 +479,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
                 : "BELOW LONG-TERM TREND"
           : "INSUFFICIENT HISTORY";
 
-      return {
+      const result: ForecastStats = {
         symbol: sym,
         name,
         currentPrice,
@@ -514,6 +514,8 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         sectorBenchmark,
         headlines,
       };
+      cacheSet(`forecast:${ticker}`, result);
+      return result;
     } catch (e) {
       console.log(`fetchForecastStats failed for ${sym}:`, e);
     }
