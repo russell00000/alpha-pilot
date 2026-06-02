@@ -19,7 +19,7 @@ const cacheGet = <T,>(key: string, ttlMs: number): T | null => {
 };
 const cacheSet = (key: string, data: unknown) => cache.set(key, { ts: Date.now(), data });
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3500) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -288,7 +288,7 @@ Cover, at minimum:
 2. Business overview.
 3. Fundamental analysis with concrete metrics.
 4. Technical read from current price, 52-week high/low, and volume.
-5. Bull case, bear case, catalysts, risk, and position sizing.
+5. Bull case, bear case, catalysts, and risk.
 6. Price target derivation — pick the fastest reliable method from the supplied data and show the math.
 Be decisive. Never hedge with "it depends" — take a stance grounded in the data.
 
@@ -324,7 +324,6 @@ Provide your analysis in the following JSON format only, no other text:
   "bearTarget": number (downside scenario price),
   "priceTargetRationale": "4-6 sentences. MUST include: (a) primary valuation method chosen and WHY it fits this business, (b) the specific multiple/rate used and how it compares to the stock's own 5y history and 1-2 named sector comps, (c) the forward estimate it is applied to (e.g. FY26 EPS ~$X, FY26 revenue ~$Yb, mid-cycle FCF ~$Zb), (d) the arithmetic that produces the base target (e.g. '32x × $9.40 ≈ $300'), (e) what specifically shifts the multiple or estimate to derive bull and bear targets. No generic phrases like 'premium growth justifies premium multiple' without numbers.",
   "riskLevel": "LOW" or "MEDIUM" or "HIGH",
-  "positionSizing": "1-2 sentence guidance on how this fits a diversified portfolio given the risk level."
 }
 
 Return ONLY the JSON. Be decisive, specific, and grounded in the investing philosophy.`;
@@ -341,10 +340,11 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 1800,
+        // Output is shorter now (positionSizing removed) — smaller budget = faster completion.
+        max_tokens: 1300,
         response_format: { type: "json_object" },
       }),
-    }, 12000);
+    }, 11000);
 
     if (!response.ok) {
       if (response.status === 429) {

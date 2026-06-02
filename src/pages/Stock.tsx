@@ -348,19 +348,21 @@ const Stock = () => {
   }, [symbol]);
 
   const fetchStockAnalysis = useCallback(async () => {
-    if (!symbol || !stockData || !stockDetails) return;
+    if (!symbol) return;
     
     setIsLoadingAnalysis(true);
     try {
       const { data, error } = await supabase.functions.invoke("stock-analysis", {
         body: {
           symbol: symbol.toUpperCase(),
-          price: stockData.price,
-          change: stockData.change,
-          changePercent: stockData.changePercent,
-          week52High: stockDetails.week52High,
-          week52Low: stockDetails.week52Low,
-          volume: stockData.volume,
+          // Optional hints — the edge function fetches its own fundamentals,
+          // so we send whatever we have without waiting on extra round-trips.
+          price: stockData?.price,
+          change: stockData?.change,
+          changePercent: stockData?.changePercent,
+          week52High: stockDetails?.week52High,
+          week52Low: stockDetails?.week52Low,
+          volume: stockData?.volume,
         },
       });
 
@@ -378,13 +380,16 @@ const Stock = () => {
     } finally {
       setIsLoadingAnalysis(false);
     }
-  }, [symbol, stockData, stockDetails, toast]);
+  }, [symbol, toast]);
 
   useEffect(() => {
-    // Kick off all independent requests in parallel — don't gate the chart on quote data.
+    // Kick off ALL independent requests in parallel — including the AI analysis,
+    // which fetches its own fundamentals server-side and doesn't need to wait
+    // for the quote/details round-trips to finish.
     fetchStockData();
     fetchStockDetails();
     fetchHistoricalData(activeRange);
+    fetchStockAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
@@ -394,12 +399,6 @@ const Stock = () => {
     if (isInitialRange.current) { isInitialRange.current = false; return; }
     fetchHistoricalData(activeRange);
   }, [activeRange, fetchHistoricalData]);
-
-  useEffect(() => {
-    if (stockData && stockDetails && !stockAnalysis && !isLoadingAnalysis) {
-      fetchStockAnalysis();
-    }
-  }, [stockData, stockDetails, stockAnalysis, isLoadingAnalysis, fetchStockAnalysis]);
 
   useEffect(() => {
     if (!symbol) return;
