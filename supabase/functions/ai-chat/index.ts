@@ -590,6 +590,8 @@ async function resolveSymbols(query: string): Promise<string[]> {
 
 // Rich detail for a single ticker: live quote + company profile + recent news headline.
 async function fetchTickerDetail(ticker: string): Promise<string | null> {
+  const cached = cacheGet<string | null>(`detail:${ticker}`, 5 * 60 * 1000);
+  if (cached !== undefined && cached !== null) return cached;
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
@@ -662,7 +664,9 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
         console.log('detail enrichment failed:', e);
       }
 
-      return `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      const out = `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      cacheSet(`detail:${ticker}`, out);
+      return out;
     } catch (e) {
       console.log(`fetchTickerDetail failed for ${sym}:`, e);
     }
