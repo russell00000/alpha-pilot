@@ -856,12 +856,65 @@ serve(async (req) => {
     // This powers data-driven performance predictions (returns, vol, drawdown, momentum,
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
+    const forecastPayload: Array<Record<string, unknown>> = [];
     const forecastTickers = allRequested.slice(0, 4);
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
-      const formatted = forecasts.filter((f): f is ForecastStats => !!f).map(formatForecast);
+      const valid = forecasts.filter((f): f is ForecastStats => !!f);
+      const formatted = valid.map(formatForecast);
       if (formatted.length > 0) {
         forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from 5Y daily history + analyst data) ===\n\n${formatted.join('\n\n')}\n`;
+      }
+      // Build structured payload for the client chart.
+      for (const f of valid) {
+        const cp = f.currentPrice;
+        // Base case: analyst mean if available, else CAGR-projected, else +8%.
+        let base = f.targetMean ?? null;
+        if (!base) {
+          const cagr = f.cagr3Y ?? f.cagr5Y;
+          base = cagr != null ? cp * (1 + cagr / 100) : cp * 1.08;
+        }
+        // Adjust base ± based on momentum/trend confirmation.
+        const momentum = f.return3M ?? 0;
+        const trendBoost = f.trend.includes('STRONG UPTREND') ? 0.05 : f.trend.includes('DOWNTREND') ? -0.05 : 0;
+        base = base * (1 + Math.max(-0.15, Math.min(0.15, momentum / 100 * 0.3 + trendBoost)));
+        // Bull/bear from analyst high/low; widen with vol if missing.
+        const vol = f.annualVol ?? 25;
+        const bull = f.targetHigh ?? base * (1 + vol / 100);
+        const bear = f.targetLow ?? base * (1 - vol / 100);
+        // Confidence: high if many analysts AND aligned trend + positive EPS growth.
+        const analysts = f.numAnalysts ?? 0;
+        const aligned =
+          (f.trend.includes('UPTREND') && (f.targetMean ?? cp) > cp) ||
+          (f.trend.includes('DOWNTREND') && (f.targetMean ?? cp) < cp);
+        const confidence = analysts >= 15 && aligned ? 'High' : analysts >= 8 ? 'Medium' : 'Low';
+        forecastPayload.push({
+          symbol: f.symbol,
+          name: f.name,
+          currentPrice: cp,
+          base: Number(base.toFixed(2)),
+          bull: Number(bull.toFixed(2)),
+          bear: Number(bear.toFixed(2)),
+          confidence,
+          indicators: {
+            return1Y: f.return1Y,
+            cagr3Y: f.cagr3Y,
+            cagr5Y: f.cagr5Y,
+            annualVol: f.annualVol,
+            maxDrawdown: f.maxDrawdown,
+            sharpe: f.sharpe,
+            rsi14: f.rsi14,
+            trend: f.trend,
+            forwardPE: f.forwardPE,
+            earningsGrowth: f.earningsGrowth,
+            revenueGrowth: f.revenueGrowth,
+            targetMean: f.targetMean,
+            numAnalysts: f.numAnalysts,
+            upgradesLast90d: f.upgradesLast90d,
+            downgradesLast90d: f.downgradesLast90d,
+            sector: f.sector,
+          },
+        });
       }
       console.log(`Built forecast block for ${formatted.length} ticker(s)`);
     }
@@ -967,7 +1020,7 @@ ${onDemandData}${forecastBlock}`;
     console.log("Successfully generated AI response");
 
     return new Response(
-      JSON.stringify({ response: aiResponse }),
+      JSON.stringify({ response: aiResponse, forecasts: forecastPayload }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
