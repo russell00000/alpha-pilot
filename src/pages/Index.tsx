@@ -29,38 +29,46 @@ const Index = () => {
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight max-w-3xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
-            Welcome to <span className="text-gradient">Vantage Portfolio Solutions</span>
+          <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight max-w-4xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] leading-[1.05]">
+            Welcome to{" "}
+            <span className="bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+              Vantage Portfolio
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-white/95 mt-6 max-w-xl animate-fade-in font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
+          <p className="text-lg md:text-xl text-white/90 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
             We're here to turn your financial aspirations into reality. It all starts with the right vantage point.
           </p>
-          <div className="flex items-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "200ms" }}>
             <Link to="/portfolio">
-              <Button size="lg" className="gap-2 px-6 text-sm font-medium rounded-lg">
+              <Button
+                size="lg"
+                className="gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-zinc-100 text-black hover:bg-white hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+              >
                 <Zap className="w-4 h-4" />
                 Get Started
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <Link to="/markets">
-              <Button variant="outline" size="lg" className="px-6 text-sm font-medium border-border/40 hover:bg-secondary/40 rounded-lg">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-8 py-6 text-sm font-medium rounded-full bg-white/5 backdrop-blur-md border-white/10 text-white hover:bg-white/10 hover:text-white transition-all"
+              >
                 All Markets
               </Button>
             </Link>
           </div>
         </section>
 
-        {/* Quick Actions */}
-        <section className="container px-4 md:px-6 mb-10">
-          <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-4">
-            <QuickActions />
-          </div>
+        {/* Quick Actions - floating chips, no wrapper */}
+        <section className="container px-4 md:px-6 mb-12">
+          <QuickActions />
         </section>
 
         {/* Market Overview + AI Chat */}
         <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
-          <div className="lg:col-span-3 animate-fade-in rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-5" style={{ animationDelay: "100ms" }}>
+          <div className="lg:col-span-3 animate-fade-in rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40" style={{ animationDelay: "100ms" }}>
             <MarketOverview />
           </div>
           <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
@@ -70,7 +78,7 @@ const Index = () => {
 
         {/* News - full width */}
         <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-5">
+          <div className="rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40">
             <TrendingNews />
           </div>
         </section>

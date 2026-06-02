@@ -33,15 +33,17 @@ const QuickActions = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+    <div className="flex flex-wrap items-center justify-center gap-3">
       {actions.map((action) => (
         <button
           key={action.label}
           onClick={() => handleAction(action)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary/40 border border-border/30 hover:bg-secondary/70 hover:border-border/50 transition-all duration-200 whitespace-nowrap group"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-200 whitespace-nowrap group"
         >
           <action.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
-          <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors duration-200">{action.label}</span>
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-200">
+            {action.label}
+          </span>
         </button>
       ))}
     </div>
