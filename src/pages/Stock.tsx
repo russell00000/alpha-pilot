@@ -64,7 +64,6 @@ interface StockAnalysis {
   bullTarget?: number;
   bearTarget?: number;
   priceTargetRationale?: string;
-  positionSizing?: string;
 }
 
 interface HistoricalDataPoint {
@@ -1528,13 +1527,6 @@ const Stock = () => {
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Price Target Rationale</h4>
                   <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.priceTargetRationale}</p>
-                </div>
-              )}
-
-              {stockAnalysis.positionSizing && (
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Position Sizing</h4>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.positionSizing}</p>
                 </div>
               )}
 
