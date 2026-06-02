@@ -143,7 +143,7 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 2200,
+        max_tokens: 2600,
         response_format: { type: "json_object" },
       }),
     });
