@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 import {
   XAxis,
   YAxis,
@@ -99,6 +100,8 @@ const Stock = () => {
   const [activeRange, setActiveRange] = useState("1M");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [insiderView, setInsiderView] = useState(false);
+  const [forecast, setForecast] = useState<ForecastData | null>(null);
+  const [isLoadingForecast, setIsLoadingForecast] = useState(false);
 
   // Fallback stock names
   const stockNames: Record<string, string> = {
@@ -391,6 +394,23 @@ const Stock = () => {
       fetchStockAnalysis();
     }
   }, [stockData, stockDetails, stockAnalysis, isLoadingAnalysis, fetchStockAnalysis]);
+
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    setIsLoadingForecast(true);
+    setForecast(null);
+    supabase.functions
+      .invoke("stock-forecast", { body: { symbol } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data?.forecast) setForecast(data.forecast as ForecastData);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingForecast(false);
+      });
+    return () => { cancelled = true; };
+  }, [symbol]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -1280,6 +1300,28 @@ const Stock = () => {
                 Current: <span className="text-foreground font-medium">${stockData.price}</span>
               </p>
             </div>
+          </div>
+        )}
+
+        {/* 12-Month Forecast */}
+        {(isLoadingForecast || forecast) && (
+          <div className="glass-card p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">12-Month Performance Forecast</h3>
+              {forecast?.indicators.numAnalysts ? (
+                <span className="text-xs text-muted-foreground">
+                  Based on {forecast.indicators.numAnalysts} analysts + 5Y price history
+                </span>
+              ) : null}
+            </div>
+            {isLoadingForecast && !forecast ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+                <span className="text-muted-foreground">Building forecast...</span>
+              </div>
+            ) : forecast ? (
+              <ForecastChart forecast={forecast} />
+            ) : null}
           </div>
         )}
 
