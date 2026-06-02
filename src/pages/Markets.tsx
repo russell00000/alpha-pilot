@@ -9,7 +9,7 @@ import SparklineChart from "@/components/SparklineChart";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
-import financeBg from "@/assets/finance-bg.jpg";
+import financeBg from "@/assets/finance-bg.webp";
 
 interface MarketData {
   symbol: string;

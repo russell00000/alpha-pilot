@@ -325,14 +325,12 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
   // Check cache first
   const cached = getCachedData(`mf_${symbol}`);
   if (cached) {
-    console.log(`Using cached data for mutual fund ${symbol}`);
     return cached;
   }
 
   try {
     // Mutual funds only update once daily, so use 1d interval but still get today's close
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
-    console.log(`Fetching Yahoo Finance quote for mutual fund ${symbol}`);
     
     const response = await fetch(url, {
       headers: {
@@ -343,7 +341,6 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
     const data = await response.json();
     
     if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-      console.log(`No Yahoo Finance data for mutual fund ${symbol}`);
       return null;
     }
     
@@ -357,7 +354,6 @@ async function fetchMutualFundQuote(symbol: string): Promise<MarketData | null> 
     const previousClose = meta.chartPreviousClose || meta.previousClose;
     
     if (!currentPrice) {
-      console.warn(`No price data for mutual fund ${symbol}`);
       return null;
     }
     
@@ -431,20 +427,6 @@ async function fetchCryptoData(): Promise<MarketData[]> {
       "avalanche-2": "AVAX",
       chainlink: "LINK",
       polygon: "MATIC",
-    };
-    
-    // Also create reverse map for lookups
-    const reverseSymbolMap: Record<string, string> = {
-      BTC: "bitcoin",
-      ETH: "ethereum",
-      SOL: "solana",
-      XRP: "ripple",
-      ADA: "cardano",
-      DOGE: "dogecoin",
-      DOT: "polkadot",
-      AVAX: "avalanche-2",
-      LINK: "chainlink",
-      MATIC: "polygon",
     };
     
     const results = data.map((coin: any) => {
@@ -523,53 +505,49 @@ function getAssetList(): { symbol: string; name: string; type: string }[] {
 // Fetch historical candle data from Yahoo Finance
 async function fetchHistoricalData(symbol: string, range: string, _apiKey: string): Promise<{ date: string; price: number; open: number; high: number; low: number; volume: number; displayDate: string }[]> {
   try {
-    // Map our range to Yahoo Finance parameters
-    // Using more granular intervals for detailed charts (similar to 1W view)
     let yahooRange: string;
     let interval: string;
     
     switch (range) {
       case "1D":
         yahooRange = "1d";
-        interval = "2m";  // 2-minute intervals for highly detailed intraday view
+        interval = "2m";
         break;
       case "1W":
         yahooRange = "5d";
-        interval = "15m"; // 15-minute intervals
+        interval = "15m";
         break;
       case "1M":
         yahooRange = "1mo";
-        interval = "30m"; // 30-minute intervals for granular monthly view
+        interval = "30m";
         break;
       case "3M":
         yahooRange = "3mo";
-        interval = "60m"; // Hourly intervals for 3 months
+        interval = "60m";
         break;
       case "6M":
         yahooRange = "6mo";
-        interval = "60m"; // Hourly intervals for 6 months (within Yahoo's 730 day limit)
+        interval = "60m";
         break;
       case "1Y":
         yahooRange = "1y";
-        interval = "60m"; // Hourly intervals for 1 year (within Yahoo's 730 day limit)
+        interval = "60m";
         break;
       case "5Y":
         yahooRange = "5y";
-        interval = "1d";  // Daily intervals for 5 years (60m only goes back 2 years)
+        interval = "1d";
         break;
       default:
         yahooRange = "max";
-        interval = "1d";  // Daily intervals for all time
+        interval = "1d";
         break;
     }
     
-    // For crypto symbols, Yahoo Finance uses format like "BTC-USD"
     const yahooSymbol = CRYPTO_SYMBOLS.has(symbol.toUpperCase()) 
       ? `${symbol.toUpperCase()}-USD` 
       : symbol;
     
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${yahooRange}`;
-    console.log(`Fetching Yahoo Finance historical data for ${symbol} (${yahooSymbol}), range: ${range}, url: ${url}`);
     
     const response = await fetch(url, {
       headers: {
@@ -580,7 +558,6 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
     const data = await response.json();
     
     if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-      console.log(`No Yahoo Finance data for ${symbol}`);
       return [];
     }
     
@@ -594,14 +571,12 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
     const volumes = quote.volume || [];
     
     if (timestamps.length === 0 || closes.length === 0) {
-      console.log(`Empty data arrays for ${symbol}`);
       return [];
     }
     
     const results: { date: string; price: number; open: number; high: number; low: number; volume: number; displayDate: string }[] = [];
     
     for (let i = 0; i < timestamps.length; i++) {
-      // Skip null values
       if (closes[i] === null || closes[i] === undefined) continue;
       
       const timestamp = timestamps[i] * 1000;
@@ -629,7 +604,6 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
       });
     }
     
-    console.log(`Yahoo Finance returned ${results.length} data points for ${symbol}`);
     return results;
   } catch (error) {
     console.error(`Error fetching Yahoo Finance historical data for ${symbol}:`, error);
@@ -640,13 +614,12 @@ async function fetchHistoricalData(symbol: string, range: string, _apiKey: strin
 // Fetch stock details including 52-week high/low from Yahoo Finance
 async function fetchStockDetails(symbol: string): Promise<{ week52High: number; week52Low: number; marketCap: number; peRatio: number; eps: number; dividend: number; avgVolume: number } | null> {
   try {
-    // For crypto symbols, Yahoo Finance uses format like "BTC-USD"
     const yahooSymbol = CRYPTO_SYMBOLS.has(symbol.toUpperCase()) 
       ? `${symbol.toUpperCase()}-USD` 
       : symbol;
     
+    // We only need the meta info, so range=1d is sufficient and faster
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
-    console.log(`Fetching 52-week data for ${symbol} (${yahooSymbol})`);
     
     const response = await fetch(url, {
       headers: {
@@ -657,26 +630,15 @@ async function fetchStockDetails(symbol: string): Promise<{ week52High: number; 
     const data = await response.json();
     
     if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-      console.log(`No Yahoo Finance details for ${symbol}`);
       return null;
     }
     
     const result = data.chart.result[0];
     const meta = result.meta || {};
-    const quote = result.indicators?.quote?.[0] || {};
-    const highs = quote.high || [];
-    const lows = quote.low || [];
-    
-    // Calculate 52-week high and low from the data
-    const validHighs = highs.filter((h: number | null) => h !== null && h !== undefined);
-    const validLows = lows.filter((l: number | null) => l !== null && l !== undefined);
-    
-    const week52High = validHighs.length > 0 ? Math.max(...validHighs) : meta.fiftyTwoWeekHigh || 0;
-    const week52Low = validLows.length > 0 ? Math.min(...validLows) : meta.fiftyTwoWeekLow || 0;
     
     return {
-      week52High: parseFloat(week52High.toFixed(2)),
-      week52Low: parseFloat(week52Low.toFixed(2)),
+      week52High: meta.fiftyTwoWeekHigh || 0,
+      week52Low: meta.fiftyTwoWeekLow || 0,
       marketCap: meta.marketCap || 0,
       peRatio: meta.trailingPE || 0,
       eps: meta.epsTrailingTwelveMonths || 0,
@@ -698,148 +660,92 @@ serve(async (req) => {
     const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY");
     
     if (!FINNHUB_API_KEY) {
-      console.error("FINNHUB_API_KEY is not configured");
       throw new Error("FINNHUB_API_KEY is not configured");
     }
 
-    let body: { type?: string; search?: string; symbols?: string[]; historical?: boolean; symbol?: string; range?: string; details?: boolean } = {};
+    let body: any = {};
     try {
       const text = await req.text();
-      if (text) {
-        body = JSON.parse(text);
-      }
+      if (text) body = JSON.parse(text);
     } catch (e) {
       console.log("Failed to parse body:", e);
     }
     
     const { type = "all", search, symbols, historical, symbol, range, details } = body;
-    console.log("Market data request - type:", type, "search:", search, "symbols:", symbols, "historical:", historical, "details:", details);
 
-    // Handle stock details request (52-week high/low, etc.)
     if (details && symbol) {
-      console.log(`Fetching details for ${symbol}`);
       const stockDetails = await fetchStockDetails(symbol.toUpperCase());
-      return new Response(
-        JSON.stringify({ data: stockDetails }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ data: stockDetails }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Handle historical data requests
     if (historical && symbol && range) {
-      console.log(`Fetching historical data for ${symbol}, range: ${range}`);
       const historicalData = await fetchHistoricalData(symbol.toUpperCase(), range, FINNHUB_API_KEY);
-      return new Response(
-        JSON.stringify({ data: historicalData }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ data: historicalData }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Handle search queries
     if (search) {
-      console.log("Searching for:", search);
       const searchResults = await searchStock(search, FINNHUB_API_KEY);
-      return new Response(
-        JSON.stringify({ data: searchResults }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ data: searchResults }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Handle specific symbol requests
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
       const cryptoSymbols: string[] = [];
       const stockSymbols: string[] = [];
       const mutualFundSymbols: string[] = [];
       
-      // Separate crypto, mutual fund, and stock symbols
+      // Increased slice to 50 for better throughput
       for (const sym of symbols.slice(0, 50)) {
         const upperSym = sym.toUpperCase();
-        if (CRYPTO_SYMBOLS.has(upperSym)) {
-          cryptoSymbols.push(upperSym);
-        } else if (MUTUAL_FUND_SYMBOLS.has(upperSym)) {
-          mutualFundSymbols.push(upperSym);
-        } else {
-          stockSymbols.push(upperSym);
-        }
+        if (CRYPTO_SYMBOLS.has(upperSym)) cryptoSymbols.push(upperSym);
+        else if (MUTUAL_FUND_SYMBOLS.has(upperSym)) mutualFundSymbols.push(upperSym);
+        else stockSymbols.push(upperSym);
       }
       
-      // Fetch crypto data from CoinGecko
-      if (cryptoSymbols.length > 0) {
+      const cryptoPromise = cryptoSymbols.length > 0 ? (async () => {
         const cryptoIds = cryptoSymbols.map(s => CRYPTO_ID_MAP[s]).filter(Boolean).join(',');
-        if (cryptoIds) {
-          try {
-            const response = await fetch(
-              `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${cryptoIds}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`
-            );
-            const data = await response.json();
-            
-            if (Array.isArray(data)) {
-              for (const coin of data) {
-                const symbol = Object.entries(CRYPTO_ID_MAP).find(([_, id]) => id === coin.id)?.[0] || coin.symbol.toUpperCase();
-                results.push({
-                  symbol,
-                  name: coin.name,
-                  price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
-                  change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
-                  changePercent: coin.price_change_percentage_24h_in_currency || 0,
-                  volume: formatVolume(coin.total_volume),
-                  sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
-                  type: "crypto" as const,
-                });
-              }
-            }
-          } catch (err) {
-            console.error("Error fetching crypto data:", err);
-          }
-        }
-      }
-      
-      // Fetch mutual funds + stocks/ETFs fully in parallel
-      const parallelQuotes = await Promise.all([
-        ...mutualFundSymbols.map((sym) => fetchMutualFundQuote(sym)),
-        ...stockSymbols.map((sym) => fetchStockQuote(sym, FINNHUB_API_KEY)),
+        if (!cryptoIds) return [];
+        const resp = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${cryptoIds}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`);
+        const data = await resp.json();
+        return Array.isArray(data) ? data.map(coin => ({
+          symbol: Object.entries(CRYPTO_ID_MAP).find(([_, id]) => id === coin.id)?.[0] || coin.symbol.toUpperCase(),
+          name: coin.name,
+          price: coin.current_price.toFixed(coin.current_price < 1 ? 4 : 2),
+          change: (coin.current_price * coin.price_change_percentage_24h_in_currency) / 100,
+          changePercent: coin.price_change_percentage_24h_in_currency || 0,
+          volume: formatVolume(coin.total_volume),
+          sparkline: coin.sparkline_in_7d?.price?.slice(-24) || [],
+          type: "crypto" as const,
+        })) : [];
+      })() : Promise.resolve([]);
+
+      const [parallelQuotes, cryptoResults] = await Promise.all([
+        Promise.all([
+          ...mutualFundSymbols.map(sym => fetchMutualFundQuote(sym)),
+          ...stockSymbols.map(sym => fetchStockQuote(sym, FINNHUB_API_KEY)),
+        ]),
+        cryptoPromise
       ]);
-      for (const q of parallelQuotes) {
-        if (q) results.push(q);
-      }
+
+      results.push(...cryptoResults);
+      for (const q of parallelQuotes) if (q) results.push(q);
       
-      return new Response(
-        JSON.stringify({ data: results }),
-        {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ data: results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120" },
+      });
     }
 
-    // Handle asset list request
     if (type === "list") {
-      return new Response(
-        JSON.stringify({ data: getAssetList() }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ data: getAssetList() }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Default 'all' or typed collection
     const results: MarketData[] = [];
-
-    // Fetch crypto data first (free, no rate limit concerns)
-    if (type === "all" || type === "crypto") {
-      const cryptoPromise = fetchCryptoData();
-      // cryptoData will be added later
-    }
-
-    // Fetch stocks, ETFs, and mutual funds in parallel (cache absorbs rate-limit risk)
+    const cryptoPromise = (type === "all" || type === "crypto") ? fetchCryptoData() : Promise.resolve([]);
     const stockJobs: Promise<MarketData | null>[] = [];
+    
     if (type === "all" || type === "stocks") {
-      const topStocks = [
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM",
-        "LLY", "MA", "JNJ", "XOM", "PG", "HD", "CVX", "MRK", "ABBV", "COST",
-        "PEP", "KO", "ADBE", "WMT", "CRM", "MCD", "BAC", "NFLX", "AMD", "CSCO",
-      ];
+      const topStocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "V", "UNH", "JPM", "LLY", "MA", "JNJ", "XOM", "PG", "HD", "CVX", "MRK", "ABBV", "COST", "PEP", "KO", "ADBE", "WMT", "CRM", "MCD", "BAC", "NFLX", "AMD", "CSCO"];
       for (const sym of topStocks) stockJobs.push(fetchStockQuote(sym, FINNHUB_API_KEY));
     }
     if (type === "all" || type === "etf") {
@@ -848,33 +754,16 @@ serve(async (req) => {
     if (type === "all" || type === "mutual_fund") {
       for (const sym of ["VFIAX", "FXAIX", "VTSAX"]) stockJobs.push(fetchMutualFundQuote(sym));
     }
-    if (stockJobs.length > 0) {
-      const [settled, cryptoData] = await Promise.all([Promise.all(stockJobs), cryptoPromise]);
-    if (cryptoData) results.push(...cryptoData);
-      for (const r of settled) if (r) results.push(r);
-    }
-    
-    console.log(`Successfully returned ${results.length} quotes`);
 
-    return new Response(
-      JSON.stringify({ 
-        data: results,
-        availableAssets: getAssetList(),
-        cached: cache.size > 0
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120",
-        },
-      }
-    );
+    const [settled, cryptoData] = await Promise.all([Promise.all(stockJobs), cryptoPromise]);
+    results.push(...cryptoData);
+    for (const r of settled) if (r) results.push(r);
+    
+    return new Response(JSON.stringify({ data: results, availableAssets: getAssetList(), cached: cache.size > 0 }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120" },
+    });
   } catch (error) {
     console.error("Error in market-data function:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error occurred" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

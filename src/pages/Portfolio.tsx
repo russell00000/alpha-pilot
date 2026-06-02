@@ -8,7 +8,7 @@ import PortfolioRecommendation from "@/components/PortfolioRecommendation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import financeBg from "@/assets/finance-bg.jpg";
+import financeBg from "@/assets/finance-bg.webp";
 
 interface SavedAssessment {
   id: string;
