@@ -753,7 +753,7 @@ serve(async (req) => {
       const mutualFundSymbols: string[] = [];
       
       // Separate crypto, mutual fund, and stock symbols
-      for (const sym of symbols.slice(0, 10)) {
+      for (const sym of symbols.slice(0, 50)) {
         const upperSym = sym.toUpperCase();
         if (CRYPTO_SYMBOLS.has(upperSym)) {
           cryptoSymbols.push(upperSym);

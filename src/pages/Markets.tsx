@@ -137,14 +137,14 @@ const Markets = () => {
       if (uncached.length === 0) return;
       
       // Load in very small batches with longer delays to avoid rate limits
-      const batchSize = 5;
-      for (let i = 0; i < Math.min(uncached.length, 20); i += batchSize) {
+      const batchSize = 40;
+      for (let i = 0; i < Math.min(uncached.length, 100); i += batchSize) {
         if (isCancelled) break;
         const batch = uncached.slice(i, i + batchSize);
         await batchFetchPrices(batch);
         // 2 second delay between batches to stay well under rate limit
         if (i + batchSize < uncached.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
     };
