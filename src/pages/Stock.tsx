@@ -744,10 +744,32 @@ const Stock = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       <Header />
-      
-      <main className="container mx-auto px-4 py-8">
+
+      {/* Ambient company logo backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center"
+      >
+        <img
+          src={`https://assets.parqet.com/logos/symbol/${stockData.symbol}`}
+          alt=""
+          onError={(e) => ((e.currentTarget.style.display = "none"))}
+          className="w-[80vmin] h-[80vmin] object-contain opacity-[0.04] blur-2xl select-none"
+          draggable={false}
+        />
+        <div
+          className={cn(
+            "absolute inset-0",
+            isPositive
+              ? "bg-[radial-gradient(ellipse_at_center,hsl(var(--success)/0.08),transparent_60%)]"
+              : "bg-[radial-gradient(ellipse_at_center,hsl(var(--destructive)/0.07),transparent_60%)]",
+          )}
+        />
+      </div>
+
+      <main className="container mx-auto px-4 py-8 relative z-10">
         {/* Back Button */}
         <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -759,12 +781,21 @@ const Stock = () => {
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className={cn(
-                "w-16 h-16 rounded-xl flex items-center justify-center font-bold text-xl",
+                "relative w-16 h-16 rounded-xl flex items-center justify-center font-bold text-xl overflow-hidden ring-1 ring-border/50 shadow-lg",
                 stockData.type === "crypto" ? "bg-primary/20 text-primary" :
                 stockData.type === "etf" ? "bg-accent/20 text-accent-foreground" :
                 "bg-secondary text-foreground"
               )}>
-                {stockData.symbol.slice(0, 2)}
+                <span className="absolute inset-0 flex items-center justify-center">
+                  {stockData.symbol.slice(0, 2)}
+                </span>
+                <img
+                  src={`https://assets.parqet.com/logos/symbol/${stockData.symbol}`}
+                  alt=""
+                  onError={(e) => ((e.currentTarget.style.display = "none"))}
+                  className="relative w-full h-full object-contain p-2 bg-background/40 backdrop-blur-sm"
+                  draggable={false}
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
