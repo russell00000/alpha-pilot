@@ -180,7 +180,7 @@ const Alerts = () => {
               
               {/* Suggestions Dropdown */}
               {showSuggestions && symbolQuery && filteredSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-96 overflow-y-auto">
                   {filteredSuggestions.map((asset) => (
                     <button
                       key={asset.symbol}
