@@ -90,7 +90,7 @@ const AIChat = () => {
   };
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col h-full min-h-[420px] max-h-[480px] overflow-hidden">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col h-full min-h-[420px] max-h-[640px] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
@@ -106,7 +106,7 @@ const AIChat = () => {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 scrollbar-hide">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-hide">
         {messages.map((message, index) => (
           <div key={index} className={cn("flex gap-2.5 animate-fade-in", message.role === "user" ? "flex-row-reverse" : "")}>
             <div className={cn(
