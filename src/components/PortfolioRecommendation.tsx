@@ -62,7 +62,7 @@ const getColor = (category: string) => CATEGORY_COLORS[category] || "hsl(var(--m
 
 // Custom donut ring chart component matching reference design
 const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; value: number; color: string }[]; investmentAmount: number }) => {
-  const viewSize = 340;
+  const viewSize = 400;
   const cx = viewSize / 2;
   const cy = viewSize / 2;
   const radius = 130;
@@ -73,16 +73,11 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
   const total = data.reduce((sum, d) => sum + d.value, 0);
   let currentAngle = -Math.PI / 2; // start at top
 
-  const segments = data.map((item) => {
+  const rawSegments = data.map((item) => {
     const segAngle = (item.value / total) * (2 * Math.PI) - gap;
     const startAngle = currentAngle + gap / 2;
     const endAngle = startAngle + segAngle;
     const midAngle = startAngle + segAngle / 2;
-
-    // Label position — placed INSIDE the ring, between center hub and arc
-    const labelRadius = 88;
-    const labelX = cx + Math.cos(midAngle) * labelRadius;
-    const labelY = cy + Math.sin(midAngle) * labelRadius;
 
     const x1 = cx + Math.cos(startAngle) * radius;
     const y1 = cy + Math.sin(startAngle) * radius;
@@ -94,8 +89,27 @@ const DonutRingChart = ({ data, investmentAmount }: { data: { name: string; valu
 
     currentAngle = endAngle + gap / 2;
 
-    return { ...item, path, labelX, labelY };
+    return { ...item, path, midAngle, percent: (item.value / total) * 100 };
   });
+
+  // Place labels outside the ring, then resolve vertical overlaps for nearby small slices.
+  const labelRadius = radius + 22;
+  const labeled = rawSegments.map((seg) => ({
+    ...seg,
+    labelX: cx + Math.cos(seg.midAngle) * labelRadius,
+    labelY: cy + Math.sin(seg.midAngle) * labelRadius,
+  }));
+  // Resolve overlaps by nudging labels vertically when two are too close together.
+  const sorted = [...labeled].sort((a, b) => a.labelY - b.labelY);
+  const minGap = 16;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    if (Math.abs(cur.labelX - prev.labelX) < 80 && cur.labelY - prev.labelY < minGap) {
+      cur.labelY = prev.labelY + minGap;
+    }
+  }
+  const segments = labeled;
 
   return (
     <svg viewBox={`0 0 ${viewSize} ${viewSize}`} className="w-full h-full max-w-[300px] mx-auto">
