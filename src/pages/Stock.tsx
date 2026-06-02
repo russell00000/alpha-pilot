@@ -1530,13 +1530,6 @@ const Stock = () => {
                 </div>
               )}
 
-              {stockAnalysis.positionSizing && (
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Position Sizing</h4>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{stockAnalysis.positionSizing}</p>
-                </div>
-              )}
-
               <p className="text-xs text-muted-foreground italic">
                 Analysis based on our research-driven investing methodology. For informational purposes only. Not financial advice.
               </p>
