@@ -159,6 +159,9 @@ async function fetchFundamentals(symbol: string) {
 
 // Fetch the investing philosophy from the database (read-only, public endpoint)
 async function fetchPhilosophy() {
+  const cached = cacheGet<unknown>("investing-philosophy", 30 * 60 * 1000);
+  if (cached) return cached;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -175,11 +178,44 @@ async function fetchPhilosophy() {
       return null;
     }
 
+    cacheSet("investing-philosophy", philosophy);
     return philosophy;
   } catch (error) {
     console.error("Error fetching philosophy:", error);
     return null;
   }
+}
+
+function fallbackAnalysis(symbol: string, price: number, fundamentals: any) {
+  const analystTarget = Number(fundamentals?.targetMeanPrice);
+  const forwardEps = Number(fundamentals?.forwardEps);
+  const forwardPe = Number(fundamentals?.forwardPE);
+  const target = analystTarget > 0
+    ? analystTarget
+    : forwardEps > 0 && forwardPe > 0
+      ? forwardEps * forwardPe
+      : price;
+  const upside = price > 0 ? ((target - price) / price) * 100 : 0;
+  return {
+    recommendation: upside >= 12 ? "BUY" : upside <= -8 ? "SELL" : "HOLD",
+    confidence: fundamentals ? "MEDIUM" : "LOW",
+    reasoning: `${symbol} screens as a ${upside >= 12 ? "BUY" : upside <= -8 ? "SELL" : "HOLD"} based on current price versus the available valuation and analyst data. The view is grounded in live market data and updated fundamentals, with confidence limited when key fields are unavailable.`,
+    thesis: `${fundamentals?.companyName || symbol} is assessed on valuation, growth, balance-sheet quality, cash-flow strength, and current market positioning. The key swing factor is whether earnings growth and margins can justify the current multiple relative to risk.`,
+    businessOverview: `${fundamentals?.companyName || symbol} operates in ${fundamentals?.sector || "its reported sector"}${fundamentals?.industry ? `, specifically ${fundamentals.industry}` : ""}. Competitive quality is judged through margins, returns, cash generation, and balance-sheet resilience.`,
+    fundamentals: `Forward P/E is ${fundamentals?.forwardPE ?? "not disclosed"}, trailing P/E is ${fundamentals?.trailingPE ?? "not disclosed"}, revenue growth is ${fundamentals?.revenueGrowth ?? "not disclosed"}, earnings growth is ${fundamentals?.earningsGrowth ?? "not disclosed"}, and free cash flow is ${fundamentals?.freeCashflow ?? "not disclosed"}. Analyst mean target is ${fundamentals?.targetMeanPrice ?? "not disclosed"} across ${fundamentals?.numberOfAnalystOpinions ?? "not disclosed"} opinions.`,
+    technicals: `The current price is $${price.toFixed(2)} versus a 52-week range of $${fundamentals?.fiftyTwoWeekLow ?? "n/a"} to $${fundamentals?.fiftyTwoWeekHigh ?? "n/a"}. That range provides the first practical downside and upside reference points.`,
+    bullCase: ["Earnings growth accelerates above current expectations", "Margins expand or hold up better than peers", "Market rerates the stock toward the upper end of its valuation range"],
+    bearCase: ["Growth slows below expectations", "Margins compress from cost pressure or weaker pricing", "The valuation multiple contracts if risk appetite weakens"],
+    catalysts: ["Next earnings report", "Management guidance update", "Analyst estimate revisions"],
+    priceTarget: Number(target.toFixed(2)),
+    bullTarget: Number((target * 1.15).toFixed(2)),
+    bearTarget: Number((target * 0.8).toFixed(2)),
+    priceTargetRationale: analystTarget > 0
+      ? `Base target uses the current analyst mean target of $${analystTarget.toFixed(2)} because it aggregates ${fundamentals?.numberOfAnalystOpinions ?? "available"} market estimates and is the fastest reliable external fair-value anchor. Bull case applies a 15% rerating to $${(target * 1.15).toFixed(2)} if growth and margins improve; bear case applies a 20% discount to $${(target * 0.8).toFixed(2)} if estimates fall or the multiple contracts.`
+      : `Base target uses forward EPS × forward P/E: ${forwardEps || "not disclosed"} × ${forwardPe || "not disclosed"} ≈ $${target.toFixed(2)}. Bull and bear targets apply a simple rerating around that base to reflect upside execution or downside estimate risk.`,
+    riskLevel: fundamentals?.beta && fundamentals.beta > 1.4 ? "HIGH" : "MEDIUM",
+    positionSizing: "Use a measured allocation inside a diversified portfolio and scale only if fundamentals and price action continue to confirm the thesis.",
+  };
 }
 
 serve(async (req) => {
