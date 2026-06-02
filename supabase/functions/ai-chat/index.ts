@@ -485,6 +485,19 @@ serve(async (req) => {
     const requestedTickers = extractTickers(messages);
     console.log("Detected tickers in message:", requestedTickers);
 
+    // Also resolve free-text company names → symbols via Yahoo Finance search.
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    let resolvedFromName: string[] = [];
+    if (lastUserMsg.trim().length > 0) {
+      // Strip $TICKER notation and obvious filler before searching by name
+      const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
+      if (nameQuery.length >= 3) {
+        resolvedFromName = await resolveSymbols(nameQuery);
+        console.log("Resolved from name:", resolvedFromName);
+      }
+    }
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 4)]));
+
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
       fetchPhilosophy(authHeader),
@@ -497,7 +510,7 @@ serve(async (req) => {
     const allKnownSymbols = new Set([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO]);
     
     // Fetch on-demand data for any tickers not in our pre-fetched set
-    const onDemandData = await fetchOnDemandQuotes(requestedTickers, allKnownSymbols);
+    const onDemandData = await fetchOnDemandQuotes(allRequested, allKnownSymbols);
     if (onDemandData) {
       console.log("On-demand data fetched successfully");
     }
