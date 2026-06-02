@@ -7,8 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ----- In-memory caches (per edge instance) -----
+const memCache = new Map<string, { ts: number; data: unknown }>();
+function cacheGet<T>(key: string, ttlMs: number): T | null {
+  const e = memCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > ttlMs) { memCache.delete(key); return null; }
+  return e.data as T;
+}
+function cacheSet(key: string, data: unknown) {
+  memCache.set(key, { ts: Date.now(), data });
+}
+
 // Fetch the investing philosophy from the database
 async function fetchPhilosophy(authHeader: string): Promise<string> {
+  const cached = cacheGet<string>("philosophy", 10 * 60 * 1000);
+  if (cached !== null) return cached;
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -24,10 +38,11 @@ async function fetchPhilosophy(authHeader: string): Promise<string> {
 
     if (error || !philosophy) {
       console.log("Failed to fetch philosophy:", error);
+      cacheSet("philosophy", "");
       return "";
     }
 
-    return `
+    const out = `
 ## INVESTING PHILOSOPHY
 ${philosophy.philosophy_text}
 
@@ -37,6 +52,8 @@ ${philosophy.risk_guidance}
 ## COMMUNICATION STYLE
 ${philosophy.market_insights_style}
 `;
+    cacheSet("philosophy", out);
+    return out;
   } catch (error) {
     console.error("Error fetching philosophy:", error);
     return "";
@@ -356,10 +373,12 @@ async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
+  const cached = cacheGet<ForecastStats | null>(`forecast:${ticker}`, 10 * 60 * 1000);
+  if (cached !== null && cached !== undefined) return cached;
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
-      const prices = await fetchPrices(sym, "5y");
+      const prices = await fetchPrices(sym, "2y");
       if (prices.length < 30) continue;
       const currentPrice = prices[prices.length - 1];
 
@@ -460,7 +479,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
                 : "BELOW LONG-TERM TREND"
           : "INSUFFICIENT HISTORY";
 
-      return {
+      const result: ForecastStats = {
         symbol: sym,
         name,
         currentPrice,
@@ -495,6 +514,8 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         sectorBenchmark,
         headlines,
       };
+      cacheSet(`forecast:${ticker}`, result);
+      return result;
     } catch (e) {
       console.log(`fetchForecastStats failed for ${sym}:`, e);
     }
@@ -573,6 +594,8 @@ async function resolveSymbols(query: string): Promise<string[]> {
 
 // Rich detail for a single ticker: live quote + company profile + recent news headline.
 async function fetchTickerDetail(ticker: string): Promise<string | null> {
+  const cached = cacheGet<string | null>(`detail:${ticker}`, 5 * 60 * 1000);
+  if (cached !== undefined && cached !== null) return cached;
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
@@ -645,7 +668,9 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
         console.log('detail enrichment failed:', e);
       }
 
-      return `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      const out = `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      cacheSet(`detail:${ticker}`, out);
+      return out;
     } catch (e) {
       console.log(`fetchTickerDetail failed for ${sym}:`, e);
     }
@@ -696,66 +721,29 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
 
 // Fetch real-time market data for all platform securities
 async function fetchMarketData(): Promise<string> {
-  const allSymbols = [...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO];
-  
-  try {
-    const batchSize = 15;
-    const quotes: QuoteData[] = [];
-    
-    for (let i = 0; i < allSymbols.length; i += batchSize) {
-      const batch = allSymbols.slice(i, i + batchSize);
-      const batchResults = await Promise.all(batch.map(fetchQuote));
-      quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
-    }
-    
-    if (quotes.length === 0) {
-      console.log("No market data fetched");
-      return "";
-    }
+  // Only fetch a small set of macro benchmarks — quoting 400+ tickers per chat
+  // request was the dominant latency. Specific tickers the user asks about
+  // still get a live on-demand fetch later in the pipeline.
+  const cached = cacheGet<string>("marketSummary", 60 * 1000);
+  if (cached !== null) return cached;
 
-    const timestamp = new Date().toISOString();
-    console.log(`Fetched ${quotes.length} market quotes`);
-    
-    const stockQuotes = quotes.filter(q => TOP_STOCKS.includes(q.symbol));
-    const etfQuotes = quotes.filter(q => TOP_ETFS.includes(q.symbol));
-    const mutualFundQuotes = quotes.filter(q => MUTUAL_FUNDS.includes(q.symbol));
-    const cryptoQuotes = quotes.filter(q => CRYPTO.includes(q.symbol));
-    
-    const formatQuote = (q: QuoteData) => {
-      const changeStr = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
-      const distFromHigh = q.high52Week ? ((q.price - q.high52Week) / q.high52Week * 100).toFixed(1) : 'N/A';
-      return `${q.symbol} (${q.name}): $${q.price.toFixed(2)} ${changeStr}, 52W High: $${q.high52Week?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${q.low52Week?.toFixed(2) || 'N/A'}`;
+  const BENCHMARKS = ["SPY", "QQQ", "DIA", "IWM", "GLD", "TLT", "BTC-USD", "ETH-USD"];
+  try {
+    const results = await Promise.all(BENCHMARKS.map(fetchQuote));
+    const quotes = results.filter((q): q is QuoteData => q !== null);
+    if (quotes.length === 0) { cacheSet("marketSummary", ""); return ""; }
+
+    const fmt = (q: QuoteData) => {
+      const c = q.changePercent >= 0 ? `+${q.changePercent.toFixed(2)}%` : `${q.changePercent.toFixed(2)}%`;
+      return `${q.symbol} (${q.name}): $${q.price.toFixed(2)} ${c}`;
     };
-    
-    let marketDataStr = `\n\n=== REAL-TIME MARKET DATA (${timestamp}) ===\n\n`;
-    
-    if (stockQuotes.length > 0) {
-      marketDataStr += `TOP STOCKS:\n${stockQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (etfQuotes.length > 0) {
-      marketDataStr += `ETFs:\n${etfQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (mutualFundQuotes.length > 0) {
-      marketDataStr += `MUTUAL FUNDS:\n${mutualFundQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    if (cryptoQuotes.length > 0) {
-      marketDataStr += `CRYPTO:\n${cryptoQuotes.map(formatQuote).join('\n')}\n\n`;
-    }
-    
-    const sp500 = etfQuotes.find(q => q.symbol === 'SPY');
-    const nasdaq = etfQuotes.find(q => q.symbol === 'QQQ');
-    const btc = cryptoQuotes.find(q => q.symbol === 'BTC-USD');
-    
-    if (sp500 || nasdaq) {
-      marketDataStr += `MARKET SUMMARY:\n`;
-      if (sp500) marketDataStr += `S&P 500 (SPY): ${sp500.changePercent >= 0 ? '+' : ''}${sp500.changePercent.toFixed(2)}%\n`;
-      if (nasdaq) marketDataStr += `NASDAQ (QQQ): ${nasdaq.changePercent >= 0 ? '+' : ''}${nasdaq.changePercent.toFixed(2)}%\n`;
-      if (btc) marketDataStr += `Bitcoin: $${btc.price.toLocaleString()} (${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%)\n`;
-    }
-    
-    return marketDataStr;
-  } catch (error) {
-    console.error("Error fetching market data:", error);
+    const out =
+      `\n\n=== MARKET SUMMARY (${new Date().toISOString()}) ===\n` +
+      quotes.map(fmt).join("\n") + "\n";
+    cacheSet("marketSummary", out);
+    return out;
+  } catch (e) {
+    console.error("Error fetching market summary:", e);
     return "";
   }
 }
@@ -822,18 +810,18 @@ serve(async (req) => {
     const requestedTickers = extractTickers(messages);
     console.log("Detected tickers in message:", requestedTickers);
 
-    // Also resolve free-text company names → symbols via Yahoo Finance search.
+    // Only do the slower free-text name → symbol resolution when we couldn't
+    // pull any tickers out of the user message directly. Saves ~300-800ms.
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
     let resolvedFromName: string[] = [];
-    if (lastUserMsg.trim().length > 0) {
-      // Strip $TICKER notation and obvious filler before searching by name
+    if (requestedTickers.length === 0 && lastUserMsg.trim().length > 0) {
       const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
       if (nameQuery.length >= 3) {
         resolvedFromName = await resolveSymbols(nameQuery);
         console.log("Resolved from name:", resolvedFromName);
       }
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 4)]));
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 2)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
@@ -857,7 +845,7 @@ serve(async (req) => {
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    const forecastTickers = allRequested.slice(0, 4);
+    const forecastTickers = allRequested.slice(0, 2);
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
@@ -969,7 +957,7 @@ ${onDemandData}${forecastBlock}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
