@@ -215,6 +215,343 @@ async function fetchOnDemandQuotes(tickers: string[], existingSymbols: Set<strin
   return `\n\nON-DEMAND LOOKUPS (real-time data for requested tickers):\n${results.join('\n\n')}\n`;
 }
 
+// Map a sector name to a representative sector ETF for benchmark comparisons.
+const SECTOR_ETF_MAP: Record<string, string> = {
+  "Technology": "XLK",
+  "Financial Services": "XLF",
+  "Financial": "XLF",
+  "Healthcare": "XLV",
+  "Consumer Cyclical": "XLY",
+  "Consumer Defensive": "XLP",
+  "Energy": "XLE",
+  "Industrials": "XLI",
+  "Basic Materials": "XLB",
+  "Utilities": "XLU",
+  "Real Estate": "XLRE",
+  "Communication Services": "XLC",
+};
+
+interface ForecastStats {
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  return1M: number | null;
+  return3M: number | null;
+  return6M: number | null;
+  return1Y: number | null;
+  cagr3Y: number | null;
+  cagr5Y: number | null;
+  annualVol: number | null;
+  maxDrawdown: number | null;
+  sharpe: number | null;
+  sma50: number | null;
+  sma200: number | null;
+  rsi14: number | null;
+  trend: string;
+  sector?: string;
+  industry?: string;
+  forwardPE?: string;
+  pegRatio?: string;
+  earningsGrowth?: string;
+  revenueGrowth?: string;
+  recommendationMean?: number;
+  targetMean?: number;
+  targetHigh?: number;
+  targetLow?: number;
+  numAnalysts?: number;
+  upgradesLast90d?: number;
+  downgradesLast90d?: number;
+  earningsTrendNextQ?: string;
+  earningsTrendNextY?: string;
+  sectorBenchmark?: { symbol: string; return1Y: number | null; return3M: number | null };
+  headlines: string[];
+}
+
+function calcReturn(prices: number[], lookbackDays: number): number | null {
+  if (prices.length < lookbackDays + 1) return null;
+  const recent = prices[prices.length - 1];
+  const past = prices[prices.length - 1 - lookbackDays];
+  if (!recent || !past) return null;
+  return ((recent - past) / past) * 100;
+}
+
+function calcCAGR(prices: number[], years: number): number | null {
+  const need = Math.round(252 * years);
+  if (prices.length < need + 1) return null;
+  const end = prices[prices.length - 1];
+  const start = prices[prices.length - 1 - need];
+  if (!start || !end) return null;
+  return (Math.pow(end / start, 1 / years) - 1) * 100;
+}
+
+function calcVolatility(prices: number[]): number | null {
+  if (prices.length < 30) return null;
+  const rets: number[] = [];
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i - 1] > 0) rets.push(Math.log(prices[i] / prices[i - 1]));
+  }
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+  const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / rets.length;
+  return Math.sqrt(variance) * Math.sqrt(252) * 100;
+}
+
+function calcMaxDrawdown(prices: number[]): number | null {
+  if (prices.length < 30) return null;
+  let peak = prices[0];
+  let maxDD = 0;
+  for (const p of prices) {
+    if (p > peak) peak = p;
+    const dd = (p - peak) / peak;
+    if (dd < maxDD) maxDD = dd;
+  }
+  return maxDD * 100;
+}
+
+function calcSMA(prices: number[], window: number): number | null {
+  if (prices.length < window) return null;
+  const slice = prices.slice(-window);
+  return slice.reduce((a, b) => a + b, 0) / window;
+}
+
+function calcRSI(prices: number[], period = 14): number | null {
+  if (prices.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  const avgG = gains / period;
+  const avgL = losses / period;
+  if (avgL === 0) return 100;
+  const rs = avgG / avgL;
+  return 100 - 100 / (1 + rs);
+}
+
+function calcSharpe(prices: number[], rf = 0.045): number | null {
+  if (prices.length < 60) return null;
+  const rets: number[] = [];
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i - 1] > 0) rets.push((prices[i] - prices[i - 1]) / prices[i - 1]);
+  }
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+  const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / rets.length;
+  const sd = Math.sqrt(variance);
+  if (sd === 0) return null;
+  return ((mean * 252) - rf) / (sd * Math.sqrt(252));
+}
+
+async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=${range}`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } },
+    );
+    if (!r.ok) return [];
+    const data = await r.json();
+    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+    return (closes as Array<number | null>).filter((c): c is number => typeof c === 'number' && c > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
+  const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
+  for (const sym of candidates) {
+    try {
+      const prices = await fetchPrices(sym, "5y");
+      if (prices.length < 30) continue;
+      const currentPrice = prices[prices.length - 1];
+
+      // Pull fundamentals + analyst data + news in parallel
+      const [summaryResp, newsResp] = await Promise.all([
+        fetch(
+          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,summaryDetail,defaultKeyStatistics,financialData,recommendationTrend,earningsTrend,upgradeDowngradeHistory,price`,
+          { headers: { 'User-Agent': 'Mozilla/5.0' } },
+        ),
+        fetch(
+          `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=5`,
+          { headers: { 'User-Agent': 'Mozilla/5.0' } },
+        ),
+      ]);
+
+      let sector: string | undefined;
+      let industry: string | undefined;
+      let name = sym;
+      let forwardPE: string | undefined;
+      let pegRatio: string | undefined;
+      let earningsGrowth: string | undefined;
+      let revenueGrowth: string | undefined;
+      let recommendationMean: number | undefined;
+      let targetMean: number | undefined;
+      let targetHigh: number | undefined;
+      let targetLow: number | undefined;
+      let numAnalysts: number | undefined;
+      let upgradesLast90d = 0;
+      let downgradesLast90d = 0;
+      let earningsTrendNextQ: string | undefined;
+      let earningsTrendNextY: string | undefined;
+
+      if (summaryResp.ok) {
+        const sd = await summaryResp.json();
+        const r0 = sd?.quoteSummary?.result?.[0];
+        const ap = r0?.assetProfile;
+        const ks = r0?.defaultKeyStatistics;
+        const fd = r0?.financialData;
+        const pr = r0?.price;
+        const rt = r0?.recommendationTrend?.trend ?? [];
+        const et = r0?.earningsTrend?.trend ?? [];
+        const udh = r0?.upgradeDowngradeHistory?.history ?? [];
+        if (ap?.sector) sector = ap.sector;
+        if (ap?.industry) industry = ap.industry;
+        if (pr?.shortName || pr?.longName) name = pr.shortName || pr.longName;
+        if (ks?.forwardPE?.fmt) forwardPE = ks.forwardPE.fmt;
+        if (ks?.pegRatio?.fmt) pegRatio = ks.pegRatio.fmt;
+        if (fd?.earningsGrowth?.fmt) earningsGrowth = fd.earningsGrowth.fmt;
+        if (fd?.revenueGrowth?.fmt) revenueGrowth = fd.revenueGrowth.fmt;
+        if (typeof fd?.recommendationMean?.raw === 'number') recommendationMean = fd.recommendationMean.raw;
+        if (typeof fd?.targetMeanPrice?.raw === 'number') targetMean = fd.targetMeanPrice.raw;
+        if (typeof fd?.targetHighPrice?.raw === 'number') targetHigh = fd.targetHighPrice.raw;
+        if (typeof fd?.targetLowPrice?.raw === 'number') targetLow = fd.targetLowPrice.raw;
+        if (typeof fd?.numberOfAnalystOpinions?.raw === 'number') numAnalysts = fd.numberOfAnalystOpinions.raw;
+        // Earnings growth estimates
+        const nextQ = et.find((t: { period?: string }) => t?.period === '+1q');
+        const nextY = et.find((t: { period?: string }) => t?.period === '+1y');
+        if (nextQ?.earningsEstimate?.growth?.fmt) earningsTrendNextQ = nextQ.earningsEstimate.growth.fmt;
+        if (nextY?.earningsEstimate?.growth?.fmt) earningsTrendNextY = nextY.earningsEstimate.growth.fmt;
+        // Upgrades/downgrades in last 90 days
+        const cutoff = Math.floor(Date.now() / 1000) - 90 * 86400;
+        for (const h of udh as Array<{ epochGradeDate?: number; action?: string }>) {
+          if (!h.epochGradeDate || h.epochGradeDate < cutoff) continue;
+          if (h.action === 'up') upgradesLast90d++;
+          else if (h.action === 'down') downgradesLast90d++;
+        }
+      }
+
+      const headlines: string[] = [];
+      if (newsResp.ok) {
+        const nd = await newsResp.json();
+        const items = (nd?.news ?? []).slice(0, 5) as Array<{ title?: string; publisher?: string }>;
+          for (const n of items) if (n.title) headlines.push(`${n.title} (${n.publisher ?? 'src'})`);
+      }
+
+      // Sector benchmark
+      let sectorBenchmark: ForecastStats['sectorBenchmark'];
+      if (sector && SECTOR_ETF_MAP[sector]) {
+        const benchSym = SECTOR_ETF_MAP[sector];
+        const benchPrices = await fetchPrices(benchSym, "2y");
+        sectorBenchmark = {
+          symbol: benchSym,
+          return1Y: calcReturn(benchPrices, 252),
+          return3M: calcReturn(benchPrices, 63),
+        };
+      }
+
+      const sma50 = calcSMA(prices, 50);
+      const sma200 = calcSMA(prices, 200);
+      const trend =
+        sma50 && sma200
+          ? currentPrice > sma50 && sma50 > sma200
+            ? "STRONG UPTREND (golden cross territory)"
+            : currentPrice < sma50 && sma50 < sma200
+              ? "DOWNTREND (death cross territory)"
+              : currentPrice > sma200
+                ? "ABOVE LONG-TERM TREND"
+                : "BELOW LONG-TERM TREND"
+          : "INSUFFICIENT HISTORY";
+
+      return {
+        symbol: sym,
+        name,
+        currentPrice,
+        return1M: calcReturn(prices, 21),
+        return3M: calcReturn(prices, 63),
+        return6M: calcReturn(prices, 126),
+        return1Y: calcReturn(prices, 252),
+        cagr3Y: calcCAGR(prices, 3),
+        cagr5Y: calcCAGR(prices, 5),
+        annualVol: calcVolatility(prices),
+        maxDrawdown: calcMaxDrawdown(prices),
+        sharpe: calcSharpe(prices),
+        sma50,
+        sma200,
+        rsi14: calcRSI(prices),
+        trend,
+        sector,
+        industry,
+        forwardPE,
+        pegRatio,
+        earningsGrowth,
+        revenueGrowth,
+        recommendationMean,
+        targetMean,
+        targetHigh,
+        targetLow,
+        numAnalysts,
+        upgradesLast90d,
+        downgradesLast90d,
+        earningsTrendNextQ,
+        earningsTrendNextY,
+        sectorBenchmark,
+        headlines,
+      };
+    } catch (e) {
+      console.log(`fetchForecastStats failed for ${sym}:`, e);
+    }
+  }
+  return null;
+}
+
+function formatForecast(f: ForecastStats): string {
+  const pct = (v: number | null | undefined, d = 1) =>
+    v == null || !isFinite(v) ? 'N/A' : `${v >= 0 ? '+' : ''}${v.toFixed(d)}%`;
+  const num = (v: number | null | undefined, d = 2) =>
+    v == null || !isFinite(v) ? 'N/A' : v.toFixed(d);
+  const recLabel = (r?: number) => {
+    if (r == null) return 'N/A';
+    if (r < 1.5) return `Strong Buy (${r.toFixed(2)})`;
+    if (r < 2.5) return `Buy (${r.toFixed(2)})`;
+    if (r < 3.5) return `Hold (${r.toFixed(2)})`;
+    if (r < 4.5) return `Underperform (${r.toFixed(2)})`;
+    return `Sell (${r.toFixed(2)})`;
+  };
+  const impliedUpside =
+    f.targetMean && f.currentPrice
+      ? ((f.targetMean - f.currentPrice) / f.currentPrice) * 100
+      : null;
+
+  const lines: string[] = [];
+  lines.push(`■ ${f.symbol} — ${f.name} @ $${f.currentPrice.toFixed(2)}`);
+  if (f.sector) lines.push(`  Sector/Industry: ${f.sector}${f.industry ? ' / ' + f.industry : ''}`);
+  lines.push(`  Historical returns: 1M ${pct(f.return1M)} | 3M ${pct(f.return3M)} | 6M ${pct(f.return6M)} | 1Y ${pct(f.return1Y)} | 3Y CAGR ${pct(f.cagr3Y)} | 5Y CAGR ${pct(f.cagr5Y)}`);
+  lines.push(`  Risk: Annualized vol ${pct(f.annualVol)} | Max DD ${pct(f.maxDrawdown)} | Sharpe ${num(f.sharpe, 2)}`);
+  lines.push(`  Trend: ${f.trend} | SMA50 $${num(f.sma50)} | SMA200 $${num(f.sma200)} | RSI14 ${num(f.rsi14, 1)}`);
+  const valParts: string[] = [];
+  if (f.forwardPE) valParts.push(`Fwd P/E ${f.forwardPE}`);
+  if (f.pegRatio) valParts.push(`PEG ${f.pegRatio}`);
+  if (f.earningsGrowth) valParts.push(`EPS growth ${f.earningsGrowth}`);
+  if (f.revenueGrowth) valParts.push(`Rev growth ${f.revenueGrowth}`);
+  if (valParts.length) lines.push(`  Fundamentals: ${valParts.join(' • ')}`);
+  const fwdParts: string[] = [];
+  if (f.earningsTrendNextQ) fwdParts.push(`Next Q EPS est ${f.earningsTrendNextQ}`);
+  if (f.earningsTrendNextY) fwdParts.push(`Next Y EPS est ${f.earningsTrendNextY}`);
+  if (fwdParts.length) lines.push(`  Forward outlook: ${fwdParts.join(' • ')}`);
+  if (f.numAnalysts) {
+    lines.push(
+      `  Analyst consensus (${f.numAnalysts} analysts): ${recLabel(f.recommendationMean)} | Target $${num(f.targetMean)} (low $${num(f.targetLow)} / high $${num(f.targetHigh)})${impliedUpside != null ? ` → implied ${pct(impliedUpside)}` : ''}`,
+    );
+  }
+  lines.push(`  Recent rating actions (90d): ${f.upgradesLast90d} upgrades, ${f.downgradesLast90d} downgrades`);
+  if (f.sectorBenchmark) {
+    lines.push(`  Sector benchmark ${f.sectorBenchmark.symbol}: 3M ${pct(f.sectorBenchmark.return3M)} | 1Y ${pct(f.sectorBenchmark.return1Y)}`);
+  }
+  if (f.headlines.length) {
+    lines.push(`  Industry signals (headlines):`);
+    for (const h of f.headlines.slice(0, 3)) lines.push(`    - ${h}`);
+  }
+  return lines.join('\n');
+}
+
 // Resolve a free-text query (company name or symbol) to Yahoo Finance tickers.
 async function resolveSymbols(query: string): Promise<string[]> {
   try {
