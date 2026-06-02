@@ -64,7 +64,6 @@ interface StockAnalysis {
   bullTarget?: number;
   bearTarget?: number;
   priceTargetRationale?: string;
-  positionSizing?: string;
 }
 
 interface HistoricalDataPoint {
