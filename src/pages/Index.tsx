@@ -1,12 +1,16 @@
+import { lazy, Suspense } from "react";
 import Header from "@/components/Header";
-import MarketOverview from "@/components/MarketOverview";
-import AIChat from "@/components/AIChat";
-import TrendingNews from "@/components/TrendingNews";
 import QuickActions from "@/components/QuickActions";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import financeBg from "@/assets/finance-bg.jpg";
+import financeBg from "@/assets/finance-bg.webp";
+
+const MarketOverview = lazy(() => import("@/components/MarketOverview"));
+const AIChat = lazy(() => import("@/components/AIChat"));
+const TrendingNews = lazy(() => import("@/components/TrendingNews"));
+
+const panelFallback = <div className="min-h-[420px] rounded-3xl bg-background/40 border border-border/20" />;
 
 const Index = () => {
   return (
@@ -71,17 +75,23 @@ const Index = () => {
         {/* Market Overview + AI Chat */}
         <section className="container px-4 md:px-6 grid lg:grid-cols-5 gap-6 mb-12">
           <div className="lg:col-span-3 animate-fade-in rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40" style={{ animationDelay: "100ms" }}>
-            <MarketOverview />
+            <Suspense fallback={panelFallback}>
+              <MarketOverview />
+            </Suspense>
           </div>
           <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
-            <AIChat />
+            <Suspense fallback={panelFallback}>
+              <AIChat />
+            </Suspense>
           </div>
         </section>
 
         {/* News - full width */}
         <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
           <div className="rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40">
-            <TrendingNews />
+            <Suspense fallback={panelFallback}>
+              <TrendingNews />
+            </Suspense>
           </div>
         </section>
       </main>
