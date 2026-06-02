@@ -80,7 +80,7 @@ const Alerts = () => {
             const lenB = b.asset.symbol.length + b.asset.name.length;
             return lenA - lenB;
           })
-          .slice(0, 8)
+          .slice(0, 16)
           .map((x) => x.asset);
       })()
     : [];
