@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,7 +7,10 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
+import type { ForecastData } from "@/components/ForecastChart";
+const ForecastChart = lazy(() =>
+  import("@/components/ForecastChart").then((m) => ({ default: m.ForecastChart })),
+);
 import {
   XAxis,
   YAxis,
@@ -379,15 +382,19 @@ const Stock = () => {
   }, [symbol, stockData, stockDetails, toast]);
 
   useEffect(() => {
+    // Kick off all independent requests in parallel — don't gate the chart on quote data.
     fetchStockData();
     fetchStockDetails();
-  }, [fetchStockData, fetchStockDetails]);
+    fetchHistoricalData(activeRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
 
+  // Re-fetch the chart only when the user changes the range.
+  const isInitialRange = useRef(true);
   useEffect(() => {
-    if (stockData) {
-      fetchHistoricalData(activeRange);
-    }
-  }, [activeRange, stockData, fetchHistoricalData]);
+    if (isInitialRange.current) { isInitialRange.current = false; return; }
+    fetchHistoricalData(activeRange);
+  }, [activeRange, fetchHistoricalData]);
 
   useEffect(() => {
     if (stockData && stockDetails && !stockAnalysis && !isLoadingAnalysis) {
@@ -1320,7 +1327,13 @@ const Stock = () => {
                 <span className="text-muted-foreground">Building forecast...</span>
               </div>
             ) : forecast ? (
-              <ForecastChart forecast={forecast} />
+              <Suspense
+                fallback={
+                  <div className="h-64 rounded-xl border border-white/[0.06] bg-black/20 animate-pulse" />
+                }
+              >
+                <ForecastChart forecast={forecast} />
+              </Suspense>
             ) : null}
           </div>
         )}
