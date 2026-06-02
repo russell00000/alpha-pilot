@@ -194,45 +194,126 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
 
 // On-demand lookup for tickers not in our pre-fetched set
 async function fetchOnDemandQuotes(tickers: string[], existingSymbols: Set<string>): Promise<string> {
-  const missing = tickers.filter(t => !existingSymbols.has(t) && !existingSymbols.has(t + "-USD"));
+  // Fetch live data for every requested ticker — even if it's in the pre-fetched
+  // set — so the model always sees fresh, deep info (profile, sector, etc.) for
+  // anything the user explicitly asks about.
+  const missing = tickers;
   if (missing.length === 0) return "";
   
   console.log("On-demand lookup for tickers:", missing);
   
   const results: string[] = [];
-  for (const ticker of missing.slice(0, 5)) {
-    // Try the ticker as-is, and also with -USD for potential crypto
-    for (const sym of [ticker, `${ticker}-USD`]) {
-      try {
-        const response = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`,
-          { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
-        );
-        if (!response.ok) continue;
-        const data = await response.json();
-        const result = data.chart?.result?.[0];
-        if (!result) continue;
-        
-        const meta = result.meta;
-        const price = meta.regularMarketPrice || meta.previousClose;
-        if (!price) continue;
-        
-        const previousClose = meta.chartPreviousClose || meta.previousClose;
-        const change = price - previousClose;
-        const changePercent = previousClose ? (change / previousClose) * 100 : 0;
-        const changeStr = changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`;
-        const distFromHigh = meta.fiftyTwoWeekHigh ? ((price - meta.fiftyTwoWeekHigh) / meta.fiftyTwoWeekHigh * 100).toFixed(1) : 'N/A';
-        
-        results.push(`${ticker} (${meta.shortName || meta.longName || ticker}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}`);
-        break; // Found data, no need to try -USD variant
-      } catch (e) {
-        console.log(`On-demand fetch failed for ${sym}:`, e);
-      }
-    }
+  const seen = new Set<string>();
+  for (const ticker of missing.slice(0, 8)) {
+    if (seen.has(ticker)) continue;
+    seen.add(ticker);
+    const detail = await fetchTickerDetail(ticker);
+    if (detail) results.push(detail);
   }
   
   if (results.length === 0) return "";
-  return `\n\nON-DEMAND LOOKUPS (real-time data for requested tickers):\n${results.join('\n')}\n`;
+  return `\n\nON-DEMAND LOOKUPS (real-time data for requested tickers):\n${results.join('\n\n')}\n`;
+}
+
+// Resolve a free-text query (company name or symbol) to Yahoo Finance tickers.
+async function resolveSymbols(query: string): Promise<string[]> {
+  try {
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const quotes = (data?.quotes ?? []) as Array<{ symbol?: string; quoteType?: string }>;
+    return quotes
+      .filter(q => q.symbol && ['EQUITY', 'ETF', 'MUTUALFUND', 'CRYPTOCURRENCY', 'INDEX'].includes(q.quoteType || ''))
+      .map(q => q.symbol as string);
+  } catch (e) {
+    console.log('resolveSymbols failed:', e);
+    return [];
+  }
+}
+
+// Rich detail for a single ticker: live quote + company profile + recent news headline.
+async function fetchTickerDetail(ticker: string): Promise<string | null> {
+  const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
+  for (const sym of candidates) {
+    try {
+      const chartResp = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1mo`,
+        { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } },
+      );
+      if (!chartResp.ok) continue;
+      const chartData = await chartResp.json();
+      const result = chartData.chart?.result?.[0];
+      if (!result) continue;
+      const meta = result.meta;
+      const price = meta.regularMarketPrice || meta.previousClose;
+      if (!price) continue;
+      const previousClose = meta.chartPreviousClose || meta.previousClose;
+      const change = price - previousClose;
+      const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+      const changeStr = changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`;
+      const distFromHigh = meta.fiftyTwoWeekHigh ? ((price - meta.fiftyTwoWeekHigh) / meta.fiftyTwoWeekHigh * 100).toFixed(1) : 'N/A';
+
+      // Pull profile + key stats in parallel (best-effort; failures don't block)
+      let profileLine = '';
+      let newsLine = '';
+      try {
+        const [summaryResp, newsResp] = await Promise.all([
+          fetch(
+            `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,summaryDetail,defaultKeyStatistics,financialData`,
+            { headers: { 'User-Agent': 'Mozilla/5.0' } },
+          ),
+          fetch(
+            `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=3`,
+            { headers: { 'User-Agent': 'Mozilla/5.0' } },
+          ),
+        ]);
+        if (summaryResp.ok) {
+          const sd = await summaryResp.json();
+          const r0 = sd?.quoteSummary?.result?.[0];
+          const ap = r0?.assetProfile;
+          const sm = r0?.summaryDetail;
+          const ks = r0?.defaultKeyStatistics;
+          const fd = r0?.financialData;
+          const parts: string[] = [];
+          if (ap?.sector) parts.push(`Sector: ${ap.sector}`);
+          if (ap?.industry) parts.push(`Industry: ${ap.industry}`);
+          if (ap?.country) parts.push(`HQ: ${ap.country}`);
+          if (sm?.marketCap?.fmt) parts.push(`Mkt Cap: ${sm.marketCap.fmt}`);
+          if (sm?.trailingPE?.fmt) parts.push(`P/E: ${sm.trailingPE.fmt}`);
+          if (ks?.forwardPE?.fmt) parts.push(`Fwd P/E: ${ks.forwardPE.fmt}`);
+          if (sm?.dividendYield?.fmt) parts.push(`Div Yield: ${sm.dividendYield.fmt}`);
+          if (fd?.recommendationKey) parts.push(`Street: ${fd.recommendationKey}`);
+          if (fd?.targetMeanPrice?.fmt) parts.push(`Analyst Target: ${fd.targetMeanPrice.fmt}`);
+          if (parts.length) profileLine = `\n  ${parts.join(' • ')}`;
+          if (ap?.longBusinessSummary) {
+            const summary = String(ap.longBusinessSummary).slice(0, 320).replace(/\s+/g, ' ');
+            profileLine += `\n  About: ${summary}${ap.longBusinessSummary.length > 320 ? '…' : ''}`;
+          }
+        }
+        if (newsResp.ok) {
+          const nd = await newsResp.json();
+          const items = (nd?.news ?? []).slice(0, 3) as Array<{ title?: string; publisher?: string; providerPublishTime?: number }>;
+          if (items.length) {
+            const headlines = items
+              .filter(n => n.title)
+              .map(n => `    - "${n.title}" (${n.publisher ?? 'source'})`)
+              .join('\n');
+            if (headlines) newsLine = `\n  Recent headlines:\n${headlines}`;
+          }
+        }
+      } catch (e) {
+        console.log('detail enrichment failed:', e);
+      }
+
+      return `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+    } catch (e) {
+      console.log(`fetchTickerDetail failed for ${sym}:`, e);
+    }
+  }
+  return null;
 }
 
 // Fetch detailed quote data from Yahoo Finance
@@ -404,6 +485,19 @@ serve(async (req) => {
     const requestedTickers = extractTickers(messages);
     console.log("Detected tickers in message:", requestedTickers);
 
+    // Also resolve free-text company names → symbols via Yahoo Finance search.
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    let resolvedFromName: string[] = [];
+    if (lastUserMsg.trim().length > 0) {
+      // Strip $TICKER notation and obvious filler before searching by name
+      const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
+      if (nameQuery.length >= 3) {
+        resolvedFromName = await resolveSymbols(nameQuery);
+        console.log("Resolved from name:", resolvedFromName);
+      }
+    }
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 4)]));
+
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
       fetchPhilosophy(authHeader),
@@ -416,7 +510,7 @@ serve(async (req) => {
     const allKnownSymbols = new Set([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS, ...CRYPTO]);
     
     // Fetch on-demand data for any tickers not in our pre-fetched set
-    const onDemandData = await fetchOnDemandQuotes(requestedTickers, allKnownSymbols);
+    const onDemandData = await fetchOnDemandQuotes(allRequested, allKnownSymbols);
     if (onDemandData) {
       console.log("On-demand data fetched successfully");
     }
@@ -426,10 +520,11 @@ serve(async (req) => {
 ${philosophy}
 
 ## ABSOLUTE RULES
-1. You KNOW every ticker. NEVER say you "can't find" or "don't have data" for ANY security.
-2. Use EXACT prices from LIVE MARKET DATA below—your training prices are outdated.
-3. If a ticker is NOT in the data, use training knowledge and label prices "~approximate".
-4. NEVER claim a stock is "private" or "not traded".
+1. You have LIVE INTERNET DATA for every security via Yahoo Finance (quotes, profile, sector, market cap, P/E, analyst targets, and recent headlines). NEVER say you "can't find" or "don't have data".
+2. Use EXACT prices, fundamentals, and headlines from the data blocks below — your training data is outdated.
+3. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data appear under ON-DEMAND LOOKUPS. Use it.
+4. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
+5. When relevant, weave in 1 specific data point from the live profile or headlines so the answer feels current ("Recent headline: ...").
 
 ## PRICE TARGETS (DATA-DRIVEN)
 - Derive targets from the REAL data: current price, 52W high/low, daily change%, and distance from 52W high.
