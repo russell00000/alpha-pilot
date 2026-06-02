@@ -1,10 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { lazy, Suspense, useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { ForecastChart, type ForecastData } from "./ForecastChart";
+import type { ForecastData } from "./ForecastChart";
+
+const ForecastChart = lazy(() =>
+  import("./ForecastChart").then((m) => ({ default: m.ForecastChart })),
+);
 
 interface Message {
   role: "user" | "assistant";
@@ -114,7 +118,9 @@ const AIChat = () => {
               {message.forecasts && message.forecasts.length > 0 && (
                 <div className="space-y-3 mt-3">
                   {message.forecasts.map((f) => (
-                    <ForecastChart key={f.symbol} forecast={f} />
+                    <Suspense key={f.symbol} fallback={<div className="h-44 rounded-xl bg-muted/20" />}>
+                      <ForecastChart forecast={f} />
+                    </Suspense>
                   ))}
                 </div>
               )}
