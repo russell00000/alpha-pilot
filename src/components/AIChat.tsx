@@ -24,7 +24,11 @@ const suggestedPrompts = [
   "Best ETFs for beginners?",
 ];
 
-const AIChat = () => {
+interface AIChatProps {
+  onResetSize?: () => void;
+}
+
+const AIChat = ({ onResetSize }: AIChatProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
