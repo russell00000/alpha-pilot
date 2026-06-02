@@ -395,6 +395,23 @@ const Stock = () => {
     }
   }, [stockData, stockDetails, stockAnalysis, isLoadingAnalysis, fetchStockAnalysis]);
 
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    setIsLoadingForecast(true);
+    setForecast(null);
+    supabase.functions
+      .invoke("stock-forecast", { body: { symbol } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data?.forecast) setForecast(data.forecast as ForecastData);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingForecast(false);
+      });
+    return () => { cancelled = true; };
+  }, [symbol]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchStockData();
