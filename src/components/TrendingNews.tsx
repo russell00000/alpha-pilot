@@ -11,6 +11,8 @@ interface NewsItem {
   category: string;
   url: string;
   summary?: string;
+  image?: string;
+  domain?: string;
 }
 
 const fallbackNews: NewsItem[] = [
@@ -39,7 +41,23 @@ const TrendingNews = () => {
       if (data?.error) throw new Error(data.error);
       
       if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-        setNews(data.data);
+        // Defensive client-side dedupe by url + normalized title, cap per source.
+        const seenUrl = new Set<string>();
+        const seenTitle = new Set<string>();
+        const perSource = new Map<string, number>();
+        const cleaned: NewsItem[] = [];
+        for (const item of data.data as NewsItem[]) {
+          const u = (item.url ?? "").split("?")[0];
+          const t = (item.title ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          if (!u || !t || seenUrl.has(u) || seenTitle.has(t)) continue;
+          const src = item.source ?? "Unknown";
+          if ((perSource.get(src) ?? 0) >= 2) continue;
+          perSource.set(src, (perSource.get(src) ?? 0) + 1);
+          seenUrl.add(u);
+          seenTitle.add(t);
+          cleaned.push(item);
+        }
+        setNews(cleaned);
         setLastUpdated(new Date());
       } else {
         setNews(fallbackNews);
@@ -101,14 +119,38 @@ const TrendingNews = () => {
         </div>
       ) : (
         <div className="space-y-3 flex-1 overflow-y-auto scrollbar-hide animate-stagger">
-          {news.slice(0, Math.max(news.length - 3, 1)).map((item, index) => (
+          {news.map((item, index) => {
+            const domain =
+              item.domain ||
+              (() => { try { return new URL(item.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
+            const logo = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : "";
+            return (
             <div
-              key={index}
+              key={`${item.url}-${index}`}
               onClick={() => handleNewsClick(item.url)}
               className="flex gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.15] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
             >
-              <div className="hidden md:flex w-16 h-16 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-white/[0.08] transition-colors">
-                <ExternalLink className="w-5 h-5 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" strokeWidth={1.5} />
+              <div className="hidden md:flex w-16 h-16 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-white/[0.08] transition-colors overflow-hidden">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={`${item.source} logo`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="w-8 h-8 object-contain"
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      t.style.display = "none";
+                      const sib = t.nextElementSibling as HTMLElement | null;
+                      if (sib) sib.style.display = "block";
+                    }}
+                  />
+                ) : null}
+                <ExternalLink
+                  className="w-5 h-5 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors"
+                  strokeWidth={1.5}
+                  style={{ display: logo ? "none" : "block" }}
+                />
               </div>
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -129,7 +171,8 @@ const TrendingNews = () => {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
