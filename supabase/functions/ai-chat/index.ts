@@ -763,28 +763,8 @@ serve(async (req) => {
       });
     }
 
-    // Require authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const authClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    // Use getClaims (signing-keys compatible) instead of getUser, which fails
-    // when the project is on the new asymmetric-key system.
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await authClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) {
-      console.error("Auth getClaims failed:", claimsErr);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Chat is public — no auth required. The function does not read user-specific data.
+    const authHeader = req.headers.get("Authorization") ?? "";
 
     // Validate input
     const MessageSchema = z.object({
