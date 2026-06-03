@@ -725,7 +725,7 @@ const Stock = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
-          <Button variant="ghost" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/markets"))} className="mb-6">
+          <Button variant="ghost" onClick={() => navigate("/markets")} className="mb-6">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -769,7 +769,7 @@ const Stock = () => {
 
       <main className="container mx-auto px-4 py-8 relative z-10">
         {/* Back Button */}
-        <Button variant="ghost" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/markets"))} className="mb-6">
+        <Button variant="ghost" onClick={() => navigate("/markets")} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
