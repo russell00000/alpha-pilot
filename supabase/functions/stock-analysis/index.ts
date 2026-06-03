@@ -223,6 +223,33 @@ async function fetchPhilosophy() {
   }
 }
 
+// Repair common JSON issues from LLM output: literal control chars inside string
+// literals (raw newlines/tabs/carriage returns) and trailing commas.
+function sanitizeJsonString(s: string): string {
+  let out = "";
+  let inStr = false;
+  let escape = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (escape) { out += ch; escape = false; continue; }
+      if (ch === "\\") { out += ch; escape = true; continue; }
+      if (ch === '"') { out += ch; inStr = false; continue; }
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") { out += "\\r"; continue; }
+      if (ch === "\t") { out += "\\t"; continue; }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) { out += "\\u" + code.toString(16).padStart(4, "0"); continue; }
+      out += ch;
+    } else {
+      if (ch === '"') { inStr = true; }
+      out += ch;
+    }
+  }
+  // Remove trailing commas before } or ]
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
 function fallbackAnalysis(symbol: string, price: number, fundamentals: any) {
   const analystTarget = Number(fundamentals?.targetMeanPrice);
   const forwardEps = Number(fundamentals?.forwardEps);
@@ -414,7 +441,7 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
+        analysis = JSON.parse(sanitizeJsonString(jsonMatch[0]));
       } else {
         throw new Error("No JSON found in response");
       }
