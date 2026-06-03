@@ -128,13 +128,30 @@ async function buildForecast(symbol: string) {
 
   const candidates = symbol.includes("-") ? [symbol] : [symbol, `${symbol}-USD`];
   for (const sym of candidates) {
-    // Parallelize: prices + fundamentals. 2y window is plenty for CAGR/vol and ~2x faster from Yahoo.
-    const [series, summaryResp] = await Promise.all([
+    // Parallelize: prices (Yahoo chart) + fundamentals (Finnhub — Yahoo's
+    // quoteSummary now returns 401 "Invalid Crumb" from edge runtimes, so we use
+    // Finnhub for profile/metric/price-target/recommendation/upgrade-downgrade).
+    const fhKey = Deno.env.get("FINNHUB_API_KEY") ?? "";
+    const fh = async (path: string) => {
+      if (!fhKey) return null;
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/${path}&token=${fhKey}`);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch {
+        return null;
+      }
+    };
+    const cutoffSec = Math.floor(Date.now() / 1000) - 90 * 86400;
+    const fromIso = new Date(cutoffSec * 1000).toISOString().slice(0, 10);
+    const toIso = new Date().toISOString().slice(0, 10);
+    const [series, profile, metricResp, targetResp, recArr, udArr] = await Promise.all([
       fetchPriceSeries(sym, "2y"),
-      fetch(
-        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=assetProfile,defaultKeyStatistics,financialData,upgradeDowngradeHistory,price`,
-        { headers: { "User-Agent": "Mozilla/5.0" } },
-      ),
+      fh(`stock/profile2?symbol=${sym}`),
+      fh(`stock/metric?symbol=${sym}&metric=all`),
+      fh(`stock/price-target?symbol=${sym}`),
+      fh(`stock/recommendation?symbol=${sym}`),
+      fh(`stock/upgrade-downgrade?symbol=${sym}&from=${fromIso}&to=${toIso}`),
     ]);
     const prices = series.closes;
     const timestamps = series.timestamps;
@@ -150,37 +167,48 @@ async function buildForecast(symbol: string) {
       debtToEquity: number | undefined, pegRatio: number | undefined, fcfYield: number | undefined,
       priceToBook: number | undefined, marketCap: number | undefined;
 
-    if (summaryResp.ok) {
-      const sd = await summaryResp.json();
-      const r0 = sd?.quoteSummary?.result?.[0];
-      const ap = r0?.assetProfile, ks = r0?.defaultKeyStatistics, fd = r0?.financialData, pr = r0?.price;
-      const udh = r0?.upgradeDowngradeHistory?.history ?? [];
-      if (ap?.sector) sector = ap.sector;
-      if (ap?.industry) industry = ap.industry;
-      if (pr?.shortName || pr?.longName) name = pr.shortName || pr.longName;
-      if (ks?.forwardPE?.fmt) forwardPE = ks.forwardPE.fmt;
-      if (fd?.earningsGrowth?.fmt) earningsGrowth = fd.earningsGrowth.fmt;
-      if (fd?.revenueGrowth?.fmt) revenueGrowth = fd.revenueGrowth.fmt;
-      if (typeof fd?.recommendationMean?.raw === "number") recommendationMean = fd.recommendationMean.raw;
-      if (typeof fd?.targetMeanPrice?.raw === "number") targetMean = fd.targetMeanPrice.raw;
-      if (typeof fd?.targetHighPrice?.raw === "number") targetHigh = fd.targetHighPrice.raw;
-      if (typeof fd?.targetLowPrice?.raw === "number") targetLow = fd.targetLowPrice.raw;
-      if (typeof fd?.numberOfAnalystOpinions?.raw === "number") numAnalysts = fd.numberOfAnalystOpinions.raw;
-      if (typeof ks?.beta?.raw === "number") beta = ks.beta.raw;
-      if (typeof ks?.pegRatio?.raw === "number") pegRatio = ks.pegRatio.raw;
-      if (typeof ks?.priceToBook?.raw === "number") priceToBook = ks.priceToBook.raw;
-      if (typeof fd?.profitMargins?.raw === "number") profitMargin = fd.profitMargins.raw * 100;
-      if (typeof fd?.returnOnEquity?.raw === "number") roe = fd.returnOnEquity.raw * 100;
-      if (typeof fd?.debtToEquity?.raw === "number") debtToEquity = fd.debtToEquity.raw;
-      if (typeof fd?.freeCashflow?.raw === "number" && typeof pr?.marketCap?.raw === "number" && pr.marketCap.raw > 0) {
-        fcfYield = (fd.freeCashflow.raw / pr.marketCap.raw) * 100;
+    const m = metricResp?.metric ?? {};
+    const numv = (x: unknown): number | undefined =>
+      typeof x === "number" && Number.isFinite(x) ? x : undefined;
+    if (profile?.name) name = profile.name;
+    if (profile?.finnhubIndustry) { sector = profile.finnhubIndustry; industry = profile.finnhubIndustry; }
+    // Finnhub marketCapitalization is in millions USD.
+    if (typeof profile?.marketCapitalization === "number") marketCap = profile.marketCapitalization * 1e6;
+
+    const fpe = numv(m.peNormalizedAnnual) ?? numv(m.peExclExtraTTM) ?? numv(m.peTTM);
+    if (fpe != null) forwardPE = `${fpe.toFixed(2)}`;
+    const eg = numv(m.epsGrowthTTMYoy) ?? numv(m.epsGrowth5Y);
+    if (eg != null) earningsGrowth = `${eg.toFixed(2)}%`;
+    const rg = numv(m.revenueGrowthTTMYoy) ?? numv(m.revenueGrowth5Y);
+    if (rg != null) revenueGrowth = `${rg.toFixed(2)}%`;
+    beta = numv(m.beta);
+    pegRatio = numv(m.pegRatio);
+    priceToBook = numv(m.pbAnnual) ?? numv(m.pbQuarterly);
+    // Finnhub margins/ROE come back as percentages already.
+    profitMargin = numv(m.netProfitMarginTTM) ?? numv(m.netProfitMarginAnnual);
+    roe = numv(m.roeTTM) ?? numv(m.roeRfy);
+    debtToEquity = numv(m["totalDebt/totalEquityAnnual"]) ?? numv(m["longTermDebt/equityAnnual"]);
+    const fcf = numv(m.freeCashFlowTTM) ?? numv(m.freeCashFlowAnnual);
+    if (fcf != null && marketCap && marketCap > 0) fcfYield = (fcf / marketCap) * 100;
+
+    targetMean = numv(targetResp?.targetMean);
+    targetHigh = numv(targetResp?.targetHigh);
+    targetLow = numv(targetResp?.targetLow);
+    numAnalysts = numv(targetResp?.numberOfAnalysts);
+
+    if (Array.isArray(recArr) && recArr.length > 0) {
+      const rec = recArr[0];
+      const total = (rec.strongBuy ?? 0) + (rec.buy ?? 0) + (rec.hold ?? 0) + (rec.sell ?? 0) + (rec.strongSell ?? 0);
+      if (total > 0) {
+        recommendationMean = (rec.strongBuy * 1 + rec.buy * 2 + rec.hold * 3 + rec.sell * 4 + rec.strongSell * 5) / total;
+        if (numAnalysts == null) numAnalysts = total;
       }
-      if (typeof pr?.marketCap?.raw === "number") marketCap = pr.marketCap.raw;
-      const cutoff = Math.floor(Date.now() / 1000) - 90 * 86400;
-      for (const h of udh as Array<{ epochGradeDate?: number; action?: string }>) {
-        if (!h.epochGradeDate || h.epochGradeDate < cutoff) continue;
-        if (h.action === "up") upgradesLast90d++;
-        else if (h.action === "down") downgradesLast90d++;
+    }
+    if (Array.isArray(udArr)) {
+      for (const h of udArr as Array<{ toGrade?: string; fromGrade?: string; action?: string }>) {
+        const a = (h.action || "").toLowerCase();
+        if (a === "up" || a === "upgrade") upgradesLast90d++;
+        else if (a === "down" || a === "downgrade") downgradesLast90d++;
       }
     }
 
