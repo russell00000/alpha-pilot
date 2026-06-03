@@ -223,8 +223,34 @@ async function fetchPhilosophy() {
   }
 }
 
+// Repair common JSON issues from LLM output: literal control chars inside string
+// literals (raw newlines/tabs/carriage returns) and trailing commas.
+function sanitizeJsonString(s: string): string {
+  let out = "";
+  let inStr = false;
+  let escape = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (escape) { out += ch; escape = false; continue; }
+      if (ch === "\\") { out += ch; escape = true; continue; }
+      if (ch === '"') { out += ch; inStr = false; continue; }
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") { out += "\\r"; continue; }
+      if (ch === "\t") { out += "\\t"; continue; }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) { out += "\\u" + code.toString(16).padStart(4, "0"); continue; }
+      out += ch;
+    } else {
+      if (ch === '"') { inStr = true; }
+      out += ch;
+    }
+  }
+  // Remove trailing commas before } or ]
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
 function fallbackAnalysis(symbol: string, price: number, fundamentals: any) {
-  // unused placeholder (kept for diff anchor)
   const analystTarget = Number(fundamentals?.targetMeanPrice);
   const forwardEps = Number(fundamentals?.forwardEps);
   const forwardPe = Number(fundamentals?.forwardPE);
