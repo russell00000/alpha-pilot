@@ -273,8 +273,8 @@ async function buildForecast(symbol: string) {
     if (debtToEquity != null){ qualityAdj += debtToEquity > 200 ? -3 : debtToEquity > 100 ? -1 : debtToEquity < 50 ? 1 : 0; qualityCount++; }
     if (pegRatio != null && pegRatio > 0) { qualityAdj += pegRatio < 1 ? 3 : pegRatio < 1.5 ? 1 : pegRatio < 2.5 ? 0 : -2; qualityCount++; }
     // 8) Valuation pull: cheap forward PE → tail boost, rich PE → drag.
-    const fpe = parsePct(forwardPE);
-    const valuationAdj = fpe == null ? 0 : fpe < 12 ? 3 : fpe < 18 ? 1 : fpe < 25 ? 0 : fpe < 35 ? -2 : -4;
+    const fpeNum = parsePct(forwardPE);
+    const valuationAdj = fpeNum == null ? 0 : fpeNum < 12 ? 3 : fpeNum < 18 ? 1 : fpeNum < 25 ? 0 : fpeNum < 35 ? -2 : -4;
 
     // Weights now favor fundamentals + analyst consensus + base rate.
     const signals: Array<{ value: number; w: number }> = [];
