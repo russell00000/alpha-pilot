@@ -146,6 +146,9 @@ async function buildForecast(symbol: string) {
     let recommendationMean: number | undefined, targetMean: number | undefined,
       targetHigh: number | undefined, targetLow: number | undefined, numAnalysts: number | undefined;
     let upgradesLast90d = 0, downgradesLast90d = 0;
+    let beta: number | undefined, profitMargin: number | undefined, roe: number | undefined,
+      debtToEquity: number | undefined, pegRatio: number | undefined, fcfYield: number | undefined,
+      priceToBook: number | undefined, marketCap: number | undefined;
 
     if (summaryResp.ok) {
       const sd = await summaryResp.json();
@@ -163,6 +166,16 @@ async function buildForecast(symbol: string) {
       if (typeof fd?.targetHighPrice?.raw === "number") targetHigh = fd.targetHighPrice.raw;
       if (typeof fd?.targetLowPrice?.raw === "number") targetLow = fd.targetLowPrice.raw;
       if (typeof fd?.numberOfAnalystOpinions?.raw === "number") numAnalysts = fd.numberOfAnalystOpinions.raw;
+      if (typeof ks?.beta?.raw === "number") beta = ks.beta.raw;
+      if (typeof ks?.pegRatio?.raw === "number") pegRatio = ks.pegRatio.raw;
+      if (typeof ks?.priceToBook?.raw === "number") priceToBook = ks.priceToBook.raw;
+      if (typeof fd?.profitMargins?.raw === "number") profitMargin = fd.profitMargins.raw * 100;
+      if (typeof fd?.returnOnEquity?.raw === "number") roe = fd.returnOnEquity.raw * 100;
+      if (typeof fd?.debtToEquity?.raw === "number") debtToEquity = fd.debtToEquity.raw;
+      if (typeof fd?.freeCashflow?.raw === "number" && typeof pr?.marketCap?.raw === "number" && pr.marketCap.raw > 0) {
+        fcfYield = (fd.freeCashflow.raw / pr.marketCap.raw) * 100;
+      }
+      if (typeof pr?.marketCap?.raw === "number") marketCap = pr.marketCap.raw;
       const cutoff = Math.floor(Date.now() / 1000) - 90 * 86400;
       for (const h of udh as Array<{ epochGradeDate?: number; action?: string }>) {
         if (!h.epochGradeDate || h.epochGradeDate < cutoff) continue;
@@ -223,25 +236,49 @@ async function buildForecast(symbol: string) {
     // 6) Mean-reversion correction from RSI extremes.
     const rsiAdj = rsiVal == null ? 0 : rsiVal > 70 ? -3 : rsiVal < 30 ? 3 : 0;
 
-    // Weights: analyst > base rate > eps > momentum > regime/rsi.
-    // Skip missing signals by re-normalizing weights.
+    // 7) Quality premium from fundamentals: high ROE, healthy margins, reasonable leverage,
+    //    attractive FCF yield, and reasonable PEG add to drift expectation.
+    let qualityAdj = 0, qualityCount = 0;
+    if (roe != null)         { qualityAdj += Math.max(-3, Math.min(4, (roe - 12) / 5)); qualityCount++; }
+    if (profitMargin != null){ qualityAdj += Math.max(-3, Math.min(3, (profitMargin - 10) / 5)); qualityCount++; }
+    if (fcfYield != null)    { qualityAdj += Math.max(-2, Math.min(4, (fcfYield - 3) / 1.5)); qualityCount++; }
+    if (debtToEquity != null){ qualityAdj += debtToEquity > 200 ? -3 : debtToEquity > 100 ? -1 : debtToEquity < 50 ? 1 : 0; qualityCount++; }
+    if (pegRatio != null && pegRatio > 0) { qualityAdj += pegRatio < 1 ? 3 : pegRatio < 1.5 ? 1 : pegRatio < 2.5 ? 0 : -2; qualityCount++; }
+    // 8) Valuation pull: cheap forward PE → tail boost, rich PE → drag.
+    const fpe = parsePct(forwardPE);
+    const valuationAdj = fpe == null ? 0 : fpe < 12 ? 3 : fpe < 18 ? 1 : fpe < 25 ? 0 : fpe < 35 ? -2 : -4;
+
+    // Weights now favor fundamentals + analyst consensus + base rate.
     const signals: Array<{ value: number; w: number }> = [];
-    if (analystImplied != null) signals.push({ value: analystImplied, w: 0.40 });
-    signals.push({ value: baseRate, w: 0.25 });
-    if (epsGrowth != null) signals.push({ value: Math.max(-30, Math.min(60, epsGrowth)), w: 0.15 });
-    signals.push({ value: momentumAnn, w: 0.10 });
-    signals.push({ value: regime + rsiAdj, w: 0.10 });
+    if (analystImplied != null) signals.push({ value: analystImplied, w: 0.32 });
+    signals.push({ value: baseRate, w: 0.20 });
+    if (epsGrowth != null) signals.push({ value: Math.max(-30, Math.min(60, epsGrowth)), w: 0.18 });
+    if (qualityCount > 0)  signals.push({ value: qualityAdj, w: 0.10 });
+    signals.push({ value: valuationAdj, w: 0.08 });
+    signals.push({ value: momentumAnn, w: 0.07 });
+    signals.push({ value: regime + rsiAdj, w: 0.05 });
     const wSum = signals.reduce((a, s) => a + s.w, 0);
     let driftAnnPct = signals.reduce((a, s) => a + s.value * s.w, 0) / wSum;
-    // Cap extremes — no model should imply > 80% or < -40% in 12 months.
-    driftAnnPct = Math.max(-40, Math.min(80, driftAnnPct));
+    // Cap extremes — large-cap reality. Tighter caps reflect actual 12-mo outcomes.
+    const isLargeCap = (marketCap ?? 0) > 50e9;
+    const driftCapHi = isLargeCap ? 45 : 65;
+    const driftCapLo = isLargeCap ? -30 : -40;
+    driftAnnPct = Math.max(driftCapLo, Math.min(driftCapHi, driftAnnPct));
 
     // ---------- GBM-STYLE PROJECTION ----------
-    // mu = annualized log drift; sigma = annualized log vol.
+    // mu = annualized log drift; sigma = annualized log vol shrunk toward a long-run
+    // equity prior so realized 12-mo bands aren't dominated by short-term noise.
     const mu = Math.log(1 + driftAnnPct / 100);
-    const sigma = (annualVol ?? 25) / 100;
-    // 1.28 sigma ≈ 80% confidence interval (top/bottom decile).
-    const Z = 1.282;
+    const rawVol = annualVol ?? 25;
+    // Long-run equity vol prior (~22%, scaled by beta when available).
+    const volPrior = 22 * (beta != null && beta > 0 ? Math.max(0.5, Math.min(1.8, beta)) : 1);
+    // Shrink 50/50 toward the prior — empirically tightens forecasts and avoids
+    // blow-out bands during transient vol spikes.
+    const blendedVolPct = rawVol * 0.5 + volPrior * 0.5;
+    const sigma = blendedVolPct / 100;
+    // 1.04 sigma ≈ 70% confidence interval — tighter, higher-conviction band
+    // than the previous 80% (1.28σ) range.
+    const Z = 1.036;
     // 12 monthly projection points (and one weekly resolution series for the chart).
     const projectionWeekly: Array<{ t: number; date: number; base: number; bull: number; bear: number }> = [];
     const nowSec = Math.floor(Date.now() / 1000);
@@ -293,11 +330,16 @@ async function buildForecast(symbol: string) {
     let confScore = 0;
     if ((numAnalysts ?? 0) >= 20) confScore += 2;
     else if ((numAnalysts ?? 0) >= 10) confScore += 1;
+    else if ((numAnalysts ?? 0) >= 5) confScore += 0.5;
     if (aligned) confScore += 1;
     if (epsAligned) confScore += 1;
-    if (bandPct < 30) confScore += 1;
+    if (bandPct < 25) confScore += 2;
+    else if (bandPct < 40) confScore += 1;
     else if (bandPct > 80) confScore -= 1;
-    const confidence = confScore >= 4 ? "High" : confScore >= 2 ? "Medium" : "Low";
+    if (isLargeCap) confScore += 1;          // big, liquid names = more predictable
+    if (qualityCount >= 3) confScore += 1;   // we have enough fundamentals to anchor
+    if (recommendationMean != null && recommendationMean <= 2.2) confScore += 0.5;
+    const confidence = confScore >= 5 ? "High" : confScore >= 2.5 ? "Medium" : "Low";
 
     // Recent history slice (last ~6 months daily) for the chart.
     const HIST_DAYS = 126;
@@ -334,6 +376,11 @@ async function buildForecast(symbol: string) {
         upgradesLast90d, downgradesLast90d, sector,
         driftAnnPct: +driftAnnPct.toFixed(1),
         modelBandPct: +bandPct.toFixed(1),
+        beta, pegRatio, priceToBook,
+        profitMargin: profitMargin == null ? null : +profitMargin.toFixed(1),
+        roe: roe == null ? null : +roe.toFixed(1),
+        debtToEquity: debtToEquity == null ? null : +debtToEquity.toFixed(1),
+        fcfYield: fcfYield == null ? null : +fcfYield.toFixed(2),
       },
       sectorBenchmark,
       recommendationMean,
