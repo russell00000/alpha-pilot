@@ -414,7 +414,7 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
+        analysis = JSON.parse(sanitizeJsonString(jsonMatch[0]));
       } else {
         throw new Error("No JSON found in response");
       }
