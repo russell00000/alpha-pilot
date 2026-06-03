@@ -169,21 +169,52 @@ interface QuoteData {
 
 // Extract potential ticker symbols from user messages
 function extractTickers(messages: { role: string; content: string }[]): string[] {
-  const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-  // Match $TICKER notation and standalone uppercase words 2-5 chars
+  // Scan the LAST user message plus the most recent assistant message so follow-ups
+  // like "what do you think?" still resolve to the ticker we were just discussing.
+  const recent = [...messages].slice(-4);
+  const lastUserMsg = [...recent].reverse().find(m => m.role === "user")?.content || "";
+  const scanText = recent.map(m => m.content).join("\n");
   const found: string[] = [];
-  
-  // First priority: explicit $TICKER mentions
-  const dollarPattern = /\$([A-Z]{1,5})\b/gi;
+
+  // First priority: explicit $TICKER mentions (case-insensitive)
+  const dollarPattern = /\$([A-Za-z]{1,5})\b/g;
   let match;
   while ((match = dollarPattern.exec(lastUserMsg)) !== null) {
     found.push(match[1].toUpperCase());
   }
-  
-  // Second: uppercase words that look like tickers (must be fully uppercase in original text)
+
+  // Second: uppercase tokens 2-5 chars (strict, original case)
   const wordPattern = /\b([A-Z]{2,5})\b/g;
   while ((match = wordPattern.exec(lastUserMsg)) !== null) {
     found.push(match[1]);
+  }
+
+  // Third: lowercase / mixed-case tokens that match a known universe symbol.
+  // This catches "nvda", "crwd", "Msft" etc. that users frequently type.
+  const KNOWN = new Set<string>([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS,
+    ...CRYPTO.map(c => c.split('-')[0])]);
+  const lowerPattern = /\b([A-Za-z]{2,5})\b/g;
+  while ((match = lowerPattern.exec(scanText)) !== null) {
+    const up = match[1].toUpperCase();
+    if (KNOWN.has(up)) found.push(up);
+  }
+
+  // Fourth: common company name → ticker map for natural language references.
+  const NAME_MAP: Record<string, string> = {
+    nvidia: 'NVDA', microsoft: 'MSFT', apple: 'AAPL', amazon: 'AMZN', google: 'GOOGL',
+    alphabet: 'GOOGL', meta: 'META', facebook: 'META', tesla: 'TSLA', netflix: 'NFLX',
+    micron: 'MU', amd: 'AMD', intel: 'INTC', broadcom: 'AVGO', oracle: 'ORCL',
+    salesforce: 'CRM', adobe: 'ADBE', palantir: 'PLTR', snowflake: 'SNOW',
+    crowdstrike: 'CRWD', cloudflare: 'NET', shopify: 'SHOP', coinbase: 'COIN',
+    robinhood: 'HOOD', uber: 'UBER', airbnb: 'ABNB', disney: 'DIS', walmart: 'WMT',
+    costco: 'COST', exxon: 'XOM', chevron: 'CVX', boeing: 'BA', ford: 'F',
+    bitcoin: 'BTC-USD', ethereum: 'ETH-USD', solana: 'SOL-USD', dogecoin: 'DOGE-USD',
+    rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
+    'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
+  };
+  const lower = scanText.toLowerCase();
+  for (const [name, sym] of Object.entries(NAME_MAP)) {
+    if (lower.includes(name)) found.push(sym);
   }
   
   // Extensive skip list of common English words that could be mistaken for tickers
@@ -897,7 +928,8 @@ ${philosophy}
 
 ## ABSOLUTE RULES
 1. You have LIVE INTERNET DATA for every security via Yahoo Finance (quotes, profile, sector, market cap, P/E, analyst targets, and recent headlines). NEVER say you "can't find" or "don't have data".
-2. Use EXACT prices, fundamentals, and headlines from the data blocks below — your training data is outdated.
+2. PRICE INTEGRITY (non-negotiable): EVERY numeric price, % change, analyst target, P/E, market cap, 52-week level, or volume you cite MUST appear verbatim in the LIVE MARKET DATA, ON-DEMAND LOOKUPS, or PERFORMANCE FORECAST INPUTS blocks below. If a number is not there, you MUST NOT invent it — instead describe the security qualitatively ("trading near recent highs", "well off its 52-week low") and explicitly say "pulling fresh quote — one moment" so the user knows to re-ask with the ticker. Your training data is stale by months and stock splits make old prices wrong; quoting them is the worst possible failure.
+3. If the user mentions a ticker/company and NO matching data block appears below, do NOT make up a price. Say: "I don't have a live quote for $TICKER in this turn — try '$TICKER' or the full ticker symbol and I'll pull it."
 3. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data appear under ON-DEMAND LOOKUPS. Use it.
 4. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
 5. When relevant, weave in 1 specific data point from the live profile or headlines so the answer feels current ("Recent headline: ...").
