@@ -169,21 +169,52 @@ interface QuoteData {
 
 // Extract potential ticker symbols from user messages
 function extractTickers(messages: { role: string; content: string }[]): string[] {
-  const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-  // Match $TICKER notation and standalone uppercase words 2-5 chars
+  // Scan the LAST user message plus the most recent assistant message so follow-ups
+  // like "what do you think?" still resolve to the ticker we were just discussing.
+  const recent = [...messages].slice(-4);
+  const lastUserMsg = [...recent].reverse().find(m => m.role === "user")?.content || "";
+  const scanText = recent.map(m => m.content).join("\n");
   const found: string[] = [];
-  
-  // First priority: explicit $TICKER mentions
-  const dollarPattern = /\$([A-Z]{1,5})\b/gi;
+
+  // First priority: explicit $TICKER mentions (case-insensitive)
+  const dollarPattern = /\$([A-Za-z]{1,5})\b/g;
   let match;
   while ((match = dollarPattern.exec(lastUserMsg)) !== null) {
     found.push(match[1].toUpperCase());
   }
-  
-  // Second: uppercase words that look like tickers (must be fully uppercase in original text)
+
+  // Second: uppercase tokens 2-5 chars (strict, original case)
   const wordPattern = /\b([A-Z]{2,5})\b/g;
   while ((match = wordPattern.exec(lastUserMsg)) !== null) {
     found.push(match[1]);
+  }
+
+  // Third: lowercase / mixed-case tokens that match a known universe symbol.
+  // This catches "nvda", "crwd", "Msft" etc. that users frequently type.
+  const KNOWN = new Set<string>([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS,
+    ...CRYPTO.map(c => c.split('-')[0])]);
+  const lowerPattern = /\b([A-Za-z]{2,5})\b/g;
+  while ((match = lowerPattern.exec(scanText)) !== null) {
+    const up = match[1].toUpperCase();
+    if (KNOWN.has(up)) found.push(up);
+  }
+
+  // Fourth: common company name → ticker map for natural language references.
+  const NAME_MAP: Record<string, string> = {
+    nvidia: 'NVDA', microsoft: 'MSFT', apple: 'AAPL', amazon: 'AMZN', google: 'GOOGL',
+    alphabet: 'GOOGL', meta: 'META', facebook: 'META', tesla: 'TSLA', netflix: 'NFLX',
+    micron: 'MU', amd: 'AMD', intel: 'INTC', broadcom: 'AVGO', oracle: 'ORCL',
+    salesforce: 'CRM', adobe: 'ADBE', palantir: 'PLTR', snowflake: 'SNOW',
+    crowdstrike: 'CRWD', cloudflare: 'NET', shopify: 'SHOP', coinbase: 'COIN',
+    robinhood: 'HOOD', uber: 'UBER', airbnb: 'ABNB', disney: 'DIS', walmart: 'WMT',
+    costco: 'COST', exxon: 'XOM', chevron: 'CVX', boeing: 'BA', ford: 'F',
+    bitcoin: 'BTC-USD', ethereum: 'ETH-USD', solana: 'SOL-USD', dogecoin: 'DOGE-USD',
+    rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
+    'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
+  };
+  const lower = scanText.toLowerCase();
+  for (const [name, sym] of Object.entries(NAME_MAP)) {
+    if (lower.includes(name)) found.push(sym);
   }
   
   // Extensive skip list of common English words that could be mistaken for tickers
