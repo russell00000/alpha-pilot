@@ -224,6 +224,7 @@ async function fetchPhilosophy() {
 }
 
 function fallbackAnalysis(symbol: string, price: number, fundamentals: any) {
+  // unused placeholder (kept for diff anchor)
   const analystTarget = Number(fundamentals?.targetMeanPrice);
   const forwardEps = Number(fundamentals?.forwardEps);
   const forwardPe = Number(fundamentals?.forwardPE);
