@@ -39,122 +39,159 @@ const RequestSchema = z.object({
   volume: z.union([z.number(), z.string()]).optional(),
 });
 
-// Fetch real fundamentals from Yahoo Finance so the model isn't hallucinating numbers.
+// Fetch real fundamentals — Finnhub is primary (Yahoo's quoteSummary now requires
+// a crumb/cookie and returns 401 from edge runtimes). Pulls profile, metric, quote,
+// price-target, and recommendation in parallel and merges into one normalized blob.
 async function fetchFundamentals(symbol: string) {
-  const cacheKey = `fundamentals:${symbol.toUpperCase()}`;
+  const sym = symbol.toUpperCase();
+  const cacheKey = `fundamentals:${sym}`;
   const cached = cacheGet<unknown>(cacheKey, 10 * 60 * 1000);
   if (cached) return cached;
 
-  const modules = [
-    "price",
-    "summaryDetail",
-    "defaultKeyStatistics",
-    "financialData",
-    "assetProfile",
-    "recommendationTrend",
-  ].join(",");
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
-  try {
-    const res = await fetchWithTimeout(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) {
-      console.log("Yahoo quoteSummary status:", res.status);
-      return null;
-    }
-    const json = await res.json();
-    const r = json?.quoteSummary?.result?.[0];
-    if (!r) return null;
-
-    const v = (x: any) => (x && typeof x === "object" && "raw" in x ? x.raw : x ?? null);
-    const fmt = (x: any) => (x && typeof x === "object" && "fmt" in x ? x.fmt : null);
-
-    const price = r.price ?? {};
-    const sd = r.summaryDetail ?? {};
-    const ks = r.defaultKeyStatistics ?? {};
-    const fd = r.financialData ?? {};
-    const ap = r.assetProfile ?? {};
-    const recTrend = r.recommendationTrend?.trend?.[0] ?? null;
-
-    const out = {
-      companyName: v(price.longName) || v(price.shortName) || symbol,
-      sector: ap.sector || null,
-      industry: ap.industry || null,
-      country: ap.country || null,
-      marketCap: v(price.marketCap),
-      marketCapFmt: fmt(price.marketCap),
-      currency: price.currency || "USD",
-      regularMarketPrice: v(price.regularMarketPrice),
-      fiftyTwoWeekHigh: v(sd.fiftyTwoWeekHigh),
-      fiftyTwoWeekLow: v(sd.fiftyTwoWeekLow),
-      // valuation
-      trailingPE: v(sd.trailingPE),
-      forwardPE: v(sd.forwardPE) ?? v(ks.forwardPE),
-      pegRatio: v(ks.pegRatio),
-      priceToBook: v(ks.priceToBook),
-      priceToSales: v(sd.priceToSalesTrailing12Months),
-      enterpriseValue: v(ks.enterpriseValue),
-      evToRevenue: v(ks.enterpriseToRevenue),
-      evToEbitda: v(ks.enterpriseToEbitda),
-      // per-share
-      trailingEps: v(ks.trailingEps),
-      forwardEps: v(ks.forwardEps),
-      bookValue: v(ks.bookValue),
-      // profitability / growth
-      profitMargin: v(fd.profitMargins),
-      operatingMargin: v(fd.operatingMargins),
-      grossMargin: v(fd.grossMargins),
-      returnOnEquity: v(fd.returnOnEquity),
-      returnOnAssets: v(fd.returnOnAssets),
-      revenueGrowth: v(fd.revenueGrowth),
-      earningsGrowth: v(fd.earningsGrowth),
-      earningsQGrowthYoY: v(ks.earningsQuarterlyGrowth),
-      revenueTTM: v(fd.totalRevenue),
-      ebitda: v(fd.ebitda),
-      grossProfitTTM: v(fd.grossProfits),
-      // balance sheet / cash
-      totalCash: v(fd.totalCash),
-      totalDebt: v(fd.totalDebt),
-      debtToEquity: v(fd.debtToEquity),
-      currentRatio: v(fd.currentRatio),
-      quickRatio: v(fd.quickRatio),
-      freeCashflow: v(fd.freeCashflow),
-      operatingCashflow: v(fd.operatingCashflow),
-      // dividends
-      dividendYield: v(sd.dividendYield),
-      payoutRatio: v(sd.payoutRatio),
-      // analyst
-      targetMeanPrice: v(fd.targetMeanPrice),
-      targetHighPrice: v(fd.targetHighPrice),
-      targetLowPrice: v(fd.targetLowPrice),
-      numberOfAnalystOpinions: v(fd.numberOfAnalystOpinions),
-      recommendationKey: fd.recommendationKey || null,
-      recommendationMean: v(fd.recommendationMean),
-      analystTrend: recTrend
-        ? {
-            strongBuy: recTrend.strongBuy,
-            buy: recTrend.buy,
-            hold: recTrend.hold,
-            sell: recTrend.sell,
-            strongSell: recTrend.strongSell,
-          }
-        : null,
-      // risk
-      beta: v(sd.beta) ?? v(ks.beta),
-      shortPercentOfFloat: v(ks.shortPercentOfFloat),
-      heldPercentInsiders: v(ks.heldPercentInsiders),
-      heldPercentInstitutions: v(ks.heldPercentInstitutions),
-    };
-    cacheSet(cacheKey, out);
-    return out;
-  } catch (e) {
-    console.error("fetchFundamentals error:", e);
+  const apiKey = Deno.env.get("FINNHUB_API_KEY");
+  if (!apiKey) {
+    console.error("FINNHUB_API_KEY not configured");
     return null;
   }
+
+  const base = "https://finnhub.io/api/v1";
+  const auth = `token=${apiKey}`;
+  const j = async (path: string) => {
+    try {
+      const r = await fetchWithTimeout(`${base}/${path}&${auth}`, {}, 3500);
+      if (!r.ok) {
+        console.log("Finnhub", path, "status", r.status);
+        return null;
+      }
+      return await r.json();
+    } catch (e) {
+      console.error("Finnhub fetch error", path, e);
+      return null;
+    }
+  };
+
+  const [profile, metricResp, quote, targetResp, recArr] = await Promise.all([
+    j(`stock/profile2?symbol=${sym}`),
+    j(`stock/metric?symbol=${sym}&metric=all`),
+    j(`quote?symbol=${sym}`),
+    j(`stock/price-target?symbol=${sym}`),
+    j(`stock/recommendation?symbol=${sym}`),
+  ]);
+
+  if (!profile && !metricResp && !quote) return null;
+
+  const m = metricResp?.metric ?? {};
+  const num = (x: unknown): number | null =>
+    typeof x === "number" && Number.isFinite(x) ? x : null;
+
+  // Finnhub returns ratios as raw numbers (e.g. ROE 0.27 means 27%, but margin
+  // fields are often already in %). Normalize the "growth/margin" set to fractions
+  // so the model sees the same scale Yahoo used to provide.
+  const pct = (x: unknown): number | null => {
+    const n = num(x);
+    if (n == null) return null;
+    // Finnhub margins/growth come back as percent numbers (e.g. 12.4 = 12.4%).
+    return n / 100;
+  };
+
+  const rec = Array.isArray(recArr) && recArr.length > 0 ? recArr[0] : null;
+  const totalRec = rec
+    ? (rec.strongBuy ?? 0) + (rec.buy ?? 0) + (rec.hold ?? 0) + (rec.sell ?? 0) + (rec.strongSell ?? 0)
+    : 0;
+  const recMean = rec && totalRec > 0
+    ? ((rec.strongBuy * 1) + (rec.buy * 2) + (rec.hold * 3) + (rec.sell * 4) + (rec.strongSell * 5)) / totalRec
+    : null;
+  const recKey = recMean == null
+    ? null
+    : recMean <= 1.5 ? "strong_buy" : recMean <= 2.5 ? "buy" : recMean <= 3.5 ? "hold" : recMean <= 4.5 ? "sell" : "strong_sell";
+
+  // Market cap from profile is in millions (USD).
+  const marketCap = num(profile?.marketCapitalization);
+  const marketCapUsd = marketCap != null ? marketCap * 1e6 : null;
+
+  const out = {
+    companyName: profile?.name || sym,
+    sector: profile?.finnhubIndustry || null,
+    industry: profile?.finnhubIndustry || null,
+    country: profile?.country || null,
+    marketCap: marketCapUsd,
+    marketCapFmt: marketCapUsd != null
+      ? marketCapUsd >= 1e12 ? `${(marketCapUsd / 1e12).toFixed(2)}T`
+        : marketCapUsd >= 1e9 ? `${(marketCapUsd / 1e9).toFixed(2)}B`
+        : marketCapUsd >= 1e6 ? `${(marketCapUsd / 1e6).toFixed(2)}M`
+        : `${marketCapUsd.toFixed(0)}`
+      : null,
+    currency: profile?.currency || "USD",
+    regularMarketPrice: num(quote?.c),
+    fiftyTwoWeekHigh: num(m["52WeekHigh"]),
+    fiftyTwoWeekLow: num(m["52WeekLow"]),
+    // valuation
+    trailingPE: num(m.peTTM) ?? num(m.peAnnual),
+    forwardPE: num(m.peNormalizedAnnual) ?? num(m.peExclExtraTTM),
+    pegRatio: num(m.pegRatio),
+    priceToBook: num(m.pbAnnual) ?? num(m.pbQuarterly),
+    priceToSales: num(m.psTTM) ?? num(m.psAnnual),
+    enterpriseValue: num(m.enterpriseValue),
+    evToRevenue: num(m["currentEv/freeCashFlowTTM"]),
+    evToEbitda: num(m["currentEv/ebitdaTTM"]),
+    // per-share
+    trailingEps: num(m.epsTTM) ?? num(m.epsAnnual),
+    forwardEps: num(m.epsNormalizedAnnual),
+    bookValue: num(m.bookValuePerShareAnnual) ?? num(m.bookValuePerShareQuarterly),
+    // profitability / growth (returned as fractions, like Yahoo did)
+    profitMargin: pct(m.netProfitMarginTTM) ?? pct(m.netProfitMarginAnnual),
+    operatingMargin: pct(m.operatingMarginTTM) ?? pct(m.operatingMarginAnnual),
+    grossMargin: pct(m.grossMarginTTM) ?? pct(m.grossMarginAnnual),
+    returnOnEquity: pct(m.roeTTM) ?? pct(m.roeRfy),
+    returnOnAssets: pct(m.roaTTM) ?? pct(m.roaRfy),
+    revenueGrowth: pct(m.revenueGrowthTTMYoy) ?? pct(m.revenueGrowth5Y),
+    earningsGrowth: pct(m.epsGrowthTTMYoy) ?? pct(m.epsGrowth5Y),
+    earningsQGrowthYoY: pct(m.epsGrowthQuarterlyYoy),
+    revenueTTM: num(m.revenuePerShareTTM) != null && num(m.sharesOutstanding) != null
+      ? (num(m.revenuePerShareTTM)! * num(m.sharesOutstanding)! * 1e6)
+      : null,
+    ebitda: num(m.ebitdPerShareTTM) != null && num(m.sharesOutstanding) != null
+      ? (num(m.ebitdPerShareTTM)! * num(m.sharesOutstanding)! * 1e6)
+      : null,
+    grossProfitTTM: null,
+    // balance sheet / cash
+    totalCash: null,
+    totalDebt: null,
+    debtToEquity: num(m["totalDebt/totalEquityAnnual"]) ?? num(m["longTermDebt/equityAnnual"]),
+    currentRatio: num(m.currentRatioAnnual) ?? num(m.currentRatioQuarterly),
+    quickRatio: num(m.quickRatioAnnual) ?? num(m.quickRatioQuarterly),
+    freeCashflow: num(m.freeCashFlowAnnual) ?? num(m.freeCashFlowTTM),
+    operatingCashflow: num(m.cashFlowPerShareTTM) != null && num(m.sharesOutstanding) != null
+      ? (num(m.cashFlowPerShareTTM)! * num(m.sharesOutstanding)! * 1e6)
+      : null,
+    // dividends
+    dividendYield: pct(m.dividendYieldIndicatedAnnual) ?? pct(m.currentDividendYieldTTM),
+    payoutRatio: pct(m.payoutRatioTTM) ?? pct(m.payoutRatioAnnual),
+    // analyst
+    targetMeanPrice: num(targetResp?.targetMean),
+    targetHighPrice: num(targetResp?.targetHigh),
+    targetLowPrice: num(targetResp?.targetLow),
+    numberOfAnalystOpinions: num(targetResp?.numberOfAnalysts) ?? (totalRec || null),
+    recommendationKey: recKey,
+    recommendationMean: recMean,
+    analystTrend: rec
+      ? {
+          strongBuy: rec.strongBuy,
+          buy: rec.buy,
+          hold: rec.hold,
+          sell: rec.sell,
+          strongSell: rec.strongSell,
+        }
+      : null,
+    // risk
+    beta: num(m.beta),
+    shortPercentOfFloat: null,
+    heldPercentInsiders: null,
+    heldPercentInstitutions: null,
+  };
+
+  cacheSet(cacheKey, out);
+  return out;
 }
 
 // Fetch the investing philosophy from the database (read-only, public endpoint)
