@@ -757,14 +757,15 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
       }
     );
     
-    if (!response.ok) return null;
+    if (!response.ok) return await fetchQuoteFinnhub(symbol);
     
     const data = await response.json();
     const result = data.chart?.result?.[0];
-    if (!result) return null;
+    if (!result) return await fetchQuoteFinnhub(symbol);
     
     const meta = result.meta;
     const price = meta.regularMarketPrice || meta.previousClose;
+    if (!price) return await fetchQuoteFinnhub(symbol);
     const previousClose = meta.chartPreviousClose || meta.previousClose;
     const change = price - previousClose;
     const changePercent = previousClose ? (change / previousClose) * 100 : 0;
@@ -782,6 +783,32 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
     };
   } catch (e) {
     console.log(`Failed to fetch ${symbol}:`, e);
+    return await fetchQuoteFinnhub(symbol);
+  }
+}
+
+async function fetchQuoteFinnhub(symbol: string): Promise<QuoteData | null> {
+  const key = Deno.env.get("FINNHUB_API_KEY");
+  if (!key) return null;
+  // Finnhub doesn't cover crypto with the same suffix or some ETFs reliably; skip those
+  if (symbol.includes('-')) return null;
+  try {
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${key}`);
+    if (!r.ok) return null;
+    const q = await r.json();
+    if (!q?.c) return null;
+    return {
+      symbol,
+      name: symbol,
+      price: q.c,
+      change: q.d ?? 0,
+      changePercent: q.dp ?? 0,
+      high52Week: 0,
+      low52Week: 0,
+      volume: 0,
+      marketCap: 0,
+    };
+  } catch {
     return null;
   }
 }
