@@ -259,10 +259,12 @@ async function buildForecast(symbol: string) {
     signals.push({ value: regime + rsiAdj, w: 0.05 });
     const wSum = signals.reduce((a, s) => a + s.w, 0);
     let driftAnnPct = signals.reduce((a, s) => a + s.value * s.w, 0) / wSum;
-    // Cap extremes — large-cap reality. Tighter caps reflect actual 12-mo outcomes.
-    const isLargeCap = (marketCap ?? 0) > 50e9;
-    const driftCapHi = isLargeCap ? 45 : 65;
-    const driftCapLo = isLargeCap ? -30 : -40;
+    // Cap extremes — tighter, realistic 12-mo outcomes for ALL names.
+    // Scale slightly by cap so micro/small caps can still move more, but no one moonshots.
+    const mc = marketCap ?? 0;
+    const sizeFactor = mc > 200e9 ? 0.85 : mc > 50e9 ? 0.95 : mc > 10e9 ? 1.05 : 1.15;
+    const driftCapHi = 50 * sizeFactor;
+    const driftCapLo = -35 * sizeFactor;
     driftAnnPct = Math.max(driftCapLo, Math.min(driftCapHi, driftAnnPct));
 
     // ---------- GBM-STYLE PROJECTION ----------
@@ -270,11 +272,12 @@ async function buildForecast(symbol: string) {
     // equity prior so realized 12-mo bands aren't dominated by short-term noise.
     const mu = Math.log(1 + driftAnnPct / 100);
     const rawVol = annualVol ?? 25;
-    // Long-run equity vol prior (~22%, scaled by beta when available).
-    const volPrior = 22 * (beta != null && beta > 0 ? Math.max(0.5, Math.min(1.8, beta)) : 1);
-    // Shrink 50/50 toward the prior — empirically tightens forecasts and avoids
-    // blow-out bands during transient vol spikes.
-    const blendedVolPct = rawVol * 0.5 + volPrior * 0.5;
+    // Long-run equity vol prior (~22%, scaled by beta when available, nudged by size).
+    const sizeVolMult = mc > 200e9 ? 0.85 : mc > 50e9 ? 0.95 : mc > 10e9 ? 1.0 : 1.15;
+    const volPrior = 22 * (beta != null && beta > 0 ? Math.max(0.5, Math.min(1.8, beta)) : 1) * sizeVolMult;
+    // Heavier shrinkage toward the prior (65/35) — empirically tightens forecasts
+    // for ALL names and avoids blow-out bands from transient vol spikes.
+    const blendedVolPct = rawVol * 0.35 + volPrior * 0.65;
     const sigma = blendedVolPct / 100;
     // 1.04 sigma ≈ 70% confidence interval — tighter, higher-conviction band
     // than the previous 80% (1.28σ) range.
@@ -336,7 +339,8 @@ async function buildForecast(symbol: string) {
     if (bandPct < 25) confScore += 2;
     else if (bandPct < 40) confScore += 1;
     else if (bandPct > 80) confScore -= 1;
-    if (isLargeCap) confScore += 1;          // big, liquid names = more predictable
+    if (mc > 50e9) confScore += 1;           // big, liquid names = more predictable
+    else if (mc > 10e9) confScore += 0.5;    // mid-caps still reasonably stable
     if (qualityCount >= 3) confScore += 1;   // we have enough fundamentals to anchor
     if (recommendationMean != null && recommendationMean <= 2.2) confScore += 0.5;
     const confidence = confScore >= 5 ? "High" : confScore >= 2.5 ? "Medium" : "Low";
