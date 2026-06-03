@@ -388,6 +388,39 @@ const PortfolioRecommendation = ({
               );
             })}
           </div>
+
+          {/* Per-Security Allocation */}
+          <div className="mt-8 pt-6 border-t border-border/40">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Per-Security Allocation</h3>
+            <p className="text-xs text-muted-foreground mb-4">Percentage of your portfolio in each holding by name</p>
+            <div className="space-y-3">
+              {[...funds]
+                .sort((a, b) => b.allocation - a.allocation)
+                .map((fund) => {
+                  const amount = (investmentAmount * fund.allocation) / 100;
+                  const color = getColor(fund.category);
+                  return (
+                    <div key={fund.symbol} className="space-y-1.5">
+                      <div className="flex justify-between text-sm gap-2">
+                        <span className="text-foreground font-medium truncate">
+                          <span className="font-mono text-xs text-muted-foreground mr-2">{fund.symbol}</span>
+                          {fund.name}
+                        </span>
+                        <span className="text-muted-foreground whitespace-nowrap">
+                          ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({fund.allocation.toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${fund.allocation}%`, backgroundColor: color }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
       </div>
 
