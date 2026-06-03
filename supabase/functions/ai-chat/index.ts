@@ -706,7 +706,43 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
       console.log(`fetchTickerDetail failed for ${sym}:`, e);
     }
   }
-  return null;
+  // Fallback: Finnhub quote + profile (works when Yahoo is rate-limited / blocked)
+  const fallback = await fetchTickerDetailFinnhub(ticker);
+  if (fallback) cacheSet(`detail:${ticker}`, fallback);
+  return fallback;
+}
+
+// Finnhub fallback — used when Yahoo Finance is unavailable for a ticker.
+async function fetchTickerDetailFinnhub(ticker: string): Promise<string | null> {
+  const key = Deno.env.get("FINNHUB_API_KEY");
+  if (!key) return null;
+  const sym = ticker.replace('-USD', '').toUpperCase();
+  try {
+    const [quoteResp, profResp] = await Promise.all([
+      fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`),
+      fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${key}`),
+    ]);
+    if (!quoteResp.ok) return null;
+    const q = await quoteResp.json();
+    if (!q?.c || q.c === 0) return null;
+    const change = q.d ?? 0;
+    const changePct = q.dp ?? 0;
+    const changeStr = changePct >= 0 ? `+${changePct.toFixed(2)}%` : `${changePct.toFixed(2)}%`;
+    let profileLine = '';
+    if (profResp.ok) {
+      const p = await profResp.json();
+      const parts: string[] = [];
+      if (p?.finnhubIndustry) parts.push(`Industry: ${p.finnhubIndustry}`);
+      if (p?.country) parts.push(`HQ: ${p.country}`);
+      if (p?.marketCapitalization) parts.push(`Mkt Cap: $${(p.marketCapitalization / 1000).toFixed(1)}B`);
+      if (p?.exchange) parts.push(`Exchange: ${p.exchange}`);
+      if (parts.length) profileLine = `\n  ${parts.join(' • ')}`;
+    }
+    return `${sym} (Finnhub live): $${q.c.toFixed(2)} ${changeStr}, Day High: $${q.h?.toFixed(2) || 'N/A'}, Day Low: $${q.l?.toFixed(2) || 'N/A'}, Prev Close: $${q.pc?.toFixed(2) || 'N/A'}${profileLine}`;
+  } catch (e) {
+    console.log(`Finnhub fallback failed for ${sym}:`, e);
+    return null;
+  }
 }
 
 // Fetch detailed quote data from Yahoo Finance
@@ -721,14 +757,15 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
       }
     );
     
-    if (!response.ok) return null;
+    if (!response.ok) return await fetchQuoteFinnhub(symbol);
     
     const data = await response.json();
     const result = data.chart?.result?.[0];
-    if (!result) return null;
+    if (!result) return await fetchQuoteFinnhub(symbol);
     
     const meta = result.meta;
     const price = meta.regularMarketPrice || meta.previousClose;
+    if (!price) return await fetchQuoteFinnhub(symbol);
     const previousClose = meta.chartPreviousClose || meta.previousClose;
     const change = price - previousClose;
     const changePercent = previousClose ? (change / previousClose) * 100 : 0;
@@ -746,6 +783,32 @@ async function fetchQuote(symbol: string): Promise<QuoteData | null> {
     };
   } catch (e) {
     console.log(`Failed to fetch ${symbol}:`, e);
+    return await fetchQuoteFinnhub(symbol);
+  }
+}
+
+async function fetchQuoteFinnhub(symbol: string): Promise<QuoteData | null> {
+  const key = Deno.env.get("FINNHUB_API_KEY");
+  if (!key) return null;
+  // Finnhub doesn't cover crypto with the same suffix or some ETFs reliably; skip those
+  if (symbol.includes('-')) return null;
+  try {
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${key}`);
+    if (!r.ok) return null;
+    const q = await r.json();
+    if (!q?.c) return null;
+    return {
+      symbol,
+      name: symbol,
+      price: q.c,
+      change: q.d ?? 0,
+      changePercent: q.dp ?? 0,
+      high52Week: 0,
+      low52Week: 0,
+      volume: 0,
+      marketCap: 0,
+    };
+  } catch {
     return null;
   }
 }
@@ -973,7 +1036,7 @@ ${onDemandData}${forecastBlock}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: { role: string; content: string }) => ({
