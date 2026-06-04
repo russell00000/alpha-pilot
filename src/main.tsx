@@ -6,7 +6,7 @@ import "./index.css";
 const RELOAD_KEY = "__chunk_reload__";
 const isChunkError = (msg?: string) =>
   !!msg &&
-  /(Importing a module script failed|Failed to fetch dynamically imported module|Loading chunk \d+ failed|error loading dynamically imported module)/i.test(
+  /(Importing a module script failed|Failed to fetch dynamically imported module|Loading chunk \d+ failed|error loading dynamically imported module|Failed to load module script|module script failed)/i.test(
     msg
   );
 const tryReload = () => {
