@@ -212,6 +212,72 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
     'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
   };
+  const EXTRA_NAMES: Record<string, string> = {
+    // US mega/large cap
+    berkshire: 'BRK.B', 'jp morgan': 'JPM', jpmorgan: 'JPM', 'goldman sachs': 'GS',
+    'morgan stanley': 'MS', visa: 'V', mastercard: 'MA', paypal: 'PYPL',
+    'bank of america': 'BAC', wells: 'WFC', citigroup: 'C', citi: 'C',
+    blackrock: 'BLK', schwab: 'SCHW', 'american express': 'AXP', amex: 'AXP',
+    'johnson & johnson': 'JNJ', 'johnson and johnson': 'JNJ', pfizer: 'PFE',
+    'eli lilly': 'LLY', lilly: 'LLY', merck: 'MRK', abbvie: 'ABBV',
+    'united health': 'UNH', unitedhealth: 'UNH', moderna: 'MRNA', biontech: 'BNTX',
+    coca: 'KO', 'coca cola': 'KO', coke: 'KO', pepsi: 'PEP', pepsico: 'PEP',
+    procter: 'PG', gamble: 'PG', 'home depot': 'HD', lowes: 'LOW',
+    target: 'TGT', mcdonalds: 'MCD', 'mc donalds': 'MCD', starbucks: 'SBUX',
+    nike: 'NKE', lululemon: 'LULU', chipotle: 'CMG', dominos: 'DPZ',
+    'caterpillar': 'CAT', deere: 'DE', 'john deere': 'DE', honeywell: 'HON',
+    lockheed: 'LMT', raytheon: 'RTX', northrop: 'NOC', 'general electric': 'GE',
+    ups: 'UPS', fedex: 'FDX', 'union pacific': 'UNP',
+    'conoco': 'COP', conocophillips: 'COP', occidental: 'OXY', shell: 'SHEL',
+    bp: 'BP', 'total energies': 'TTE',
+    duke: 'DUK', 'next era': 'NEE', nextera: 'NEE',
+    'realty income': 'O', 'american tower': 'AMT', equinix: 'EQIX', prologis: 'PLD',
+    // Growth / tech
+    arm: 'ARM', spotify: 'SPOT', snap: 'SNAP', snapchat: 'SNAP',
+    pinterest: 'PINS', reddit: 'RDDT', 'trade desk': 'TTD', tradedesk: 'TTD',
+    roku: 'ROKU', zoom: 'ZM', docusign: 'DOCU', twilio: 'TWLO',
+    datadog: 'DDOG', mongodb: 'MDB', 'palo alto': 'PANW', fortinet: 'FTNT',
+    zscaler: 'ZS', okta: 'OKTA', servicenow: 'NOW', workday: 'WDAY',
+    atlassian: 'TEAM', intuit: 'INTU', autodesk: 'ADSK',
+    'lam research': 'LRCX', 'applied materials': 'AMAT', 'kla': 'KLAC',
+    qualcomm: 'QCOM', 'texas instruments': 'TXN', marvell: 'MRVL', nxp: 'NXPI',
+    'super micro computer': 'SMCI', 'applovin': 'APP', cloudflare: 'NET',
+    'unity': 'U', roblox: 'RBLX', 'take two': 'TTWO', ea: 'EA', 'electronic arts': 'EA',
+    'activision': 'ATVI',
+    // Auto/EV
+    rivian: 'RIVN', lucid: 'LCID', 'general motors': 'GM', toyota: 'TM',
+    honda: 'HMC', ferrari: 'RACE', stellantis: 'STLA', 'volkswagen': 'VWAGY',
+    'porsche': 'POAHY', byd: 'BYDDY',
+    // Travel
+    booking: 'BKNG', expedia: 'EXPE', marriott: 'MAR', hilton: 'HLT',
+    'royal caribbean': 'RCL', carnival: 'CCL', delta: 'DAL', united: 'UAL',
+    american: 'AAL', southwest: 'LUV',
+    // China / international
+    tencent: 'TCEHY', 'taiwan semi': 'TSM', baidu: 'BIDU', jd: 'JD',
+    pinduoduo: 'PDD', nio: 'NIO', xpeng: 'XPEV', 'li auto': 'LI',
+    sap: 'SAP', sony: 'SONY', samsung: 'SSNLF', novo: 'NVO', 'novo nordisk': 'NVO',
+    nestle: 'NSRGY', louis: 'LVMUY', lvmh: 'LVMUY', 'l oreal': 'LRLCY',
+    siemens: 'SIEGY', mercedes: 'MBGYY', bmw: 'BMWYY',
+    // Crypto
+    btc: 'BTC-USD', eth: 'ETH-USD', sol: 'SOL-USD', xrp: 'XRP-USD',
+    cardano: 'ADA-USD', ada: 'ADA-USD', polkadot: 'DOT-USD', doge: 'DOGE-USD',
+    avalanche: 'AVAX-USD', avax: 'AVAX-USD', chainlink: 'LINK-USD',
+    polygon: 'MATIC-USD', litecoin: 'LTC-USD', shiba: 'SHIB-USD',
+    // ETFs / funds
+    'sp 500': 'SPY', 'sp500': 'SPY', 's&p 500': 'SPY', 's&p': 'SPY',
+    nasdaq: 'QQQ', 'qqq': 'QQQ', 'russell': 'IWM', 'russell 2000': 'IWM',
+    'dow jones': 'DIA', dow: 'DIA', 'vti': 'VTI', 'voo': 'VOO',
+    'schwab dividend': 'SCHD', 'ark innovation': 'ARKK',
+    // Meme / popular retail
+    gamestop: 'GME', amc: 'AMC', 'bed bath': 'BBBY', blackberry: 'BB',
+    'virgin galactic': 'SPCE', 'rocket lab': 'RKLB', 'intuitive machines': 'LUNR',
+    'ast space': 'ASTS', 'ionq': 'IONQ', 'c3 ai': 'AI', upstart: 'UPST',
+    affirm: 'AFRM', sofi: 'SOFI', 'block': 'SQ', square: 'SQ',
+    plug: 'PLUG', 'fuel cell': 'FCEL',
+  };
+  for (const [name, sym] of Object.entries(EXTRA_NAMES)) {
+    NAME_MAP[name] = sym;
+  }
   const lower = scanText.toLowerCase();
   for (const [name, sym] of Object.entries(NAME_MAP)) {
     if (lower.includes(name)) found.push(sym);
@@ -902,7 +968,7 @@ serve(async (req) => {
         console.log("Resolved from name:", resolvedFromName);
       }
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 3)]));
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 5)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
