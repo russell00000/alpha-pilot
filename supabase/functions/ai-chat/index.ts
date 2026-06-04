@@ -968,7 +968,7 @@ serve(async (req) => {
         console.log("Resolved from name:", resolvedFromName);
       }
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 3)]));
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 5)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
