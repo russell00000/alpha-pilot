@@ -892,14 +892,17 @@ serve(async (req) => {
     // pull any tickers out of the user message directly. Saves ~300-800ms.
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
     let resolvedFromName: string[] = [];
-    if (requestedTickers.length === 0 && lastUserMsg.trim().length > 0) {
+    // Always run free-text symbol resolution so company names + casual phrasing
+    // ("how's nvidia doing", "thoughts on rheinmetall", "is palantir overvalued")
+    // reliably surface live data alongside any tickers we detected directly.
+    if (lastUserMsg.trim().length >= 3) {
       const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
       if (nameQuery.length >= 3) {
         resolvedFromName = await resolveSymbols(nameQuery);
         console.log("Resolved from name:", resolvedFromName);
       }
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 2)]));
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 3)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
@@ -923,7 +926,7 @@ serve(async (req) => {
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    const forecastTickers = allRequested.slice(0, 2);
+    const forecastTickers = allRequested.slice(0, 4);
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
@@ -985,17 +988,18 @@ serve(async (req) => {
       console.log(`Built forecast block for ${formatted.length} ticker(s)`);
     }
 
-    const systemPrompt = `You are Vantage Copilot—a sharp, conversational investing buddy. You talk like a knowledgeable friend, not a textbook. Keep it concise and real.
+    const systemPrompt = `You are Vantage Copilot—a sharp, conversational investing buddy with deep general finance & markets knowledge. You answer ANY investing, markets, economics, personal-finance, or company question. You talk like a knowledgeable friend, not a textbook. Keep it concise and real.
 
 ${philosophy}
 
 ## ABSOLUTE RULES
-1. You have LIVE INTERNET DATA for every security via Yahoo Finance (quotes, profile, sector, market cap, P/E, analyst targets, and recent headlines). NEVER say you "can't find" or "don't have data".
-2. PRICE INTEGRITY (non-negotiable): EVERY numeric price, % change, analyst target, P/E, market cap, 52-week level, or volume you cite MUST appear verbatim in the LIVE MARKET DATA, ON-DEMAND LOOKUPS, or PERFORMANCE FORECAST INPUTS blocks below. If a number is not there, you MUST NOT invent it — instead describe the security qualitatively ("trading near recent highs", "well off its 52-week low") and explicitly say "pulling fresh quote — one moment" so the user knows to re-ask with the ticker. Your training data is stale by months and stock splits make old prices wrong; quoting them is the worst possible failure.
-3. If the user mentions a ticker/company and NO matching data block appears below, do NOT make up a price. Say: "I don't have a live quote for $TICKER in this turn — try '$TICKER' or the full ticker symbol and I'll pull it."
-3. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data appear under ON-DEMAND LOOKUPS. Use it.
-4. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
-5. When relevant, weave in 1 specific data point from the live profile or headlines so the answer feels current ("Recent headline: ...").
+1. ALWAYS answer the question. You have LIVE INTERNET DATA for every public security via Yahoo Finance + Finnhub (quotes, profile, sector, market cap, P/E, analyst targets, headlines), AND deep general finance knowledge (concepts, strategies, history, macro, ratios, tax basics, retirement accounts, options basics, etc.). NEVER say you "can't help", "can't find data", or "don't have access" — you do.
+2. For GENERAL / EDUCATIONAL questions (concepts, strategies, definitions, how-things-work, history, macro context, "what is X", "explain Y", "best ETFs for beginners", "how does dollar-cost averaging work"): answer fully from your knowledge. Be specific, give examples, name real tickers/funds when useful. The price-integrity rule below applies ONLY to live numeric quotes.
+3. For TICKER/COMPANY questions: use the LIVE MARKET DATA, ON-DEMAND LOOKUPS, and PERFORMANCE FORECAST INPUTS blocks below. The company name → ticker mapping has already been resolved for you.
+4. PRICE INTEGRITY (non-negotiable, applies ONLY to live numeric quotes): every specific current price, today's % change, analyst target, P/E, market cap, 52-week level, or volume you cite MUST appear verbatim in one of the data blocks below. If a specific live number isn't there, describe qualitatively ("trading near recent highs", "well off its 52-week low") and recommend the user retry with "$TICKER" — NEVER invent or recall a stale price.
+5. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data will be in ON-DEMAND LOOKUPS — use it. If a name didn't resolve, ask for the ticker rather than refusing.
+6. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
+7. When relevant, weave in 1 specific live data point so the answer feels current ("Recent headline: ...").
 
 ## PERFORMANCE FORECASTING FRAMEWORK (use the PERFORMANCE FORECAST INPUTS block)
 When the user asks how a security will perform, where it's headed, a price target, or whether to buy/sell/hold, you MUST anchor your answer in the computed stats below. Don't hand-wave.
