@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
