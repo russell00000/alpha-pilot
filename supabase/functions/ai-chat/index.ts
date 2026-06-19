@@ -400,6 +400,7 @@ interface ForecastStats {
   earningsTrendNextY?: string;
   sectorBenchmark?: { symbol: string; return1Y: number | null; return3M: number | null };
   headlines: string[];
+  priceSeries?: Array<{ date: number; price: number }>;
 }
 
 function calcReturn(prices: number[], lookbackDays: number): number | null {
@@ -475,19 +476,38 @@ function calcSharpe(prices: number[], rf = 0.045): number | null {
   return ((mean * 252) - rf) / (sd * Math.sqrt(252));
 }
 
-async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+async function fetchChartSeries(
+  sym: string,
+  range = "5y",
+): Promise<{ timestamps: number[]; closes: number[] }> {
   try {
     const r = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=${range}`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } },
     );
-    if (!r.ok) return [];
+    if (!r.ok) return { timestamps: [], closes: [] };
     const data = await r.json();
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-    return (closes as Array<number | null>).filter((c): c is number => typeof c === 'number' && c > 0);
+    const result0 = data?.chart?.result?.[0];
+    const ts = (result0?.timestamp ?? []) as number[];
+    const closesRaw = (result0?.indicators?.quote?.[0]?.close ?? []) as Array<number | null>;
+    const timestamps: number[] = [];
+    const closes: number[] = [];
+    for (let i = 0; i < closesRaw.length; i++) {
+      const c = closesRaw[i];
+      if (typeof c === 'number' && c > 0 && typeof ts[i] === 'number') {
+        timestamps.push(ts[i]);
+        closes.push(c);
+      }
+    }
+    return { timestamps, closes };
   } catch {
-    return [];
+    return { timestamps: [], closes: [] };
   }
+}
+
+async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+  const { closes } = await fetchChartSeries(sym, range);
+  return closes;
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
@@ -496,7 +516,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
-      const prices = await fetchPrices(sym, "2y");
+      const { timestamps, closes: prices } = await fetchChartSeries(sym, "2y");
       if (prices.length < 30) continue;
       const currentPrice = prices[prices.length - 1];
 
@@ -631,6 +651,20 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         earningsTrendNextY,
         sectorBenchmark,
         headlines,
+        priceSeries: (() => {
+          // Downsample last ~6 months of daily data to weekly points for the chart.
+          const N = prices.length;
+          const start = Math.max(0, N - 130);
+          const out: Array<{ date: number; price: number }> = [];
+          for (let i = start; i < N; i += 5) {
+            if (typeof timestamps[i] === 'number') out.push({ date: timestamps[i], price: prices[i] });
+          }
+          // Always include the very last point.
+          if (typeof timestamps[N - 1] === 'number' && out[out.length - 1]?.date !== timestamps[N - 1]) {
+            out.push({ date: timestamps[N - 1], price: prices[N - 1] });
+          }
+          return out;
+        })(),
       };
       cacheSet(`forecast:${ticker}`, result);
       return result;
@@ -1103,6 +1137,23 @@ serve(async (req) => {
         if ((f.rsi14 ?? 50) > 80) score -= 1;
         if ((f.maxDrawdown ?? 0) < -50) score -= 1;
         const confidence = score >= 5 ? 'High' : score >= 2 ? 'Medium' : 'Low';
+        // Build 12-month projection: 13 monthly points interpolated from spot to base/bull/bear.
+        const lastHist = f.priceSeries?.[f.priceSeries.length - 1];
+        const nowTs = lastHist?.date ?? Math.floor(Date.now() / 1000);
+        const monthSec = 30 * 86400;
+        const projection: Array<{ t: number; date: number; base: number; bull: number; bear: number }> = [];
+        for (let m = 0; m <= 12; m++) {
+          const k = m / 12;
+          // Smooth ease-in so near-term band hugs spot and widens over time.
+          const w = k;
+          projection.push({
+            t: m,
+            date: nowTs + m * monthSec,
+            base: Number((cp + (base - cp) * w).toFixed(2)),
+            bull: Number((cp + (bull - cp) * w).toFixed(2)),
+            bear: Number((cp + (bear - cp) * w).toFixed(2)),
+          });
+        }
         forecastPayload.push({
           symbol: f.symbol,
           name: f.name,
@@ -1111,6 +1162,8 @@ serve(async (req) => {
           bull: Number(bull.toFixed(2)),
           bear: Number(bear.toFixed(2)),
           confidence,
+          history: f.priceSeries ?? [],
+          projection,
           indicators: {
             return1Y: f.return1Y,
             cagr3Y: f.cagr3Y,
