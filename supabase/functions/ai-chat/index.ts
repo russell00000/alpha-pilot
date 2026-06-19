@@ -400,6 +400,7 @@ interface ForecastStats {
   earningsTrendNextY?: string;
   sectorBenchmark?: { symbol: string; return1Y: number | null; return3M: number | null };
   headlines: string[];
+  priceSeries?: Array<{ date: number; price: number }>;
 }
 
 function calcReturn(prices: number[], lookbackDays: number): number | null {
@@ -475,19 +476,38 @@ function calcSharpe(prices: number[], rf = 0.045): number | null {
   return ((mean * 252) - rf) / (sd * Math.sqrt(252));
 }
 
-async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+async function fetchChartSeries(
+  sym: string,
+  range = "5y",
+): Promise<{ timestamps: number[]; closes: number[] }> {
   try {
     const r = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=${range}`,
       { headers: { 'User-Agent': 'Mozilla/5.0' } },
     );
-    if (!r.ok) return [];
+    if (!r.ok) return { timestamps: [], closes: [] };
     const data = await r.json();
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-    return (closes as Array<number | null>).filter((c): c is number => typeof c === 'number' && c > 0);
+    const result0 = data?.chart?.result?.[0];
+    const ts = (result0?.timestamp ?? []) as number[];
+    const closesRaw = (result0?.indicators?.quote?.[0]?.close ?? []) as Array<number | null>;
+    const timestamps: number[] = [];
+    const closes: number[] = [];
+    for (let i = 0; i < closesRaw.length; i++) {
+      const c = closesRaw[i];
+      if (typeof c === 'number' && c > 0 && typeof ts[i] === 'number') {
+        timestamps.push(ts[i]);
+        closes.push(c);
+      }
+    }
+    return { timestamps, closes };
   } catch {
-    return [];
+    return { timestamps: [], closes: [] };
   }
+}
+
+async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
+  const { closes } = await fetchChartSeries(sym, range);
+  return closes;
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
@@ -496,7 +516,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
-      const prices = await fetchPrices(sym, "2y");
+      const { timestamps, closes: prices } = await fetchChartSeries(sym, "2y");
       if (prices.length < 30) continue;
       const currentPrice = prices[prices.length - 1];
 
