@@ -213,9 +213,17 @@ const Stock = () => {
     }
     
     // Start price calculation - work backwards from current price
+    // Deterministic seed per symbol+range so the mock chart is stable across renders
+    const seedStr = `${symbol}-${range}`;
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
     const endPrice = basePrice;
-    const trendDirection = Math.random() > 0.4 ? 1 : -1; // Slight bullish bias
-    const overallTrendStrength = (Math.random() * 0.3 + 0.1) * trendDirection;
+    const trendDirection = rand() > 0.4 ? 1 : -1; // Slight bullish bias
+    const overallTrendStrength = (rand() * 0.3 + 0.1) * trendDirection;
     const startPrice = endPrice / (1 + overallTrendStrength);
     
     let currentPrice = startPrice;

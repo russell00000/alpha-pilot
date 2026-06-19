@@ -182,7 +182,7 @@ const Practice = () => {
           </TabsList>
 
           <TabsContent value="holdings">
-            <HoldingsTable holdings={holdings} onSell={openSell} />
+            <HoldingsTable holdings={holdings} onSell={openSell} livePrices={livePrices} />
           </TabsContent>
 
           <TabsContent value="history">

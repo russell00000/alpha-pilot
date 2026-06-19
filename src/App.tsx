@@ -15,6 +15,8 @@ const Stock = lazy(() => import("./pages/Stock"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AdminPhilosophy = lazy(() => import("./pages/AdminPhilosophy"));
 const Alerts = lazy(() => import("./pages/Alerts"));
+const Practice = lazy(() => import("./pages/Practice"));
+const PracticeRisk = lazy(() => import("./pages/PracticeRisk"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -48,6 +50,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/philosophy" element={<AdminPhilosophy />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/practice" element={<Practice />} />
+          <Route path="/practice/risk" element={<PracticeRisk />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

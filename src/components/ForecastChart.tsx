@@ -123,9 +123,18 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
     if (d.bull != null) allVals.push(d.bull);
     if (d.bear != null) allVals.push(d.bear);
   }
+  if (allVals.length === 0) {
+    return (
+      <div className="mt-3 rounded-xl border border-white/[0.08] bg-black/30 backdrop-blur-sm p-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          Forecast chart unavailable for {forecast.symbol} right now.
+        </p>
+      </div>
+    );
+  }
   const yMin = Math.min(...allVals);
   const yMax = Math.max(...allVals);
-  const yPad = (yMax - yMin) * 0.08;
+  const yPad = (yMax - yMin) * 0.08 || Math.max(yMax * 0.02, 1);
   const symGrad = forecast.symbol.replace(/[^A-Za-z0-9]/g, "");
 
   return (
