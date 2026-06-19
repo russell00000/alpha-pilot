@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
+import { SearchSuggestions } from "@/components/SearchSuggestions";
 
 interface PriceAlert {
   id: string;
