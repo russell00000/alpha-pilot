@@ -1,39 +1,16 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import type { PracticeHolding } from "@/hooks/usePracticeTrading";
 
 interface HoldingsTableProps {
   holdings: PracticeHolding[];
   onSell: (symbol: string, name: string, maxShares: number) => void;
+  livePrices?: Record<string, number>;
 }
 
-export default function HoldingsTable({ holdings, onSell }: HoldingsTableProps) {
+export default function HoldingsTable({ holdings, onSell, livePrices = {} }: HoldingsTableProps) {
   const navigate = useNavigate();
-  const [prices, setPrices] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (holdings.length === 0) return;
-    const symbols = holdings.map(h => h.symbol);
-
-    const fetchPrices = async () => {
-      try {
-        const { data } = await supabase.functions.invoke("market-data", {
-          body: { symbols },
-        });
-        const results = data?.data;
-        if (Array.isArray(results)) {
-          const p: Record<string, number> = {};
-          for (const item of results) {
-            p[item.symbol] = parseFloat(item.price);
-          }
-          setPrices(p);
-        }
-      } catch { /* ignore */ }
-    };
-    fetchPrices();
-  }, [holdings]);
+  const prices = livePrices;
 
   if (holdings.length === 0) {
     return (

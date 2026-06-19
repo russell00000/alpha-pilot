@@ -22,6 +22,7 @@ const navItems = [
   { label: "Dashboard", href: "/", prefetch: () => import("@/pages/Index") },
   { label: "Markets", href: "/markets", prefetch: () => import("@/pages/Markets") },
   { label: "Portfolio", href: "/portfolio", prefetch: () => import("@/pages/Portfolio") },
+  { label: "Practice", href: "/practice", prefetch: () => import("@/pages/Practice") },
   { label: "Chat", href: "/chat", prefetch: () => import("@/pages/Chat") },
 ];
 
@@ -128,14 +129,16 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-1.5">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="relative h-8 w-8 hover:bg-secondary/60 transition-colors duration-200"
-          >
-            <Bell className="w-4 h-4 text-muted-foreground" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
-          </Button>
+          <Link to="/alerts" aria-label="Price alerts">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-8 w-8 hover:bg-secondary/60 transition-colors duration-200"
+            >
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
+            </Button>
+          </Link>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -213,9 +213,17 @@ const Stock = () => {
     }
     
     // Start price calculation - work backwards from current price
+    // Deterministic seed per symbol+range so the mock chart is stable across renders
+    const seedStr = `${symbol}-${range}`;
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
     const endPrice = basePrice;
-    const trendDirection = Math.random() > 0.4 ? 1 : -1; // Slight bullish bias
-    const overallTrendStrength = (Math.random() * 0.3 + 0.1) * trendDirection;
+    const trendDirection = rand() > 0.4 ? 1 : -1; // Slight bullish bias
+    const overallTrendStrength = (rand() * 0.3 + 0.1) * trendDirection;
     const startPrice = endPrice / (1 + overallTrendStrength);
     
     let currentPrice = startPrice;
@@ -233,12 +241,12 @@ const Stock = () => {
     
     for (let i = 0; i < numPhases; i++) {
       const isLastPhase = i === numPhases - 1;
-      const phaseLength = isLastPhase ? remainingPoints : Math.floor(remainingPoints / (numPhases - i) * (0.5 + Math.random()));
+      const phaseLength = isLastPhase ? remainingPoints : Math.floor(remainingPoints / (numPhases - i) * (0.5 + rand()));
       remainingPoints -= phaseLength;
       
       phases.push({
-        trend: (Math.random() - 0.45) * baseVolatility * 3,
-        volatility: baseVolatility * (0.5 + Math.random() * 1.5),
+        trend: (rand() - 0.45) * baseVolatility * 3,
+        volatility: baseVolatility * (0.5 + rand() * 1.5),
         length: phaseLength
       });
     }
@@ -276,7 +284,7 @@ const Stock = () => {
         : 0;
       
       const meanReversion = (endPrice - currentPrice) / endPrice * 0.01;
-      const randomWalk = (Math.random() - 0.5) * currentPhase.volatility;
+      const randomWalk = (rand() - 0.5) * currentPhase.volatility;
       const trend = currentPhase.trend;
       
       const priceChange = trend + randomWalk + momentum + meanReversion;
@@ -286,12 +294,12 @@ const Stock = () => {
       
       // Generate OHLC data
       const intraVolatility = currentPhase.volatility * 0.5;
-      const open = currentPrice * (1 + (Math.random() - 0.5) * intraVolatility);
-      const high = Math.max(currentPrice, open) * (1 + Math.random() * intraVolatility);
-      const low = Math.min(currentPrice, open) * (1 - Math.random() * intraVolatility);
+      const open = currentPrice * (1 + (rand() - 0.5) * intraVolatility);
+      const high = Math.max(currentPrice, open) * (1 + rand() * intraVolatility);
+      const low = Math.min(currentPrice, open) * (1 - rand() * intraVolatility);
       
       // Volume with some randomness and spikes
-      const volumeMultiplier = Math.random() > 0.95 ? (2 + Math.random() * 3) : (0.5 + Math.random());
+      const volumeMultiplier = rand() > 0.95 ? (2 + rand() * 3) : (0.5 + rand());
       const volume = Math.floor(avgVolume * volumeMultiplier / numPoints * 100);
       
       // Format display date

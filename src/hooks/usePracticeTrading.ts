@@ -96,10 +96,12 @@ export function usePracticeTrading() {
 
   const executeBuy = async (symbol: string, name: string, quantity: number, pricePerShare: number) => {
     if (!user) throw new Error("Not authenticated");
-    const totalCost = quantity * pricePerShare;
+    const qty = Math.round(quantity * 10000) / 10000;
+    if (qty <= 0) throw new Error("Quantity must be greater than zero");
+    const totalCost = Math.round(qty * pricePerShare * 100) / 100;
     if (totalCost > cashBalance) throw new Error("Insufficient funds");
 
-    const newCash = cashBalance - totalCost;
+    const newCash = Math.round((cashBalance - totalCost) * 100) / 100;
 
     // Update cash balance
     await supabase
@@ -110,8 +112,8 @@ export function usePracticeTrading() {
     // Upsert holding
     const existing = holdings.find(h => h.symbol === symbol);
     if (existing) {
-      const newQty = existing.quantity + quantity;
-      const newAvgCost = ((existing.avg_cost_basis * existing.quantity) + totalCost) / newQty;
+      const newQty = Math.round((existing.quantity + qty) * 10000) / 10000;
+      const newAvgCost = Math.round(((existing.avg_cost_basis * existing.quantity + totalCost) / newQty) * 10000) / 10000;
       await supabase
         .from("practice_holdings")
         .update({ quantity: newQty, avg_cost_basis: newAvgCost })
@@ -124,7 +126,7 @@ export function usePracticeTrading() {
           user_id: user.id,
           symbol,
           name,
-          quantity,
+          quantity: qty,
           avg_cost_basis: pricePerShare,
         });
     }
@@ -135,22 +137,24 @@ export function usePracticeTrading() {
       symbol,
       name,
       trade_type: "buy",
-      quantity,
+      quantity: qty,
       price_per_share: pricePerShare,
       total_amount: totalCost,
     });
 
     await initPortfolio();
-    toast.success(`Bought ${quantity} shares of ${symbol}`);
+    toast.success(`Bought ${qty} shares of ${symbol}`);
   };
 
   const executeSell = async (symbol: string, name: string, quantity: number, pricePerShare: number) => {
     if (!user) throw new Error("Not authenticated");
+    const qty = Math.round(quantity * 10000) / 10000;
+    if (qty <= 0) throw new Error("Quantity must be greater than zero");
     const existing = holdings.find(h => h.symbol === symbol);
-    if (!existing || existing.quantity < quantity) throw new Error("Insufficient shares");
+    if (!existing || existing.quantity < qty) throw new Error("Insufficient shares");
 
-    const totalProceeds = quantity * pricePerShare;
-    const newCash = cashBalance + totalProceeds;
+    const totalProceeds = Math.round(qty * pricePerShare * 100) / 100;
+    const newCash = Math.round((cashBalance + totalProceeds) * 100) / 100;
 
     // Update cash
     await supabase
@@ -159,8 +163,8 @@ export function usePracticeTrading() {
       .eq("user_id", user.id);
 
     // Update or remove holding
-    const newQty = existing.quantity - quantity;
-    if (newQty <= 0) {
+    const newQty = Math.round((existing.quantity - qty) * 10000) / 10000;
+    if (newQty <= 0.0001) {
       await supabase
         .from("practice_holdings")
         .delete()
@@ -180,13 +184,13 @@ export function usePracticeTrading() {
       symbol,
       name,
       trade_type: "sell",
-      quantity,
+      quantity: qty,
       price_per_share: pricePerShare,
       total_amount: totalProceeds,
     });
 
     await initPortfolio();
-    toast.success(`Sold ${quantity} shares of ${symbol}`);
+    toast.success(`Sold ${qty} shares of ${symbol}`);
   };
 
   const resetAccount = async () => {

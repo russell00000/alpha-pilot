@@ -211,8 +211,12 @@ const Portfolio = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8 relative">
-        {/* Show Assessment Quiz */}
-        {showAssessment || (!savedAssessment && !savedRecommendation) ? (
+        {/* Show loading state while data is being fetched */}
+        {loadingData ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-pulse text-muted-foreground">Loading your portfolio...</div>
+          </div>
+        ) : showAssessment || (!savedAssessment && !savedRecommendation) ? (
           <>
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-foreground mb-2" style={{ textShadow: '0 1px 20px rgba(0,0,0,0.5)' }}>Investment Assessment</h1>
