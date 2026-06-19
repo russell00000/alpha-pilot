@@ -559,33 +559,12 @@ const Markets = () => {
               Search
             </Button>
             
-            {/* Search suggestions dropdown */}
-            {showSuggestions && searchQuery && filteredSuggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto text-left">
-                <p className="px-4 py-2 text-xs text-muted-foreground border-b border-border">
-                  Quick suggestions:
-                </p>
-                {filteredSuggestions.map((asset) => (
-                  <button
-                    key={asset.symbol}
-                    onMouseDown={(e) => {
-                      e.preventDefault(); // Prevent blur from firing before click
-                      handleQuickSearch(asset.symbol);
-                    }}
-                    className="w-full px-4 py-3 text-left hover:bg-muted/50 flex items-center justify-between border-b border-border/50 last:border-b-0"
-                  >
-                    <div>
-                      <span className="font-semibold text-foreground">{asset.symbol}</span>
-                      <span className="text-muted-foreground ml-2">•</span>
-                      <span className="text-sm text-muted-foreground ml-2">{asset.name}</span>
-                    </div>
-                    <span className="text-xs bg-secondary px-2 py-1 rounded">
-                      {asset.type === "mutual_fund" ? "Mutual Fund" : asset.type.toUpperCase()}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <SearchSuggestions
+              suggestions={filteredSuggestions}
+              onSelect={(asset) => handleQuickSearch(asset.symbol)}
+              visible={showSuggestions && searchQuery.length > 0}
+              query={searchQuery}
+            />
           </div>
 
           {/* Popular Searches */}
