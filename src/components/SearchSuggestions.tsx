@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export interface SuggestionAsset {
   symbol: string;
   name: string;
-  type: "stock" | "crypto" | "etf" | "mutual_fund";
+  type: string;
 }
 
 interface SearchSuggestionsProps {
