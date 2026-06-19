@@ -1,16 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { PracticeHolding } from "@/hooks/usePracticeTrading";
+import SparklineChart from "@/components/SparklineChart";
+
+interface LiveQuote {
+  price: number;
+  changePercent: number;
+  sparkline: number[];
+}
 
 interface HoldingsTableProps {
   holdings: PracticeHolding[];
   onSell: (symbol: string, name: string, maxShares: number) => void;
-  livePrices?: Record<string, number>;
+  liveQuotes?: Record<string, LiveQuote>;
 }
 
-export default function HoldingsTable({ holdings, onSell, livePrices = {} }: HoldingsTableProps) {
+export default function HoldingsTable({ holdings, onSell, liveQuotes = {} }: HoldingsTableProps) {
   const navigate = useNavigate();
-  const prices = livePrices;
 
   if (holdings.length === 0) {
     return (
@@ -30,6 +36,7 @@ export default function HoldingsTable({ holdings, onSell, livePrices = {} }: Hol
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Shares</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Avg Cost</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Price</th>
+              <th className="text-center px-4 py-3 font-medium text-muted-foreground w-32">Today</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Value</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Gain/Loss</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground"></th>
@@ -37,7 +44,10 @@ export default function HoldingsTable({ holdings, onSell, livePrices = {} }: Hol
           </thead>
           <tbody>
             {holdings.map((h) => {
-              const currentPrice = prices[h.symbol] || 0;
+              const quote = liveQuotes[h.symbol];
+              const currentPrice = quote?.price || 0;
+              const sparkline = quote?.sparkline ?? [];
+              const changePct = quote?.changePercent ?? 0;
               const totalValue = h.quantity * currentPrice;
               const totalCost = h.quantity * h.avg_cost_basis;
               const gainLoss = totalValue - totalCost;
@@ -63,6 +73,13 @@ export default function HoldingsTable({ holdings, onSell, livePrices = {} }: Hol
                   <td className="text-right px-4 py-3 text-foreground">${h.avg_cost_basis.toFixed(2)}</td>
                   <td className="text-right px-4 py-3 text-foreground">
                     {currentPrice ? `$${currentPrice.toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {sparkline.length > 1 ? (
+                      <SparklineChart data={sparkline} positive={changePct >= 0} />
+                    ) : (
+                      <div className="text-center text-xs text-muted-foreground">—</div>
+                    )}
                   </td>
                   <td className="text-right px-4 py-3 text-foreground font-medium">
                     {currentPrice ? `$${totalValue.toFixed(2)}` : "—"}
