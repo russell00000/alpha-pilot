@@ -7,6 +7,7 @@ import { usePracticeTrading } from "@/hooks/usePracticeTrading";
 import { useAuth } from "@/hooks/useAuth";
 import SecuritySearch from "@/components/practice/SecuritySearch";
 import HoldingsTable from "@/components/practice/HoldingsTable";
+import HoldingForecasts from "@/components/practice/HoldingForecasts";
 import TradeHistory from "@/components/practice/TradeHistory";
 import TradeDialog from "@/components/practice/TradeDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -193,6 +194,7 @@ const Practice = () => {
 
           <TabsContent value="holdings">
             <HoldingsTable holdings={holdings} onSell={openSell} liveQuotes={liveQuotes} />
+            <HoldingForecasts holdings={holdings} />
           </TabsContent>
 
           <TabsContent value="history">
