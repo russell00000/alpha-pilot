@@ -1137,6 +1137,23 @@ serve(async (req) => {
         if ((f.rsi14 ?? 50) > 80) score -= 1;
         if ((f.maxDrawdown ?? 0) < -50) score -= 1;
         const confidence = score >= 5 ? 'High' : score >= 2 ? 'Medium' : 'Low';
+        // Build 12-month projection: 13 monthly points interpolated from spot to base/bull/bear.
+        const lastHist = f.priceSeries?.[f.priceSeries.length - 1];
+        const nowTs = lastHist?.date ?? Math.floor(Date.now() / 1000);
+        const monthSec = 30 * 86400;
+        const projection: Array<{ t: number; date: number; base: number; bull: number; bear: number }> = [];
+        for (let m = 0; m <= 12; m++) {
+          const k = m / 12;
+          // Smooth ease-in so near-term band hugs spot and widens over time.
+          const w = k;
+          projection.push({
+            t: m,
+            date: nowTs + m * monthSec,
+            base: Number((cp + (base - cp) * w).toFixed(2)),
+            bull: Number((cp + (bull - cp) * w).toFixed(2)),
+            bear: Number((cp + (bear - cp) * w).toFixed(2)),
+          });
+        }
         forecastPayload.push({
           symbol: f.symbol,
           name: f.name,
@@ -1145,6 +1162,8 @@ serve(async (req) => {
           bull: Number(bull.toFixed(2)),
           bear: Number(bear.toFixed(2)),
           confidence,
+          history: f.priceSeries ?? [],
+          projection,
           indicators: {
             return1Y: f.return1Y,
             cagr3Y: f.cagr3Y,
