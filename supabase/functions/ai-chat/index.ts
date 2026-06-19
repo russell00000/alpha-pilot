@@ -651,6 +651,20 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         earningsTrendNextY,
         sectorBenchmark,
         headlines,
+        priceSeries: (() => {
+          // Downsample last ~6 months of daily data to weekly points for the chart.
+          const N = prices.length;
+          const start = Math.max(0, N - 130);
+          const out: Array<{ date: number; price: number }> = [];
+          for (let i = start; i < N; i += 5) {
+            if (typeof timestamps[i] === 'number') out.push({ date: timestamps[i], price: prices[i] });
+          }
+          // Always include the very last point.
+          if (typeof timestamps[N - 1] === 'number' && out[out.length - 1]?.date !== timestamps[N - 1]) {
+            out.push({ date: timestamps[N - 1], price: prices[N - 1] });
+          }
+          return out;
+        })(),
       };
       cacheSet(`forecast:${ticker}`, result);
       return result;
