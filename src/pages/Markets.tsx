@@ -334,7 +334,7 @@ const Markets = () => {
     if (item.sparkline && item.sparkline.length > 0) return item;
     return {
       ...item,
-      sparkline: generateSparkline(item.symbol, item.changePercent || (Math.random() - 0.5) * 4),
+      sparkline: generateSparkline(item.symbol, item.changePercent || 0),
     };
   };
 
@@ -351,7 +351,7 @@ const Markets = () => {
             name: stock.name,
             price: "—",
             change: 0,
-            changePercent: (Math.random() - 0.5) * 4, // Random for visual interest
+            changePercent: 0,
             volume: "—",
             type: "stock" as const,
           };
@@ -367,7 +367,7 @@ const Markets = () => {
             name: etf.name,
             price: "—",
             change: 0,
-            changePercent: (Math.random() - 0.5) * 4,
+            changePercent: 0,
             volume: "—",
             type: "etf" as const,
           };
@@ -381,7 +381,7 @@ const Markets = () => {
             name: fund.name,
             price: "—",
             change: 0,
-            changePercent: (Math.random() - 0.5) * 4,
+            changePercent: 0,
             volume: "—",
             type: "mutual_fund" as const,
           };
@@ -395,7 +395,7 @@ const Markets = () => {
             name: stock.name,
             price: "—",
             change: 0,
-            changePercent: (Math.random() - 0.5) * 4,
+            changePercent: 0,
             volume: "—",
             type: "stock" as const,
           };
