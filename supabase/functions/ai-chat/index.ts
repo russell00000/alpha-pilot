@@ -1077,11 +1077,23 @@ serve(async (req) => {
         const bull = f.targetHigh ?? base * (1 + vol / 100);
         const bear = f.targetLow ?? base * (1 - vol / 100);
         // Confidence: high if many analysts AND aligned trend + positive EPS growth.
+        // Confidence scoring — looser & multi-factor so well-covered names with
+        // aligned signals confidently come back as High, not the default Low.
         const analysts = f.numAnalysts ?? 0;
+        const targetMean = f.targetMean ?? cp;
+        const trendUp = f.trend.includes('UPTREND');
+        const trendDown = f.trend.includes('DOWNTREND');
         const aligned =
-          (f.trend.includes('UPTREND') && (f.targetMean ?? cp) > cp) ||
-          (f.trend.includes('DOWNTREND') && (f.targetMean ?? cp) < cp);
-        const confidence = analysts >= 15 && aligned ? 'High' : analysts >= 8 ? 'Medium' : 'Low';
+          (trendUp && targetMean > cp) || (trendDown && targetMean < cp);
+        let score = 0;
+        if (analysts >= 20) score += 3; else if (analysts >= 10) score += 2; else if (analysts >= 5) score += 1;
+        if (aligned) score += 2;
+        if ((f.earningsGrowth ?? 0) > 10) score += 1;
+        if ((f.revenueGrowth ?? 0) > 10) score += 1;
+        if ((f.sharpe ?? 0) > 1) score += 1;
+        if ((f.cagr5Y ?? 0) > 15) score += 1;
+        if ((f.upgradesLast90d ?? 0) > (f.downgradesLast90d ?? 0)) score += 1;
+        const confidence = score >= 6 ? 'High' : score >= 3 ? 'Medium' : 'Low';
         forecastPayload.push({
           symbol: f.symbol,
           name: f.name,
@@ -1140,7 +1152,7 @@ Then output an explicit, numerical forecast with REAL conviction:
   • A concrete 12-month base-case target price + % upside/downside. State it as a number, not a range. ("My 12-mo target: $215, ~+18% from here.")
   • Bull case and bear case targets — bounded by realism: bull ≤ analyst high or +2 stdev (annualVol × 1.5), bear ≥ analyst low or −2 stdev. Never quote a bull target more than 60% above current price unless 5Y CAGR genuinely supports it.
   • Expected 12-mo annualized return — anchored to 3Y/5Y CAGR and adjusted for current regime + forward EPS growth.
-  • Confidence level (High / Medium / Low) with a one-line reason. Be willing to say "High conviction" when the data lines up — don't default to Medium to seem safe.
+  • Confidence level (High / Medium / Low) with a one-line reason. Default to High or Medium whenever signals broadly line up — only call it Low when data is genuinely thin or signals contradict. The computed confidence field is a hint, not a ceiling: if your read of the company + sector + macro is strong, say High and defend it.
 
 Conviction & realism rules:
   - Commit to a directional call (Buy / Hold / Sell or Bullish / Neutral / Bearish). Don't say "it could go either way."
