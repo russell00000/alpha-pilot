@@ -1152,7 +1152,7 @@ Then output an explicit, numerical forecast with REAL conviction:
   • A concrete 12-month base-case target price + % upside/downside. State it as a number, not a range. ("My 12-mo target: $215, ~+18% from here.")
   • Bull case and bear case targets — bounded by realism: bull ≤ analyst high or +2 stdev (annualVol × 1.5), bear ≥ analyst low or −2 stdev. Never quote a bull target more than 60% above current price unless 5Y CAGR genuinely supports it.
   • Expected 12-mo annualized return — anchored to 3Y/5Y CAGR and adjusted for current regime + forward EPS growth.
-  • Confidence level (High / Medium / Low) with a one-line reason. Be willing to say "High conviction" when the data lines up — don't default to Medium to seem safe.
+  • Confidence level (High / Medium / Low) with a one-line reason. Default to High or Medium whenever signals broadly line up — only call it Low when data is genuinely thin or signals contradict. The computed confidence field is a hint, not a ceiling: if your read of the company + sector + macro is strong, say High and defend it.
 
 Conviction & realism rules:
   - Commit to a directional call (Buy / Hold / Sell or Bullish / Neutral / Bearish). Don't say "it could go either way."
