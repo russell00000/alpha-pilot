@@ -81,7 +81,7 @@ export function SearchSuggestions({
               onSelect(asset);
             }}
             className={cn(
-              "group w-full px-4 py-3 text-left",
+              "group relative w-full px-4 py-3 text-left",
               "flex items-center gap-3",
               "border-b border-border/20 last:border-b-0",
               "transition-all duration-200 ease-out",
