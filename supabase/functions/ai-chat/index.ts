@@ -193,10 +193,31 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
   // This catches "nvda", "crwd", "Msft" etc. that users frequently type.
   const KNOWN = new Set<string>([...TOP_STOCKS, ...TOP_ETFS, ...MUTUAL_FUNDS,
     ...CRYPTO.map(c => c.split('-')[0])]);
+  // Common English words that ALSO happen to be real tickers (NOW=ServiceNow,
+  // U=Unity, AI=C3.ai, ARM=Arm Holdings, etc). Never auto-detect these from
+  // lowercase/mixed-case prose — require an explicit $TICKER or ALL CAPS match.
+  const AMBIGUOUS_LOWER = new Set<string>([
+    'NOW', 'U', 'AI', 'ARM', 'ALL', 'ARE', 'BE', 'GO', 'IT', 'ON', 'OR', 'SO',
+    'UP', 'AT', 'AN', 'AS', 'BY', 'DO', 'IF', 'IS', 'MY', 'NO', 'OF', 'TO',
+    'WE', 'HE', 'ME', 'US', 'OPEN', 'CLOSE', 'HIGH', 'LOW', 'CASH', 'REAL',
+    'NEXT', 'EVER', 'PLAN', 'SAVE', 'LOVE', 'LIFE', 'WELL', 'TRUE', 'FREE',
+    'BIG', 'NEW', 'OLD', 'ONE', 'TWO', 'TEN', 'BUY', 'SELL', 'HOLD', 'PICK',
+    'BEST', 'GOOD', 'SAFE', 'RISK', 'FUND', 'NEWS', 'RATE', 'PAYS', 'WIN',
+    'F', 'V', 'C', 'O', 'T', 'D', 'A',
+  ]);
   const lowerPattern = /\b([A-Za-z]{2,5})\b/g;
   while ((match = lowerPattern.exec(scanText)) !== null) {
     const up = match[1].toUpperCase();
-    if (KNOWN.has(up)) found.push(up);
+    // Only accept a lowercase/mixed-case token as a ticker if it's in our
+    // known universe AND not an ambiguous English word. ALL-CAPS in original
+    // text is already handled by the uppercase pass above.
+    if (KNOWN.has(up) && !AMBIGUOUS_LOWER.has(up) && match[1] !== match[1].toLowerCase()) {
+      // mixed-case (e.g. "Nvda", "Msft") — accept
+      found.push(up);
+    } else if (KNOWN.has(up) && !AMBIGUOUS_LOWER.has(up) && up.length >= 3) {
+      // pure lowercase — only accept 3+ char known symbols to avoid false hits
+      found.push(up);
+    }
   }
 
   // Fourth: common company name → ticker map for natural language references.
