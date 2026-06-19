@@ -1077,11 +1077,23 @@ serve(async (req) => {
         const bull = f.targetHigh ?? base * (1 + vol / 100);
         const bear = f.targetLow ?? base * (1 - vol / 100);
         // Confidence: high if many analysts AND aligned trend + positive EPS growth.
+        // Confidence scoring — looser & multi-factor so well-covered names with
+        // aligned signals confidently come back as High, not the default Low.
         const analysts = f.numAnalysts ?? 0;
+        const targetMean = f.targetMean ?? cp;
+        const trendUp = f.trend.includes('UPTREND');
+        const trendDown = f.trend.includes('DOWNTREND');
         const aligned =
-          (f.trend.includes('UPTREND') && (f.targetMean ?? cp) > cp) ||
-          (f.trend.includes('DOWNTREND') && (f.targetMean ?? cp) < cp);
-        const confidence = analysts >= 15 && aligned ? 'High' : analysts >= 8 ? 'Medium' : 'Low';
+          (trendUp && targetMean > cp) || (trendDown && targetMean < cp);
+        let score = 0;
+        if (analysts >= 20) score += 3; else if (analysts >= 10) score += 2; else if (analysts >= 5) score += 1;
+        if (aligned) score += 2;
+        if ((f.earningsGrowth ?? 0) > 10) score += 1;
+        if ((f.revenueGrowth ?? 0) > 10) score += 1;
+        if ((f.sharpe ?? 0) > 1) score += 1;
+        if ((f.cagr5Y ?? 0) > 15) score += 1;
+        if ((f.upgradesLast90d ?? 0) > (f.downgradesLast90d ?? 0)) score += 1;
+        const confidence = score >= 6 ? 'High' : score >= 3 ? 'Medium' : 'Low';
         forecastPayload.push({
           symbol: f.symbol,
           name: f.name,
