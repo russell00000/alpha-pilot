@@ -714,6 +714,41 @@ async function resolveSymbols(query: string): Promise<string[]> {
 async function fetchTickerDetail(ticker: string): Promise<string | null> {
   const cached = cacheGet<string | null>(`detail:${ticker}`, 5 * 60 * 1000);
   if (cached !== undefined && cached !== null) return cached;
+
+  // Fetch authoritative price/change from the same market-data edge function the
+  // rest of the app uses, so the AI never quotes a number that disagrees with
+  // what the user sees in the UI.
+  let unifiedQuote: { price: number; changePercent: number; name?: string } | null = null;
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (supabaseUrl && anonKey) {
+      const baseSym = ticker.replace(/-USD$/i, '').toUpperCase();
+      const mdResp = await fetch(`${supabaseUrl}/functions/v1/market-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ symbols: [baseSym] }),
+      });
+      if (mdResp.ok) {
+        const md = await mdResp.json();
+        const row = Array.isArray(md?.data) ? md.data[0] : null;
+        if (row && row.price) {
+          unifiedQuote = {
+            price: parseFloat(row.price),
+            changePercent: row.changePercent ?? 0,
+            name: row.name,
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.log('unified market-data fetch failed:', e);
+  }
+
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
@@ -726,11 +761,14 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
       const result = chartData.chart?.result?.[0];
       if (!result) continue;
       const meta = result.meta;
-      const price = meta.regularMarketPrice || meta.previousClose;
+      // Prefer the unified market-data quote so prices stay in lock-step with
+      // the rest of the app. Fall back to Yahoo meta only if market-data missed.
+      const price = unifiedQuote?.price ?? meta.regularMarketPrice ?? meta.previousClose;
       if (!price) continue;
       const previousClose = meta.chartPreviousClose || meta.previousClose;
-      const change = price - previousClose;
-      const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+      const changePercent = unifiedQuote
+        ? unifiedQuote.changePercent
+        : (previousClose ? ((price - previousClose) / previousClose) * 100 : 0);
       const changeStr = changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`;
       const distFromHigh = meta.fiftyTwoWeekHigh ? ((price - meta.fiftyTwoWeekHigh) / meta.fiftyTwoWeekHigh * 100).toFixed(1) : 'N/A';
 
