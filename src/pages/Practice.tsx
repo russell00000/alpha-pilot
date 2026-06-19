@@ -13,6 +13,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DollarSign, TrendingUp, Briefcase, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface LiveQuote {
+  price: number;
+  changePercent: number;
+  sparkline: number[];
+}
+
 const Practice = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -34,12 +40,12 @@ const Practice = () => {
     setTradeDialog({ open: true, mode: "sell", symbol, name, maxShares });
   };
 
-  // Fetch live prices for holdings
-  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  // Fetch live quotes (price + sparkline) for holdings
+  const [liveQuotes, setLiveQuotes] = useState<Record<string, LiveQuote>>({});
 
   const fetchLivePrices = useCallback(async () => {
     if (holdings.length === 0) {
-      setLivePrices({});
+      setLiveQuotes({});
       return;
     }
     try {
@@ -47,11 +53,15 @@ const Practice = () => {
       const { data } = await supabase.functions.invoke("market-data", { body: { symbols } });
       const results = data?.data;
       if (Array.isArray(results)) {
-        const p: Record<string, number> = {};
+        const q: Record<string, LiveQuote> = {};
         for (const item of results) {
-          p[item.symbol] = parseFloat(item.price);
+          q[item.symbol] = {
+            price: parseFloat(item.price),
+            changePercent: Number(item.changePercent) || 0,
+            sparkline: Array.isArray(item.sparkline) ? item.sparkline : [],
+          };
         }
-        setLivePrices(p);
+        setLiveQuotes(q);
       }
     } catch { /* ignore */ }
   }, [holdings]);
@@ -65,8 +75,8 @@ const Practice = () => {
   // Calculate portfolio value using live prices
   const initialInvestment = 10000;
   const holdingsValue = holdings.reduce((sum, h) => {
-    const livePrice = livePrices[h.symbol];
-    return sum + h.quantity * (livePrice ?? h.avg_cost_basis);
+    const live = liveQuotes[h.symbol]?.price;
+    return sum + h.quantity * (live ?? h.avg_cost_basis);
   }, 0);
   const totalValue = cashBalance + holdingsValue;
   const profitLoss = totalValue - initialInvestment;
@@ -182,7 +192,7 @@ const Practice = () => {
           </TabsList>
 
           <TabsContent value="holdings">
-            <HoldingsTable holdings={holdings} onSell={openSell} livePrices={livePrices} />
+            <HoldingsTable holdings={holdings} onSell={openSell} liveQuotes={liveQuotes} />
           </TabsContent>
 
           <TabsContent value="history">
