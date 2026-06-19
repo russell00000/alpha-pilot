@@ -211,37 +211,12 @@ const Alerts = () => {
                 />
               </div>
               
-              {/* Suggestions Dropdown */}
-              {showSuggestions && symbolQuery && filteredSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-96 overflow-y-auto">
-                  {filteredSuggestions.map((asset) => (
-                    <button
-                      key={asset.symbol}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectSymbol(asset);
-                      }}
-                      className="w-full px-3 py-2.5 text-left hover:bg-muted/50 flex items-center justify-between border-b border-border/50 last:border-b-0"
-                    >
-                      <div>
-                        <span className="font-semibold text-foreground">{asset.symbol}</span>
-                        <span className="text-muted-foreground ml-2 text-sm">{asset.name}</span>
-                      </div>
-                      <span className="text-xs bg-secondary px-2 py-0.5 rounded">
-                        {asset.type === "mutual_fund" ? "Fund" : asset.type.toUpperCase()}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {/* No results message */}
-              {showSuggestions && symbolQuery && filteredSuggestions.length === 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg p-3">
-                  <p className="text-sm text-muted-foreground">No matching securities found</p>
-                </div>
-              )}
+              <SearchSuggestions
+                suggestions={filteredSuggestions}
+                onSelect={handleSelectSymbol}
+                visible={showSuggestions && symbolQuery.length > 0}
+                query={symbolQuery}
+              />
             </div>
 
             <div className="space-y-2">
