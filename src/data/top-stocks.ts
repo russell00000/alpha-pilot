@@ -413,6 +413,9 @@ export const top100Stocks = [
   { symbol: "LVS", name: "Las Vegas Sands", sector: "Consumer Cyclical" },
   { symbol: "WYNN", name: "Wynn Resorts", sector: "Consumer Cyclical" },
   { symbol: "CZR", name: "Caesars Entertainment", sector: "Consumer Cyclical" },
+  { symbol: "GME", name: "GameStop Corp.", sector: "Consumer Cyclical" },
+  { symbol: "AMC", name: "AMC Entertainment", sector: "Communication Services" },
+  { symbol: "BB", name: "BlackBerry Ltd.", sector: "Technology" },
 ];
 
 // Top 50 ETFs
