@@ -586,6 +586,47 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         }
       }
 
+      // Finnhub fallback for analyst data (Yahoo's quoteSummary often returns 401
+      // without a crumb cookie, leaving the analyst fields empty).
+      const FINNHUB_KEY = Deno.env.get('FINNHUB_API_KEY');
+      if (FINNHUB_KEY && !sym.includes('-') && (numAnalysts == null || targetMean == null)) {
+        try {
+          const [ptResp, recResp] = await Promise.all([
+            fetch(`https://finnhub.io/api/v1/stock/price-target?symbol=${sym}&token=${FINNHUB_KEY}`),
+            fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${sym}&token=${FINNHUB_KEY}`),
+          ]);
+          if (ptResp.ok) {
+            const pt = await ptResp.json();
+            if (typeof pt?.targetMean === 'number' && pt.targetMean > 0) {
+              targetMean ??= pt.targetMean;
+              if (typeof pt?.targetHigh === 'number') targetHigh ??= pt.targetHigh;
+              if (typeof pt?.targetLow === 'number') targetLow ??= pt.targetLow;
+              if (typeof pt?.numberOfAnalysts === 'number') numAnalysts ??= pt.numberOfAnalysts;
+            }
+          }
+          if (recResp.ok) {
+            const recs = await recResp.json();
+            const latest = Array.isArray(recs) && recs.length > 0 ? recs[0] : null;
+            if (latest) {
+              const sb = Number(latest.strongBuy) || 0;
+              const b = Number(latest.buy) || 0;
+              const h = Number(latest.hold) || 0;
+              const s = Number(latest.sell) || 0;
+              const sst = Number(latest.strongSell) || 0;
+              const total = sb + b + h + s + sst;
+              if (total > 0) {
+                // 1=Strong Buy ... 5=Strong Sell
+                const mean = (sb * 1 + b * 2 + h * 3 + s * 4 + sst * 5) / total;
+                recommendationMean ??= mean;
+                if (numAnalysts == null) numAnalysts = total;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('Finnhub analyst fallback failed for', sym, e);
+        }
+      }
+
       const headlines: string[] = [];
       if (newsResp.ok) {
         const nd = await newsResp.json();
