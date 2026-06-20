@@ -4,6 +4,7 @@ import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRi
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import WhatIfInvested from "./WhatIfInvested";
 
 interface LiveMarketData {
   symbol: string;
@@ -601,6 +602,9 @@ const PortfolioRecommendation = ({
         <strong>Disclaimer:</strong> This portfolio recommendation is for educational purposes only and does not constitute financial advice. 
         Past performance is not indicative of future results. Please consult a licensed financial advisor before making investment decisions.
       </p>
+
+      {/* Historical What-If */}
+      <WhatIfInvested funds={funds} investmentAmount={investmentAmount} />
     </div>
   );
 };
