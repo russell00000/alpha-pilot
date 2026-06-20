@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
@@ -21,14 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import financeBg from "@/assets/finance-bg.webp";
-
-const ForecastChart = lazy(() =>
-  import("@/components/ForecastChart").then((m) => ({ default: m.ForecastChart })),
-);
-
-type ForecastData = Parameters<
-  typeof import("@/components/ForecastChart").ForecastChart
->[0]["forecast"];
+import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 
 interface Message {
   role: "user" | "assistant";
@@ -252,14 +245,10 @@ const Chat = () => {
                   {message.role === "assistant" && message.forecasts && message.forecasts.length > 0 && (
                     <div className="w-full space-y-3 mt-1">
                       {message.forecasts.map((forecast, fIdx) => (
-                        <Suspense
+                        <ForecastChart
                           key={`${index}-${fIdx}`}
-                          fallback={
-                            <div className="h-64 rounded-xl bg-secondary/40 border border-border/40 animate-pulse" />
-                          }
-                        >
-                          <ForecastChart forecast={forecast} />
-                        </Suspense>
+                          forecast={forecast}
+                        />
                       ))}
                     </div>
                   )}
