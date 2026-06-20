@@ -88,6 +88,7 @@ const TOP_STOCKS = [
   'BRK.B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'C', 'GS', 'MS', 'SCHW',
   'AXP', 'BLK', 'SPGI', 'CME', 'ICE', 'CB', 'MMC', 'AON', 'PGR', 'TRV',
   'MET', 'AIG', 'PRU', 'AFL', 'ALL', 'USB', 'PNC', 'TFC', 'COF', 'DFS',
+  'TD',
   // Consumer Staples
   'PG', 'KO', 'PEP', 'COST', 'WMT', 'PM', 'MO', 'MDLZ', 'CL', 'KMB',
   'GIS', 'K', 'HSY', 'KHC', 'SJM', 'CPB', 'MKC', 'CHD', 'CLX', 'EL',
@@ -234,6 +235,8 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     costco: 'COST', exxon: 'XOM', chevron: 'CVX', boeing: 'BA', ford: 'F',
     bitcoin: 'BTC-USD', ethereum: 'ETH-USD', solana: 'SOL-USD', dogecoin: 'DOGE-USD',
     rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
+    'td bank': 'TD', 'toronto dominion': 'TD', 'toronto-dominion': 'TD',
+    'the toronto dominion bank': 'TD', 'toronto dominion bank': 'TD',
     'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
   };
   const EXTRA_NAMES: Record<string, string> = {
@@ -406,6 +409,37 @@ interface ForecastStats {
   priceSeries?: Array<{ date: number; price: number }>;
 }
 
+async function fetchUnifiedMarketQuote(ticker: string): Promise<{ price: number; changePercent: number; name?: string } | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !anonKey) return null;
+    const baseSym = ticker.replace(/-USD$/i, '').toUpperCase();
+    const mdResp = await fetch(`${supabaseUrl}/functions/v1/market-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${anonKey}`,
+        'apikey': anonKey,
+      },
+      body: JSON.stringify({ symbols: [baseSym] }),
+    });
+    if (!mdResp.ok) return null;
+    const md = await mdResp.json();
+    const row = Array.isArray(md?.data) ? md.data[0] : null;
+    const price = Number.parseFloat(String(row?.price ?? ''));
+    if (!row || !Number.isFinite(price) || price <= 0) return null;
+    return {
+      price,
+      changePercent: Number.isFinite(Number(row.changePercent)) ? Number(row.changePercent) : 0,
+      name: row.name,
+    };
+  } catch (e) {
+    console.log('unified market-data fetch failed:', e);
+    return null;
+  }
+}
+
 function calcReturn(prices: number[], lookbackDays: number): number | null {
   if (prices.length < lookbackDays + 1) return null;
   const recent = prices[prices.length - 1];
@@ -514,14 +548,16 @@ async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
-  const cached = cacheGet<ForecastStats | null>(`forecast:${ticker}`, 10 * 60 * 1000);
+  const cached = cacheGet<ForecastStats | null>(`forecast:v2:${ticker}`, 10 * 60 * 1000);
   if (cached !== null && cached !== undefined) return cached;
+  const unifiedQuote = await fetchUnifiedMarketQuote(ticker);
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
       const { timestamps, closes: prices } = await fetchChartSeries(sym, "2y");
       if (prices.length < 30) continue;
-      const currentPrice = prices[prices.length - 1];
+      const currentPrice = unifiedQuote?.price ?? prices[prices.length - 1];
+      if (unifiedQuote?.price) prices[prices.length - 1] = currentPrice;
 
       // Pull fundamentals + analyst data + news in parallel
       const [summaryResp, newsResp] = await Promise.all([
@@ -537,7 +573,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
 
       let sector: string | undefined;
       let industry: string | undefined;
-      let name = sym;
+      let name = unifiedQuote?.name ?? sym;
       let forwardPE: string | undefined;
       let pegRatio: string | undefined;
       let earningsGrowth: string | undefined;
@@ -564,7 +600,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         const udh = r0?.upgradeDowngradeHistory?.history ?? [];
         if (ap?.sector) sector = ap.sector;
         if (ap?.industry) industry = ap.industry;
-        if (pr?.shortName || pr?.longName) name = pr.shortName || pr.longName;
+        if (!unifiedQuote?.name && (pr?.shortName || pr?.longName)) name = pr.shortName || pr.longName;
         if (ks?.forwardPE?.fmt) forwardPE = ks.forwardPE.fmt;
         if (ks?.pegRatio?.fmt) pegRatio = ks.pegRatio.fmt;
         if (fd?.earningsGrowth?.fmt) earningsGrowth = fd.earningsGrowth.fmt;
@@ -710,7 +746,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
           return out;
         })(),
       };
-      cacheSet(`forecast:${ticker}`, result);
+      cacheSet(`forecast:v2:${ticker}`, result);
       return result;
     } catch (e) {
       console.log(`fetchForecastStats failed for ${sym}:`, e);
@@ -769,22 +805,77 @@ function formatForecast(f: ForecastStats): string {
   return lines.join('\n');
 }
 
+type ResolvedSymbol = { symbol: string; name?: string; exchange?: string; score: number };
+
+function scoreResolvedQuote(query: string, quote: { symbol?: string; shortname?: string; longname?: string; exchange?: string; exchDisp?: string; quoteType?: string }): number {
+  const q = query.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const symbol = (quote.symbol ?? '').toUpperCase();
+  const name = `${quote.shortname ?? ''} ${quote.longname ?? ''}`.toLowerCase();
+  const exchange = `${quote.exchange ?? ''} ${quote.exchDisp ?? ''}`.toUpperCase();
+  let score = 0;
+  if (symbol === query.trim().toUpperCase()) score += 120;
+  if (name.includes(q)) score += 80;
+  for (const token of q.split(/\s+/).filter(t => t.length > 2)) {
+    if (name.includes(token)) score += 12;
+  }
+  if (/\btd\b|toronto\s*-?\s*dominion/.test(q)) {
+    if (symbol === 'TD') score += 200;
+    if (symbol !== 'TD' && !name.includes('toronto')) score -= 120;
+  }
+  if (['NYSE', 'NMS', 'NGM', 'NCM', 'TOR', 'TSX'].some(ex => exchange.includes(ex))) score += 8;
+  if (quote.quoteType === 'EQUITY') score += 5;
+  return score;
+}
+
+function applyManualSymbolResolution(query: string): ResolvedSymbol[] {
+  const lower = query.toLowerCase();
+  const manual: ResolvedSymbol[] = [];
+  if (/^td$|\btd\s+bank\b|\btoronto[-\s]+dominion\b|\btoronto[-\s]+dominion\s+bank\b/.test(lower.trim())) {
+    manual.push({ symbol: 'TD', name: 'The Toronto-Dominion Bank', exchange: 'NYSE', score: 500 });
+  }
+  return manual;
+}
+
+function shouldResolveFreeTextName(message: string): boolean {
+  const cleaned = message.toLowerCase().replace(/[^a-z0-9$ .&-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 3) return false;
+  if (applyManualSymbolResolution(cleaned).length > 0) return true;
+  if (/\$[a-z]{1,6}\b/i.test(message)) return true;
+  if (/\b[A-Z]{2,5}\b/.test(message)) return true;
+  if (/\b(analy[sz]e|analysis|stock|ticker|shares?|company|bank|etf|fund|price|target|forecast|outlook|valuation|earnings|dividend|market cap|p\/e|pe ratio)\b/i.test(message)) return true;
+  if (/\b(apple|microsoft|nvidia|tesla|amazon|google|alphabet|meta|palantir|rheinmetall|shopify|netflix|costco|walmart|visa|mastercard|jpmorgan|berkshire|exxon|chevron|boeing|disney|toyota|asml|tsmc)\b/i.test(message)) return true;
+  return false;
+}
+
 // Resolve a free-text query (company name or symbol) to Yahoo Finance tickers.
-async function resolveSymbols(query: string): Promise<string[]> {
+async function resolveSymbols(query: string): Promise<ResolvedSymbol[]> {
+  const manual = applyManualSymbolResolution(query);
   try {
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0`;
     const r = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
-    if (!r.ok) return [];
+    if (!r.ok) return manual;
     const data = await r.json();
-    const quotes = (data?.quotes ?? []) as Array<{ symbol?: string; quoteType?: string }>;
-    return quotes
+    const quotes = (data?.quotes ?? []) as Array<{ symbol?: string; shortname?: string; longname?: string; exchange?: string; exchDisp?: string; quoteType?: string }>;
+    const resolved = quotes
       .filter(q => q.symbol && ['EQUITY', 'ETF', 'MUTUALFUND', 'CRYPTOCURRENCY', 'INDEX'].includes(q.quoteType || ''))
-      .map(q => q.symbol as string);
+      .map(q => ({
+        symbol: q.symbol as string,
+        name: q.longname || q.shortname,
+        exchange: q.exchange || q.exchDisp,
+        score: scoreResolvedQuote(query, q),
+      }))
+      .sort((a, b) => b.score - a.score);
+    const bySymbol = new Map<string, ResolvedSymbol>();
+    for (const item of [...manual, ...resolved]) {
+      const existing = bySymbol.get(item.symbol);
+      if (!existing || item.score > existing.score) bySymbol.set(item.symbol, item);
+    }
+    return Array.from(bySymbol.values()).sort((a, b) => b.score - a.score);
   } catch (e) {
     console.log('resolveSymbols failed:', e);
-    return [];
+    return manual;
   }
 }
 
@@ -796,36 +887,7 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
   // Fetch authoritative price/change from the same market-data edge function the
   // rest of the app uses, so the AI never quotes a number that disagrees with
   // what the user sees in the UI.
-  let unifiedQuote: { price: number; changePercent: number; name?: string } | null = null;
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (supabaseUrl && anonKey) {
-      const baseSym = ticker.replace(/-USD$/i, '').toUpperCase();
-      const mdResp = await fetch(`${supabaseUrl}/functions/v1/market-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
-        body: JSON.stringify({ symbols: [baseSym] }),
-      });
-      if (mdResp.ok) {
-        const md = await mdResp.json();
-        const row = Array.isArray(md?.data) ? md.data[0] : null;
-        if (row && row.price) {
-          unifiedQuote = {
-            price: parseFloat(row.price),
-            changePercent: row.changePercent ?? 0,
-            name: row.name,
-          };
-        }
-      }
-    }
-  } catch (e) {
-    console.log('unified market-data fetch failed:', e);
-  }
+  const unifiedQuote = await fetchUnifiedMarketQuote(ticker);
 
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
@@ -902,7 +964,7 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
         console.log('detail enrichment failed:', e);
       }
 
-      const out = `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      const out = `${sym} (${unifiedQuote?.name || meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
       cacheSet(`detail:${ticker}`, out);
       return out;
     } catch (e) {
@@ -1094,11 +1156,11 @@ serve(async (req) => {
     // Only do the slower free-text name → symbol resolution when we couldn't
     // pull any tickers out of the user message directly. Saves ~300-800ms.
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-    let resolvedFromName: string[] = [];
+    let resolvedFromName: ResolvedSymbol[] = [];
     // Always run free-text symbol resolution so company names + casual phrasing
     // ("how's nvidia doing", "thoughts on rheinmetall", "is palantir overvalued")
     // reliably surface live data alongside any tickers we detected directly.
-    if (lastUserMsg.trim().length >= 3) {
+    if (shouldResolveFreeTextName(lastUserMsg)) {
       // Strip common filler words that confuse Yahoo's symbol search
       // (e.g. "tractor supply analysis" returns 0 quotes but "tractor supply" returns TSCO).
       const FILLER = /\b(analysis|analyze|stock|stocks|ticker|price|prices|quote|quotes|chart|charts|forecast|forecasts|target|targets|outlook|review|reviews|company|inc|corp|corporation|the|a|an|please|tell|me|about|what|whats|how|hows|is|are|do|does|on|of|for|to|with|and|or|thoughts|opinion|thinking|think|buy|sell|hold|today|now|currently|live)\b/gi;
@@ -1119,7 +1181,11 @@ serve(async (req) => {
       }
       console.log("Resolved from name:", resolvedFromName, "(query:", cleaned, ")");
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 5)]));
+    const resolvedSymbols = resolvedFromName.map((r) => r.symbol);
+    const resolutionBlock = resolvedFromName.length > 0
+      ? `\n\nSYMBOL RESOLUTION (highest confidence first):\n${resolvedFromName.slice(0, 5).map((r, i) => `${i + 1}. ${r.symbol}${r.name ? ` — ${r.name}` : ''}${r.exchange ? ` (${r.exchange})` : ''}`).join('\n')}\nUse #1 as the intended company unless the user explicitly corrects it.\n`
+      : "";
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedSymbols.slice(0, 5)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
@@ -1146,15 +1212,13 @@ serve(async (req) => {
     // Only render a forecast for the single primary ticker the user asked about.
     // Prefer an explicit ticker from the user message; fall back to the first
     // name-resolved symbol.
-    const primaryTicker = requestedTickers[0] ?? resolvedFromName[0];
+    const primaryTicker = requestedTickers[0] ?? resolvedSymbols[0];
     const forecastTickers = primaryTicker ? [primaryTicker] : [];
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
       const formatted = valid.map(formatForecast);
-      if (formatted.length > 0) {
-        forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from 5Y daily history + analyst data) ===\n\n${formatted.join('\n\n')}\n`;
-      }
+      const computedForecastLines: string[] = [];
       // Build structured payload for the client chart.
       for (const f of valid) {
         const cp = f.currentPrice;
@@ -1205,6 +1269,9 @@ serve(async (req) => {
           : recMean < 3.5 ? 'Hold'
           : recMean < 4.5 ? 'Underperform'
           : 'Sell';
+        computedForecastLines.push(
+          `  Deterministic forecast: Current $${cp.toFixed(2)} | Base $${base.toFixed(2)} (${(((base - cp) / cp) * 100).toFixed(1)}%) | Bull $${bull.toFixed(2)} | Bear $${bear.toFixed(2)} | Confidence ${confidence}${recLabel ? ` | Recommendation ${recLabel}` : ''}`,
+        );
         // Build 12-month projection: 13 monthly points interpolated from spot to base/bull/bear.
         const lastHist = f.priceSeries?.[f.priceSeries.length - 1];
         const nowTs = lastHist?.date ?? Math.floor(Date.now() / 1000);
@@ -1256,6 +1323,9 @@ serve(async (req) => {
           },
         });
       }
+      if (formatted.length > 0) {
+        forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from market data + analyst data) ===\n\n${formatted.join('\n\n')}\n${computedForecastLines.join('\n')}\n`;
+      }
       console.log(`Built forecast block for ${formatted.length} ticker(s)`);
     }
 
@@ -1266,11 +1336,12 @@ ${philosophy}
 ## ABSOLUTE RULES
 1. ALWAYS answer the question. You have LIVE INTERNET DATA for every public security via Yahoo Finance + Finnhub (quotes, profile, sector, market cap, P/E, analyst targets, headlines), AND deep general finance knowledge (concepts, strategies, history, macro, ratios, tax basics, retirement accounts, options basics, etc.). NEVER say you "can't help", "can't find data", or "don't have access" — you do.
 2. For GENERAL / EDUCATIONAL questions (concepts, strategies, definitions, how-things-work, history, macro context, "what is X", "explain Y", "best ETFs for beginners", "how does dollar-cost averaging work"): answer fully from your knowledge. Be specific, give examples, name real tickers/funds when useful. The price-integrity rule below applies ONLY to live numeric quotes.
-3. For TICKER/COMPANY questions: use the LIVE MARKET DATA, ON-DEMAND LOOKUPS, and PERFORMANCE FORECAST INPUTS blocks below. The company name → ticker mapping has already been resolved for you.
+3. For TICKER/COMPANY questions: use SYMBOL RESOLUTION, LIVE MARKET DATA, ON-DEMAND LOOKUPS, and PERFORMANCE FORECAST INPUTS below. Trust SYMBOL RESOLUTION #1 for company-name queries. If the data block says TD — The Toronto-Dominion Bank, do not reinterpret TD as another company.
 4. PRICE INTEGRITY (non-negotiable, applies ONLY to live numeric quotes): every specific current price, today's % change, analyst target, P/E, market cap, 52-week level, or volume you cite MUST appear verbatim in one of the data blocks below. If a specific live number isn't there, describe qualitatively ("trading near recent highs", "well off its 52-week low") and recommend the user retry with "$TICKER" — NEVER invent or recall a stale price.
-5. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data will be in ON-DEMAND LOOKUPS — use it. If a name didn't resolve, ask for the ticker rather than refusing.
+5. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia", "TD Bank"), the matching ticker and live data will be in SYMBOL RESOLUTION / ON-DEMAND LOOKUPS — use it. If a name didn't resolve, ask for the ticker rather than guessing.
 6. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
-7. When relevant, weave in 1 specific live data point so the answer feels current ("Recent headline: ...").
+7. If a "Deterministic forecast" line exists, copy its Current, Base, Bull, Bear, Confidence, and Recommendation values exactly. Do not invent, round to a different target, or substitute your own target.
+8. When relevant, weave in 1 specific live data point so the answer feels current ("Recent headline: ...").
 
 ## PERFORMANCE FORECASTING FRAMEWORK (use the PERFORMANCE FORECAST INPUTS block)
 When the user asks how a security will perform, where it's headed, a price target, or whether to buy/sell/hold, you MUST anchor your answer in the computed stats below AND in your up-to-date general knowledge of the company, sector, macro backdrop, and recent news. Don't hand-wave, don't fence-sit, don't hedge with "it depends." Pick a side and defend it with numbers.
@@ -1283,18 +1354,18 @@ Synthesize a forecast from FIVE signal categories (weight roughly equally):
   5) Analyst consensus & industry signals — consensus rating, mean/high/low targets and implied upside, recent upgrades/downgrades, sector ETF performance, news headlines. Recent upgrades + bullish headlines = tailwind; downgrades + sector lagging = headwind.
 
 Then output an explicit, numerical forecast with REAL conviction:
-  • A concrete 12-month base-case target price + % upside/downside. State it as a number, not a range. ("My 12-mo target: $215, ~+18% from here.")
-  • Bull case and bear case targets — bounded by realism: bull ≤ analyst high or +2 stdev (annualVol × 1.5), bear ≥ analyst low or −2 stdev. Never quote a bull target more than 60% above current price unless 5Y CAGR genuinely supports it.
+  • A concrete 12-month base-case target price + % upside/downside. If a Deterministic forecast line exists, use the Base value and percentage from that line exactly.
+  • Bull case and bear case targets. If a Deterministic forecast line exists, use the Bull and Bear values from that line exactly.
   • Expected 12-mo annualized return — anchored to 3Y/5Y CAGR and adjusted for current regime + forward EPS growth.
-  • Confidence level (High / Medium / Low) with a one-line reason. Default to High or Medium whenever signals broadly line up — only call it Low when data is genuinely thin or signals contradict. The computed confidence field is a hint, not a ceiling: if your read of the company + sector + macro is strong, say High and defend it.
+  • Confidence level (High / Medium / Low) with a one-line reason. If a Deterministic forecast line exists, use its Confidence value exactly.
 
 Conviction & realism rules:
   - Commit to a directional call (Buy / Hold / Sell or Bullish / Neutral / Bearish). Don't say "it could go either way."
   - Targets must be REALISTIC: grounded in analyst consensus, historical CAGR, and forward EPS — not vibes. A mature $3T company isn't doubling in 12 months; a profitable hyper-grower isn't flat for a year.
   - NEVER set a Buy/Hold base-case target below current price. For Sell: base case must be below current price at a support level (SMA200 or 52W low as anchor).
-  - If forecast inputs are missing for a ticker, lean on your general knowledge of the company + 52W range + live quote, state your assumption briefly, and still give a number.
+  - If forecast inputs are missing for a ticker, lean on the live quote and 52W range, state your assumption briefly, and avoid precise targets not shown in the data.
   - Always cite at least 2 specific numbers from the forecast block (e.g. "5Y CAGR of 31%, Sharpe of 1.4, analyst target $X implies +Y%").
-  - Use your broader knowledge (product cycles, competitive position, recent news headlines in the data block, macro context) to justify why your number diverges from or matches the analyst mean. Be the analyst, not a parrot.
+  - Use broader context only to explain the provided numbers. Do not diverge from the deterministic forecast values.
 
 ## RESPONSE STYLE
 - CONCISE: 2-3 short paragraphs max. No bullet-point walls or numbered lists unless asked.
@@ -1305,7 +1376,7 @@ Conviction & realism rules:
 
 ## LIVE MARKET DATA
 ${marketData}
-${onDemandData}${forecastBlock}`;
+${resolutionBlock}${onDemandData}${forecastBlock}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
