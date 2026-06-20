@@ -886,36 +886,7 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
   // Fetch authoritative price/change from the same market-data edge function the
   // rest of the app uses, so the AI never quotes a number that disagrees with
   // what the user sees in the UI.
-  let unifiedQuote: { price: number; changePercent: number; name?: string } | null = null;
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (supabaseUrl && anonKey) {
-      const baseSym = ticker.replace(/-USD$/i, '').toUpperCase();
-      const mdResp = await fetch(`${supabaseUrl}/functions/v1/market-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
-        body: JSON.stringify({ symbols: [baseSym] }),
-      });
-      if (mdResp.ok) {
-        const md = await mdResp.json();
-        const row = Array.isArray(md?.data) ? md.data[0] : null;
-        if (row && row.price) {
-          unifiedQuote = {
-            price: parseFloat(row.price),
-            changePercent: row.changePercent ?? 0,
-            name: row.name,
-          };
-        }
-      }
-    }
-  } catch (e) {
-    console.log('unified market-data fetch failed:', e);
-  }
+  const unifiedQuote = await fetchUnifiedMarketQuote(ticker);
 
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
@@ -992,7 +963,7 @@ async function fetchTickerDetail(ticker: string): Promise<string | null> {
         console.log('detail enrichment failed:', e);
       }
 
-      const out = `${sym} (${meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
+      const out = `${sym} (${unifiedQuote?.name || meta.shortName || meta.longName || sym}): $${price.toFixed(2)} ${changeStr}, 52W High: $${meta.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'} (${distFromHigh}% from high), 52W Low: $${meta.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}, Vol: ${meta.regularMarketVolume?.toLocaleString() || 'N/A'}${profileLine}${newsLine}`;
       cacheSet(`detail:${ticker}`, out);
       return out;
     } catch (e) {
