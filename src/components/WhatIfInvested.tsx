@@ -202,7 +202,7 @@ export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvest
             Historical prices were unavailable for this portfolio. Please try again later.
           </p>
         ) : (
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
                 Invested {horizonMeta.label.toLowerCase()} ago
