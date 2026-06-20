@@ -522,10 +522,23 @@ const Markets = () => {
             const lenB = b.asset.symbol.length + b.asset.name.length;
             return lenA - lenB;
           })
-          .slice(0, 12)
+          .slice(0, 8)
           .map((x) => x.asset);
       })()
     : [];
+
+  // Dynamic, market-wide symbol search (Yahoo). Ensures any listed security
+  // is reachable even if it's not in our static list.
+  const { results: remoteSuggestions } = useSymbolSearch(searchQuery, 1, 250);
+
+  // Merge: local matches first, then any remote symbols we don't already show.
+  const mergedSuggestions = (() => {
+    const seen = new Set(filteredSuggestions.map((s: any) => s.symbol.toUpperCase()));
+    const remote = remoteSuggestions
+      .filter((r) => r.symbol && !seen.has(r.symbol.toUpperCase()))
+      .map((r) => ({ symbol: r.symbol, name: r.name, type: r.type }));
+    return [...filteredSuggestions, ...remote].slice(0, 15);
+  })();
 
 
   return (
