@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import PageTransition from "./components/PageTransition";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const Markets = lazy(() => import("./pages/Markets"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
@@ -40,24 +41,26 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
+        <ErrorBoundary>
         <PageTransition>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/markets" element={<Markets />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/stock/:symbol" element={<Stock />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin/philosophy" element={<AdminPhilosophy />} />
-          <Route path="/alerts" element={<Alerts />} />
-          <Route path="/practice" element={<Practice />} />
-          <Route path="/practice/risk" element={<PracticeRisk />} />
+          <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
+          <Route path="/markets" element={<ErrorBoundary><Markets /></ErrorBoundary>} />
+          <Route path="/portfolio" element={<ErrorBoundary><Portfolio /></ErrorBoundary>} />
+          <Route path="/chat" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
+          <Route path="/terms" element={<ErrorBoundary><Terms /></ErrorBoundary>} />
+          <Route path="/privacy" element={<ErrorBoundary><Privacy /></ErrorBoundary>} />
+          <Route path="/stock/:symbol" element={<ErrorBoundary><Stock /></ErrorBoundary>} />
+          <Route path="/auth" element={<ErrorBoundary><Auth /></ErrorBoundary>} />
+          <Route path="/admin/philosophy" element={<ErrorBoundary><AdminPhilosophy /></ErrorBoundary>} />
+          <Route path="/alerts" element={<ErrorBoundary><Alerts /></ErrorBoundary>} />
+          <Route path="/practice" element={<ErrorBoundary><Practice /></ErrorBoundary>} />
+          <Route path="/practice/risk" element={<ErrorBoundary><PracticeRisk /></ErrorBoundary>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         </PageTransition>
+        </ErrorBoundary>
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>
