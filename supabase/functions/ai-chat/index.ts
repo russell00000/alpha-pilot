@@ -550,12 +550,13 @@ async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
   const cached = cacheGet<ForecastStats | null>(`forecast:${ticker}`, 10 * 60 * 1000);
   if (cached !== null && cached !== undefined) return cached;
+  const unifiedQuote = await fetchUnifiedMarketQuote(ticker);
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
   for (const sym of candidates) {
     try {
       const { timestamps, closes: prices } = await fetchChartSeries(sym, "2y");
       if (prices.length < 30) continue;
-      const currentPrice = prices[prices.length - 1];
+      const currentPrice = unifiedQuote?.price ?? prices[prices.length - 1];
 
       // Pull fundamentals + analyst data + news in parallel
       const [summaryResp, newsResp] = await Promise.all([
@@ -571,7 +572,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
 
       let sector: string | undefined;
       let industry: string | undefined;
-      let name = sym;
+      let name = unifiedQuote?.name ?? sym;
       let forwardPE: string | undefined;
       let pegRatio: string | undefined;
       let earningsGrowth: string | undefined;
@@ -598,7 +599,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
         const udh = r0?.upgradeDowngradeHistory?.history ?? [];
         if (ap?.sector) sector = ap.sector;
         if (ap?.industry) industry = ap.industry;
-        if (pr?.shortName || pr?.longName) name = pr.shortName || pr.longName;
+        if (!unifiedQuote?.name && (pr?.shortName || pr?.longName)) name = pr.shortName || pr.longName;
         if (ks?.forwardPE?.fmt) forwardPE = ks.forwardPE.fmt;
         if (ks?.pegRatio?.fmt) pegRatio = ks.pegRatio.fmt;
         if (fd?.earningsGrowth?.fmt) earningsGrowth = fd.earningsGrowth.fmt;
