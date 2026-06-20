@@ -548,7 +548,7 @@ async function fetchPrices(sym: string, range = "5y"): Promise<number[]> {
 }
 
 async function fetchForecastStats(ticker: string): Promise<ForecastStats | null> {
-  const cached = cacheGet<ForecastStats | null>(`forecast:${ticker}`, 10 * 60 * 1000);
+  const cached = cacheGet<ForecastStats | null>(`forecast:v2:${ticker}`, 10 * 60 * 1000);
   if (cached !== null && cached !== undefined) return cached;
   const unifiedQuote = await fetchUnifiedMarketQuote(ticker);
   const candidates = ticker.includes('-') ? [ticker] : [ticker, `${ticker}-USD`];
@@ -557,6 +557,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
       const { timestamps, closes: prices } = await fetchChartSeries(sym, "2y");
       if (prices.length < 30) continue;
       const currentPrice = unifiedQuote?.price ?? prices[prices.length - 1];
+      if (unifiedQuote?.price) prices[prices.length - 1] = currentPrice;
 
       // Pull fundamentals + analyst data + news in parallel
       const [summaryResp, newsResp] = await Promise.all([
@@ -745,7 +746,7 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
           return out;
         })(),
       };
-      cacheSet(`forecast:${ticker}`, result);
+      cacheSet(`forecast:v2:${ticker}`, result);
       return result;
     } catch (e) {
       console.log(`fetchForecastStats failed for ${sym}:`, e);
