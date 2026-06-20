@@ -546,32 +546,6 @@ const PortfolioRecommendation = ({
                 );
               })}
             </tbody>
-            {/* Portfolio Total Row */}
-            {Object.keys(liveMarketData).length > 0 && (
-              <tfoot>
-                <tr className="bg-muted/30 font-medium">
-                  <td className="p-4 text-foreground" colSpan={5}>Portfolio Total</td>
-                  <td className="p-4 text-right text-foreground">
-                    ${investmentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-4 text-right">
-                    {(() => {
-                      const totalGain = funds.reduce((sum, fund) => {
-                        const liveData = liveMarketData[fund.symbol];
-                        if (!liveData) return sum;
-                        const allocatedAmount = (investmentAmount * fund.allocation) / 100;
-                        return sum + (allocatedAmount * (liveData.changePercent / 100));
-                      }, 0);
-                      return (
-                        <span className={cn("font-semibold", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
-                          {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
       </div>
