@@ -772,22 +772,66 @@ function formatForecast(f: ForecastStats): string {
   return lines.join('\n');
 }
 
+type ResolvedSymbol = { symbol: string; name?: string; exchange?: string; score: number };
+
+function scoreResolvedQuote(query: string, quote: { symbol?: string; shortname?: string; longname?: string; exchange?: string; exchDisp?: string; quoteType?: string }): number {
+  const q = query.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const symbol = (quote.symbol ?? '').toUpperCase();
+  const name = `${quote.shortname ?? ''} ${quote.longname ?? ''}`.toLowerCase();
+  const exchange = `${quote.exchange ?? ''} ${quote.exchDisp ?? ''}`.toUpperCase();
+  let score = 0;
+  if (symbol === query.trim().toUpperCase()) score += 120;
+  if (name.includes(q)) score += 80;
+  for (const token of q.split(/\s+/).filter(t => t.length > 2)) {
+    if (name.includes(token)) score += 12;
+  }
+  if (/\btd\b|toronto\s*-?\s*dominion/.test(q)) {
+    if (symbol === 'TD') score += 200;
+    if (symbol !== 'TD' && !name.includes('toronto')) score -= 120;
+  }
+  if (['NYSE', 'NMS', 'NGM', 'NCM', 'TOR', 'TSX'].some(ex => exchange.includes(ex))) score += 8;
+  if (quote.quoteType === 'EQUITY') score += 5;
+  return score;
+}
+
+function applyManualSymbolResolution(query: string): ResolvedSymbol[] {
+  const lower = query.toLowerCase();
+  const manual: ResolvedSymbol[] = [];
+  if (/\btd\s+bank\b|\btoronto[-\s]+dominion\b|\btoronto[-\s]+dominion\s+bank\b/.test(lower)) {
+    manual.push({ symbol: 'TD', name: 'The Toronto-Dominion Bank', exchange: 'NYSE', score: 500 });
+  }
+  return manual;
+}
+
 // Resolve a free-text query (company name or symbol) to Yahoo Finance tickers.
-async function resolveSymbols(query: string): Promise<string[]> {
+async function resolveSymbols(query: string): Promise<ResolvedSymbol[]> {
+  const manual = applyManualSymbolResolution(query);
   try {
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0`;
     const r = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
-    if (!r.ok) return [];
+    if (!r.ok) return manual;
     const data = await r.json();
-    const quotes = (data?.quotes ?? []) as Array<{ symbol?: string; quoteType?: string }>;
-    return quotes
+    const quotes = (data?.quotes ?? []) as Array<{ symbol?: string; shortname?: string; longname?: string; exchange?: string; exchDisp?: string; quoteType?: string }>;
+    const resolved = quotes
       .filter(q => q.symbol && ['EQUITY', 'ETF', 'MUTUALFUND', 'CRYPTOCURRENCY', 'INDEX'].includes(q.quoteType || ''))
-      .map(q => q.symbol as string);
+      .map(q => ({
+        symbol: q.symbol as string,
+        name: q.longname || q.shortname,
+        exchange: q.exchange || q.exchDisp,
+        score: scoreResolvedQuote(query, q),
+      }))
+      .sort((a, b) => b.score - a.score);
+    const bySymbol = new Map<string, ResolvedSymbol>();
+    for (const item of [...manual, ...resolved]) {
+      const existing = bySymbol.get(item.symbol);
+      if (!existing || item.score > existing.score) bySymbol.set(item.symbol, item);
+    }
+    return Array.from(bySymbol.values()).sort((a, b) => b.score - a.score);
   } catch (e) {
     console.log('resolveSymbols failed:', e);
-    return [];
+    return manual;
   }
 }
 
