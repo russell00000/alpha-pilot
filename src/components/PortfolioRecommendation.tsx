@@ -4,6 +4,7 @@ import { RefreshCw, TrendingUp, Shield, Clock, Target, ArrowUpRight, ArrowDownRi
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import WhatIfInvested from "./WhatIfInvested";
 
 interface LiveMarketData {
   symbol: string;
@@ -595,6 +596,9 @@ const PortfolioRecommendation = ({
           </table>
         </div>
       </div>
+
+      {/* Historical What-If */}
+      <WhatIfInvested funds={funds} investmentAmount={investmentAmount} />
 
       {/* Disclaimer */}
       <p className="text-xs text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
