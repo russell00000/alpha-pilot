@@ -359,10 +359,11 @@ const Markets = () => {
 
   // Add sparkline to item if missing
   const ensureSparkline = (item: MarketData): MarketData => {
-    if (item.sparkline && item.sparkline.length > 0) return item;
+    const normalized = normalizeMarketData(item);
+    if (normalized.sparkline && normalized.sparkline.length > 0) return normalized;
     return {
-      ...item,
-      sparkline: generateSparkline(item.symbol, item.changePercent || 0),
+      ...normalized,
+      sparkline: generateSparkline(normalized.symbol, normalized.changePercent || 0),
     };
   };
 
@@ -808,7 +809,7 @@ const Markets = () => {
                               isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                             )}>
                               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                              {isPositive ? "+" : ""}{item.changePercent.toFixed(2)}%
+                              {isPositive ? "+" : ""}{safeNumber(item.changePercent).toFixed(2)}%
                             </div>
                           ) : (
                             <span className="text-muted-foreground">—</span>
