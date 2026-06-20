@@ -99,10 +99,11 @@ const Markets = () => {
         body: { symbols: uncached },
       });
 
-      if (!error && data?.data) {
+      if (!error && Array.isArray(data?.data)) {
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
-          cache[item.symbol] = item;
+        data.data.forEach((item: any) => {
+          const normalized = normalizeMarketData(item);
+          if (normalized.symbol) cache[normalized.symbol] = normalized;
         });
         mergePriceCache(cache);
       }
@@ -120,12 +121,13 @@ const Markets = () => {
       if (error) throw error;
 
       if (data?.data && Array.isArray(data.data)) {
-        setLiveData(data.data);
+        const normalizedData = data.data.map((item: any) => normalizeMarketData(item)).filter((item) => item.symbol);
+        setLiveData(normalizedData);
         setLastUpdated(new Date());
         
         // Cache all returned prices immediately
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
+        normalizedData.forEach((item) => {
           cache[item.symbol] = item;
         });
         mergePriceCache(cache);
@@ -217,10 +219,11 @@ const Markets = () => {
       if (error) throw error;
 
       if (data?.data && Array.isArray(data.data)) {
-        setSearchResults(data.data);
+        const normalizedResults = data.data.map((item: any) => normalizeMarketData(item)).filter((item) => item.symbol);
+        setSearchResults(normalizedResults);
         // Cache results
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
+        normalizedResults.forEach((item) => {
           cache[item.symbol] = item;
         });
         mergePriceCache(cache);
@@ -254,7 +257,8 @@ const Markets = () => {
       });
 
       if (!error && data?.data?.[0]) {
-        mergePriceCache({ [symbol]: data.data[0] });
+        const normalized = normalizeMarketData(data.data[0], { symbol });
+        mergePriceCache({ [normalized.symbol]: normalized });
       }
     } catch (err) {
       console.error("Error fetching stock:", err);
