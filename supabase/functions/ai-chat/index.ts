@@ -214,8 +214,9 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     if (KNOWN.has(up) && !AMBIGUOUS_LOWER.has(up) && match[1] !== match[1].toLowerCase()) {
       // mixed-case (e.g. "Nvda", "Msft") — accept
       found.push(up);
-    } else if (KNOWN.has(up) && !AMBIGUOUS_LOWER.has(up) && up.length >= 3) {
-      // pure lowercase — only accept 3+ char known symbols to avoid false hits
+    } else if (KNOWN.has(up) && !AMBIGUOUS_LOWER.has(up)) {
+      // pure lowercase — accept any known symbol (2+ chars). AMBIGUOUS_LOWER
+      // already guards common English words like "us", "we", "do", etc.
       found.push(up);
     }
   }
