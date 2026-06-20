@@ -803,6 +803,17 @@ function applyManualSymbolResolution(query: string): ResolvedSymbol[] {
   return manual;
 }
 
+function shouldResolveFreeTextName(message: string): boolean {
+  const cleaned = message.toLowerCase().replace(/[^a-z0-9$ .&-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 3) return false;
+  if (applyManualSymbolResolution(cleaned).length > 0) return true;
+  if (/\$[a-z]{1,6}\b/i.test(message)) return true;
+  if (/\b[A-Z]{2,5}\b/.test(message)) return true;
+  if (/\b(analy[sz]e|analysis|stock|ticker|shares?|company|bank|etf|fund|price|target|forecast|outlook|valuation|earnings|dividend|market cap|p\/e|pe ratio)\b/i.test(message)) return true;
+  if (/\b(apple|microsoft|nvidia|tesla|amazon|google|alphabet|meta|palantir|rheinmetall|shopify|netflix|costco|walmart|visa|mastercard|jpmorgan|berkshire|exxon|chevron|boeing|disney|toyota|asml|tsmc)\b/i.test(message)) return true;
+  return false;
+}
+
 // Resolve a free-text query (company name or symbol) to Yahoo Finance tickers.
 async function resolveSymbols(query: string): Promise<ResolvedSymbol[]> {
   const manual = applyManualSymbolResolution(query);
