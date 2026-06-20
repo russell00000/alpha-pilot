@@ -1218,9 +1218,7 @@ serve(async (req) => {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
       const formatted = valid.map(formatForecast);
-      if (formatted.length > 0) {
-        forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from 5Y daily history + analyst data) ===\n\n${formatted.join('\n\n')}\n`;
-      }
+      const computedForecastLines: string[] = [];
       // Build structured payload for the client chart.
       for (const f of valid) {
         const cp = f.currentPrice;
@@ -1271,6 +1269,9 @@ serve(async (req) => {
           : recMean < 3.5 ? 'Hold'
           : recMean < 4.5 ? 'Underperform'
           : 'Sell';
+        computedForecastLines.push(
+          `  Deterministic forecast: Current $${cp.toFixed(2)} | Base $${base.toFixed(2)} (${(((base - cp) / cp) * 100).toFixed(1)}%) | Bull $${bull.toFixed(2)} | Bear $${bear.toFixed(2)} | Confidence ${confidence}${recLabel ? ` | Recommendation ${recLabel}` : ''}`,
+        );
         // Build 12-month projection: 13 monthly points interpolated from spot to base/bull/bear.
         const lastHist = f.priceSeries?.[f.priceSeries.length - 1];
         const nowTs = lastHist?.date ?? Math.floor(Date.now() / 1000);
@@ -1321,6 +1322,9 @@ serve(async (req) => {
             sector: f.sector,
           },
         });
+      }
+      if (formatted.length > 0) {
+        forecastBlock = `\n\n=== PERFORMANCE FORECAST INPUTS (computed from market data + analyst data) ===\n\n${formatted.join('\n\n')}\n${computedForecastLines.join('\n')}\n`;
       }
       console.log(`Built forecast block for ${formatted.length} ticker(s)`);
     }
