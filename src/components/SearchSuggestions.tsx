@@ -1,4 +1,5 @@
 import { BarChart3, Bitcoin, Briefcase, PieChart, SearchX } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SuggestionAsset {
@@ -24,6 +25,48 @@ const typeConfig: Record<
   etf: { icon: PieChart, label: "ETF", color: "text-sky-400" },
   mutual_fund: { icon: Briefcase, label: "Fund", color: "text-violet-400" },
 };
+
+function LogoBadge({
+  symbol,
+  type,
+  Icon,
+  color,
+}: {
+  symbol: string;
+  type: string;
+  Icon: typeof BarChart3;
+  color: string;
+}) {
+  const [errored, setErrored] = useState(false);
+  const baseSymbol = symbol.split(/[-.]/)[0];
+  const logoUrl =
+    type === "crypto"
+      ? `https://assets.parqet.com/logos/crypto/${baseSymbol}`
+      : `https://assets.parqet.com/logos/symbol/${baseSymbol}`;
+
+  return (
+    <div
+      className={cn(
+        "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden",
+        "bg-secondary/60 border border-border/30",
+        "transition-colors duration-200",
+        "group-hover:bg-secondary group-hover:border-border/50"
+      )}
+    >
+      {!errored ? (
+        <img
+          src={logoUrl}
+          alt={`${symbol} logo`}
+          loading="lazy"
+          onError={() => setErrored(true)}
+          className="w-full h-full object-contain"
+        />
+      ) : (
+        <Icon className={cn("w-4 h-4", color)} />
+      )}
+    </div>
+  );
+}
 
 export function SearchSuggestions({
   suggestions,
@@ -92,17 +135,13 @@ export function SearchSuggestions({
             {/* Left accent bar on hover */}
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/0 group-hover:bg-primary/60 transition-colors duration-200 rounded-r-full" />
 
-            {/* Icon */}
-            <div
-              className={cn(
-                "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-                "bg-secondary/60 border border-border/30",
-                "transition-colors duration-200",
-                "group-hover:bg-secondary group-hover:border-border/50"
-              )}
-            >
-              <Icon className={cn("w-4 h-4", config.color)} />
-            </div>
+            {/* Logo */}
+            <LogoBadge
+              symbol={asset.symbol}
+              type={asset.type}
+              Icon={Icon}
+              color={config.color}
+            />
 
             {/* Text content */}
             <div className="flex-1 min-w-0">
