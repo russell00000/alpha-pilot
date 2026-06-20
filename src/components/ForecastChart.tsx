@@ -180,8 +180,6 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
               </div>
               <p className="text-[10px] text-muted-foreground/70 font-medium">
                 {ind.numAnalysts ? `${ind.numAnalysts} analysts` : "Model-derived"}
-                {ind.annualVol != null ? ` · σ ${ind.annualVol.toFixed(1)}%` : ""}
-                {ind.sector ? ` · ${ind.sector}` : ""}
               </p>
             </div>
           </div>
