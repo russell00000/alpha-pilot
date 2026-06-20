@@ -1111,18 +1111,15 @@ serve(async (req) => {
       // Build structured payload for the client chart.
       for (const f of valid) {
         const cp = f.currentPrice;
-        // Base case: analyst mean if available, else CAGR-projected, else +8%.
-        let base = f.targetMean ?? null;
-        if (!base) {
-          const cagr = f.cagr3Y ?? f.cagr5Y;
-          base = cagr != null ? cp * (1 + cagr / 100) : cp * 1.08;
-        }
-        // Adjust base ± based on momentum/trend confirmation.
-        const momentum = f.return3M ?? 0;
-        const trendBoost = f.trend.includes('STRONG UPTREND') ? 0.05 : f.trend.includes('DOWNTREND') ? -0.05 : 0;
-        base = base * (1 + Math.max(-0.15, Math.min(0.15, momentum / 100 * 0.3 + trendBoost)));
-        // Bull/bear from analyst high/low; widen with vol if missing.
+        // Forecast is now driven directly by Wall Street analyst targets.
+        // Base = analyst MEAN target, Bull = analyst HIGH, Bear = analyst LOW.
+        // If analyst coverage is missing we fall back to CAGR + volatility bands.
         const vol = f.annualVol ?? 25;
+        const fallbackBase = (() => {
+          const cagr = f.cagr3Y ?? f.cagr5Y;
+          return cagr != null ? cp * (1 + cagr / 100) : cp * 1.08;
+        })();
+        const base = f.targetMean ?? fallbackBase;
         const bull = f.targetHigh ?? base * (1 + vol / 100);
         const bear = f.targetLow ?? base * (1 - vol / 100);
         // Confidence: high if many analysts AND aligned trend + positive EPS growth.
@@ -1152,6 +1149,15 @@ serve(async (req) => {
         if ((f.rsi14 ?? 50) > 80) score -= 1;
         if ((f.maxDrawdown ?? 0) < -50) score -= 1;
         const confidence = score >= 5 ? 'High' : score >= 2 ? 'Medium' : 'Low';
+        // Map analyst recommendationMean (1=Strong Buy ... 5=Sell) to a label.
+        const recMean = f.recommendationMean;
+        const recLabel = recMean == null
+          ? null
+          : recMean < 1.5 ? 'Strong Buy'
+          : recMean < 2.5 ? 'Buy'
+          : recMean < 3.5 ? 'Hold'
+          : recMean < 4.5 ? 'Underperform'
+          : 'Sell';
         // Build 12-month projection: 13 monthly points interpolated from spot to base/bull/bear.
         const lastHist = f.priceSeries?.[f.priceSeries.length - 1];
         const nowTs = lastHist?.date ?? Math.floor(Date.now() / 1000);
@@ -1192,7 +1198,11 @@ serve(async (req) => {
             earningsGrowth: f.earningsGrowth,
             revenueGrowth: f.revenueGrowth,
             targetMean: f.targetMean,
+            targetHigh: f.targetHigh,
+            targetLow: f.targetLow,
             numAnalysts: f.numAnalysts,
+            recommendationMean: recMean,
+            recommendationLabel: recLabel,
             upgradesLast90d: f.upgradesLast90d,
             downgradesLast90d: f.downgradesLast90d,
             sector: f.sector,
