@@ -173,7 +173,6 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
   // like "what do you think?" still resolve to the ticker we were just discussing.
   const recent = [...messages].slice(-4);
   const lastUserMsg = [...recent].reverse().find(m => m.role === "user")?.content || "";
-  const scanText = recent.map(m => m.content).join("\n");
   const found: string[] = [];
 
   // First priority: explicit $TICKER mentions (case-insensitive)
@@ -205,8 +204,11 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     'BEST', 'GOOD', 'SAFE', 'RISK', 'FUND', 'NEWS', 'RATE', 'PAYS', 'WIN',
     'F', 'V', 'C', 'O', 'T', 'D', 'A',
   ]);
+  // Only scan the current user message for lowercase/mixed-case ticker matches.
+  // Scanning prior assistant turns caused tickers the assistant mentioned once
+  // (e.g. "EA") to be re-detected on every follow-up question.
   const lowerPattern = /\b([A-Za-z]{2,5})\b/g;
-  while ((match = lowerPattern.exec(scanText)) !== null) {
+  while ((match = lowerPattern.exec(lastUserMsg)) !== null) {
     const up = match[1].toUpperCase();
     // Only accept a lowercase/mixed-case token as a ticker if it's in our
     // known universe AND not an ambiguous English word. ALL-CAPS in original
@@ -583,6 +585,47 @@ async function fetchForecastStats(ticker: string): Promise<ForecastStats | null>
           if (!h.epochGradeDate || h.epochGradeDate < cutoff) continue;
           if (h.action === 'up') upgradesLast90d++;
           else if (h.action === 'down') downgradesLast90d++;
+        }
+      }
+
+      // Finnhub fallback for analyst data (Yahoo's quoteSummary often returns 401
+      // without a crumb cookie, leaving the analyst fields empty).
+      const FINNHUB_KEY = Deno.env.get('FINNHUB_API_KEY');
+      if (FINNHUB_KEY && !sym.includes('-') && (numAnalysts == null || targetMean == null)) {
+        try {
+          const [ptResp, recResp] = await Promise.all([
+            fetch(`https://finnhub.io/api/v1/stock/price-target?symbol=${sym}&token=${FINNHUB_KEY}`),
+            fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${sym}&token=${FINNHUB_KEY}`),
+          ]);
+          if (ptResp.ok) {
+            const pt = await ptResp.json();
+            if (typeof pt?.targetMean === 'number' && pt.targetMean > 0) {
+              targetMean ??= pt.targetMean;
+              if (typeof pt?.targetHigh === 'number') targetHigh ??= pt.targetHigh;
+              if (typeof pt?.targetLow === 'number') targetLow ??= pt.targetLow;
+              if (typeof pt?.numberOfAnalysts === 'number') numAnalysts ??= pt.numberOfAnalysts;
+            }
+          }
+          if (recResp.ok) {
+            const recs = await recResp.json();
+            const latest = Array.isArray(recs) && recs.length > 0 ? recs[0] : null;
+            if (latest) {
+              const sb = Number(latest.strongBuy) || 0;
+              const b = Number(latest.buy) || 0;
+              const h = Number(latest.hold) || 0;
+              const s = Number(latest.sell) || 0;
+              const sst = Number(latest.strongSell) || 0;
+              const total = sb + b + h + s + sst;
+              if (total > 0) {
+                // 1=Strong Buy ... 5=Strong Sell
+                const mean = (sb * 1 + b * 2 + h * 3 + s * 4 + sst * 5) / total;
+                recommendationMean ??= mean;
+                if (numAnalysts == null) numAnalysts = total;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('Finnhub analyst fallback failed for', sym, e);
         }
       }
 
