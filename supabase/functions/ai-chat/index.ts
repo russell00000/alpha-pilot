@@ -88,6 +88,7 @@ const TOP_STOCKS = [
   'BRK.B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'C', 'GS', 'MS', 'SCHW',
   'AXP', 'BLK', 'SPGI', 'CME', 'ICE', 'CB', 'MMC', 'AON', 'PGR', 'TRV',
   'MET', 'AIG', 'PRU', 'AFL', 'ALL', 'USB', 'PNC', 'TFC', 'COF', 'DFS',
+  'TD',
   // Consumer Staples
   'PG', 'KO', 'PEP', 'COST', 'WMT', 'PM', 'MO', 'MDLZ', 'CL', 'KMB',
   'GIS', 'K', 'HSY', 'KHC', 'SJM', 'CPB', 'MKC', 'CHD', 'CLX', 'EL',
@@ -234,6 +235,8 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     costco: 'COST', exxon: 'XOM', chevron: 'CVX', boeing: 'BA', ford: 'F',
     bitcoin: 'BTC-USD', ethereum: 'ETH-USD', solana: 'SOL-USD', dogecoin: 'DOGE-USD',
     rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
+    'td bank': 'TD', 'td': 'TD', 'toronto dominion': 'TD', 'toronto-dominion': 'TD',
+    'the toronto dominion bank': 'TD', 'toronto dominion bank': 'TD',
     'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
   };
   const EXTRA_NAMES: Record<string, string> = {
