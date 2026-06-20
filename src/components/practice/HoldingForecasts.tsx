@@ -1,12 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { ForecastData } from "@/components/ForecastChart";
+import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 import type { PracticeHolding } from "@/hooks/usePracticeTrading";
 import { Loader2 } from "lucide-react";
-
-const ForecastChart = lazy(() =>
-  import("@/components/ForecastChart").then((m) => ({ default: m.ForecastChart })),
-);
 
 interface Props {
   holdings: PracticeHolding[];
@@ -80,9 +76,7 @@ export default function HoldingForecasts({ holdings }: Props) {
                     Building forecast...
                   </div>
                 ) : f ? (
-                  <Suspense fallback={<div className="py-8 text-center text-sm text-muted-foreground">Loading chart...</div>}>
-                    <ForecastChart forecast={f} />
-                  </Suspense>
+                  <ForecastChart forecast={f} />
                 ) : (
                   <div className="py-8 text-center text-sm text-muted-foreground">
                     Forecast unavailable for {h.symbol}.
