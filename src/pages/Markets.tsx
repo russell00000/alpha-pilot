@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import financeBg from "@/assets/finance-bg.webp";
 import { SearchSuggestions } from "@/components/SearchSuggestions";
+import { useSymbolSearch } from "@/hooks/useSymbolSearch";
 
 interface MarketData {
   symbol: string;
