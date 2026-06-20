@@ -1,25 +1,23 @@
-import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Markets from "./pages/Markets";
+import Portfolio from "./pages/Portfolio";
+import Chat from "./pages/Chat";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Stock from "./pages/Stock";
+import Auth from "./pages/Auth";
+import AdminPhilosophy from "./pages/AdminPhilosophy";
+import Alerts from "./pages/Alerts";
+import Practice from "./pages/Practice";
+import PracticeRisk from "./pages/PracticeRisk";
+import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ErrorBoundary from "./components/ErrorBoundary";
-
-const Markets = lazy(() => import("./pages/Markets"));
-const Portfolio = lazy(() => import("./pages/Portfolio"));
-const Chat = lazy(() => import("./pages/Chat"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const Stock = lazy(() => import("./pages/Stock"));
-const Auth = lazy(() => import("./pages/Auth"));
-const AdminPhilosophy = lazy(() => import("./pages/AdminPhilosophy"));
-const Alerts = lazy(() => import("./pages/Alerts"));
-const Practice = lazy(() => import("./pages/Practice"));
-const PracticeRisk = lazy(() => import("./pages/PracticeRisk"));
-const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,7 +38,6 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Suspense fallback={<div className="min-h-screen bg-background" />}>
         <ErrorBoundary>
         <PageTransition>
         <Routes>
@@ -61,7 +58,6 @@ const App = () => (
         </Routes>
         </PageTransition>
         </ErrorBoundary>
-        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
