@@ -1056,11 +1056,25 @@ serve(async (req) => {
     // ("how's nvidia doing", "thoughts on rheinmetall", "is palantir overvalued")
     // reliably surface live data alongside any tickers we detected directly.
     if (lastUserMsg.trim().length >= 3) {
-      const nameQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
-      if (nameQuery.length >= 3) {
-        resolvedFromName = await resolveSymbols(nameQuery);
-        console.log("Resolved from name:", resolvedFromName);
+      // Strip common filler words that confuse Yahoo's symbol search
+      // (e.g. "tractor supply analysis" returns 0 quotes but "tractor supply" returns TSCO).
+      const FILLER = /\b(analysis|analyze|stock|stocks|ticker|price|prices|quote|quotes|chart|charts|forecast|forecasts|target|targets|outlook|review|reviews|company|inc|corp|corporation|the|a|an|please|tell|me|about|what|whats|how|hows|is|are|do|does|on|of|for|to|with|and|or|thoughts|opinion|thinking|think|buy|sell|hold|today|now|currently|live)\b/gi;
+      const cleaned = lastUserMsg
+        .replace(/\$[A-Za-z]{1,6}/g, "")
+        .replace(FILLER, " ")
+        .replace(/[^\w\s&.-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120);
+      // Try the cleaned query first; if it comes back empty, fall back to the raw message.
+      const rawQuery = lastUserMsg.replace(/\$[A-Za-z]{1,6}/g, "").trim().slice(0, 120);
+      if (cleaned.length >= 2) {
+        resolvedFromName = await resolveSymbols(cleaned);
       }
+      if (resolvedFromName.length === 0 && rawQuery.length >= 3 && rawQuery !== cleaned) {
+        resolvedFromName = await resolveSymbols(rawQuery);
+      }
+      console.log("Resolved from name:", resolvedFromName, "(query:", cleaned, ")");
     }
     const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 5)]));
 
