@@ -302,7 +302,7 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
   for (const [name, sym] of Object.entries(EXTRA_NAMES)) {
     NAME_MAP[name] = sym;
   }
-  const lower = scanText.toLowerCase();
+  const lower = lastUserMsg.toLowerCase();
   for (const [name, sym] of Object.entries(NAME_MAP)) {
     if (lower.includes(name)) found.push(sym);
   }
