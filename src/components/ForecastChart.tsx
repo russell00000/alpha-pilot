@@ -181,7 +181,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
         <CasePill
           label="Bull"
           analystSource={ind.targetHigh != null ? "Analyst High" : "Model"}
-          analysts={ind.numAnalysts}
+          isAnalyst={ind.targetHigh != null}
           price={forecast.bull}
           upside={upsideBull}
           tone="success"
@@ -189,7 +189,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
         <CasePill
           label="Base"
           analystSource={ind.targetMean != null ? "Analyst Mean" : "Model"}
-          analysts={ind.numAnalysts}
+          isAnalyst={ind.targetMean != null}
           price={forecast.base}
           upside={upsideBase}
           tone="neutral"
@@ -197,7 +197,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
         <CasePill
           label="Bear"
           analystSource={ind.targetLow != null ? "Analyst Low" : "Model"}
-          analysts={ind.numAnalysts}
+          isAnalyst={ind.targetLow != null}
           price={forecast.bear}
           upside={upsideBear}
           tone="destructive"
@@ -416,14 +416,14 @@ function Indicator({ label, value, tone }: { label: string; value: string; tone?
 function CasePill({
   label,
   analystSource,
-  analysts,
+  isAnalyst,
   price,
   upside,
   tone,
 }: {
   label: string;
   analystSource: string;
-  analysts?: number | null;
+  isAnalyst: boolean;
   price: number;
   upside: number;
   tone: "success" | "neutral" | "destructive";
@@ -434,12 +434,13 @@ function CasePill({
       : tone === "destructive"
         ? { border: "border-destructive/20", bg: "bg-destructive/5", label: "text-destructive/80", upside: "text-destructive" }
         : { border: "border-white/20", bg: "bg-white/[0.06]", label: "text-muted-foreground", upside: upside >= 0 ? "text-success" : "text-destructive" };
-  const analystText = analysts && analysts > 0 ? `(${analysts} analysts)` : "(model)";
   return (
     <div className={`rounded-lg border ${toneClasses.border} ${toneClasses.bg} px-2 py-1.5`}>
       <div className="flex items-baseline justify-between gap-1">
         <p className={`text-[9px] uppercase tracking-wider font-bold ${toneClasses.label}`}>{label}</p>
-        <p className="text-[8px] text-muted-foreground/80 font-mono">{analystText}</p>
+        <p className="text-[8px] text-muted-foreground/80 font-mono">
+          {isAnalyst ? "consensus" : "model"}
+        </p>
       </div>
       <p className="text-sm font-bold text-foreground font-mono">${price.toFixed(2)}</p>
       <div className="flex items-baseline justify-between gap-1">
