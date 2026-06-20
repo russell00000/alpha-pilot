@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,10 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import type { ForecastData } from "@/components/ForecastChart";
-const ForecastChart = lazy(() =>
-  import("@/components/ForecastChart").then((m) => ({ default: m.ForecastChart })),
-);
+import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 import {
   XAxis,
   YAxis,
@@ -1364,13 +1361,7 @@ const Stock = () => {
                 <span className="text-muted-foreground">Building forecast...</span>
               </div>
             ) : forecast ? (
-              <Suspense
-                fallback={
-                  <div className="h-64 rounded-xl border border-white/[0.06] bg-black/20 animate-pulse" />
-                }
-              >
-                <ForecastChart forecast={forecast} />
-              </Suspense>
+              <ForecastChart forecast={forecast} />
             ) : null}
           </div>
         )}
