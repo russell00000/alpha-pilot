@@ -235,7 +235,7 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     costco: 'COST', exxon: 'XOM', chevron: 'CVX', boeing: 'BA', ford: 'F',
     bitcoin: 'BTC-USD', ethereum: 'ETH-USD', solana: 'SOL-USD', dogecoin: 'DOGE-USD',
     rheinmetall: 'RHM.DE', asml: 'ASML', tsmc: 'TSM', alibaba: 'BABA',
-    'td bank': 'TD', 'td': 'TD', 'toronto dominion': 'TD', 'toronto-dominion': 'TD',
+    'td bank': 'TD', 'toronto dominion': 'TD', 'toronto-dominion': 'TD',
     'the toronto dominion bank': 'TD', 'toronto dominion bank': 'TD',
     'super micro': 'SMCI', supermicro: 'SMCI', smci: 'SMCI',
   };
@@ -797,7 +797,7 @@ function scoreResolvedQuote(query: string, quote: { symbol?: string; shortname?:
 function applyManualSymbolResolution(query: string): ResolvedSymbol[] {
   const lower = query.toLowerCase();
   const manual: ResolvedSymbol[] = [];
-  if (/\btd\s+bank\b|\btoronto[-\s]+dominion\b|\btoronto[-\s]+dominion\s+bank\b/.test(lower)) {
+  if (/^td$|\btd\s+bank\b|\btoronto[-\s]+dominion\b|\btoronto[-\s]+dominion\s+bank\b/.test(lower.trim())) {
     manual.push({ symbol: 'TD', name: 'The Toronto-Dominion Bank', exchange: 'NYSE', score: 500 });
   }
   return manual;
