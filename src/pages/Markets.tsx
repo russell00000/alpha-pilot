@@ -23,6 +23,29 @@ interface MarketData {
   type: "stock" | "crypto" | "etf" | "mutual_fund";
 }
 
+const safeNumber = (value: unknown, fallback = 0) => {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const normalizeMarketData = (item: any, fallback?: Partial<MarketData>): MarketData => {
+  const symbol = String(item?.symbol || fallback?.symbol || "").toUpperCase();
+  const type = (item?.type || fallback?.type || "stock") as MarketData["type"];
+
+  return {
+    symbol,
+    name: String(item?.name || fallback?.name || symbol || "Unknown"),
+    price: item?.price === undefined || item?.price === null || item?.price === "" ? fallback?.price || "—" : String(item.price),
+    change: safeNumber(item?.change, fallback?.change || 0),
+    changePercent: safeNumber(item?.changePercent, fallback?.changePercent || 0),
+    volume: String(item?.volume || fallback?.volume || "—"),
+    sparkline: Array.isArray(item?.sparkline)
+      ? item.sparkline.map((point: unknown) => safeNumber(point)).filter(Number.isFinite)
+      : fallback?.sparkline,
+    type,
+  };
+};
+
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
