@@ -597,14 +597,14 @@ const PortfolioRecommendation = ({
         </div>
       </div>
 
+      {/* Historical What-If */}
+      <WhatIfInvested funds={funds} investmentAmount={investmentAmount} />
+
       {/* Disclaimer */}
       <p className="text-xs text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
         <strong>Disclaimer:</strong> This portfolio recommendation is for educational purposes only and does not constitute financial advice. 
         Past performance is not indicative of future results. Please consult a licensed financial advisor before making investment decisions.
       </p>
-
-      {/* Historical What-If */}
-      <WhatIfInvested funds={funds} investmentAmount={investmentAmount} />
     </div>
   );
 };
