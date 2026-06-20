@@ -23,7 +23,11 @@ export interface ForecastIndicators {
   earningsGrowth?: string;
   revenueGrowth?: string;
   targetMean?: number | null;
+  targetHigh?: number | null;
+  targetLow?: number | null;
   numAnalysts?: number | null;
+  recommendationMean?: number | null;
+  recommendationLabel?: string | null;
   upgradesLast90d?: number | null;
   downgradesLast90d?: number | null;
   sector?: string;
@@ -144,43 +148,60 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
         <div>
           <p className="text-sm font-bold text-foreground tracking-wide">
             {forecast.symbol}{" "}
-            <span className="text-muted-foreground font-normal">· 12-Mo Forecast</span>
+            <span className="text-muted-foreground font-normal">
+              · 12-Mo Analyst Forecast
+            </span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
             Spot ${forecast.currentPrice.toFixed(2)}
-            {ind.driftAnnPct != null ? ` · Model drift ${fmtPct(ind.driftAnnPct)}` : ""}
+            {ind.numAnalysts ? ` · ${ind.numAnalysts} analysts covering` : ""}
             {ind.annualVol != null ? ` · σ ${ind.annualVol.toFixed(1)}%` : ""}
             {ind.sector ? ` · ${ind.sector}` : ""}
           </p>
         </div>
-        <span
-          className={`text-[9px] uppercase tracking-[0.15em] font-bold px-2 py-1 rounded-md border ${confidenceColor(
-            forecast.confidence,
-          )}`}
-        >
-          {forecast.confidence} confidence
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          {ind.recommendationLabel && (
+            <span className={`text-[9px] uppercase tracking-[0.15em] font-bold px-2 py-1 rounded-md border ${ratingColor(ind.recommendationLabel)}`}>
+              {ind.recommendationLabel}
+              {ind.recommendationMean != null ? ` · ${ind.recommendationMean.toFixed(2)}` : ""}
+            </span>
+          )}
+          <span
+            className={`text-[9px] uppercase tracking-[0.15em] font-bold px-2 py-1 rounded-md border ${confidenceColor(
+              forecast.confidence,
+            )}`}
+          >
+            {forecast.confidence} confidence
+          </span>
+        </div>
       </div>
 
       {/* Target pills */}
       <div className="grid grid-cols-3 gap-1.5">
-        <div className="rounded-lg border border-success/20 bg-success/5 px-2 py-1.5">
-          <p className="text-[9px] uppercase tracking-wider text-success/80 font-bold">Bull</p>
-          <p className="text-sm font-bold text-foreground font-mono">${forecast.bull.toFixed(2)}</p>
-          <p className="text-[10px] text-success">{fmtPct(upsideBull)}</p>
-        </div>
-        <div className="rounded-lg border border-white/20 bg-white/[0.06] px-2 py-1.5">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Base</p>
-          <p className="text-sm font-bold text-foreground font-mono">${forecast.base.toFixed(2)}</p>
-          <p className={`text-[10px] ${upsideBase >= 0 ? "text-success" : "text-destructive"}`}>
-            {fmtPct(upsideBase)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-2 py-1.5">
-          <p className="text-[9px] uppercase tracking-wider text-destructive/80 font-bold">Bear</p>
-          <p className="text-sm font-bold text-foreground font-mono">${forecast.bear.toFixed(2)}</p>
-          <p className="text-[10px] text-destructive">{fmtPct(upsideBear)}</p>
-        </div>
+        <CasePill
+          label="Bull"
+          analystSource={ind.targetHigh != null ? "Analyst High" : "Model"}
+          analysts={ind.numAnalysts}
+          price={forecast.bull}
+          upside={upsideBull}
+          tone="success"
+        />
+        <CasePill
+          label="Base"
+          analystSource={ind.targetMean != null ? "Analyst Mean" : "Model"}
+          analysts={ind.numAnalysts}
+          price={forecast.base}
+          upside={upsideBase}
+          tone="neutral"
+        />
+        <CasePill
+          label="Bear"
+          analystSource={ind.targetLow != null ? "Analyst Low" : "Model"}
+          analysts={ind.numAnalysts}
+          price={forecast.bear}
+          upside={upsideBear}
+          tone="destructive"
+        />
       </div>
 
       {/* Chart */}
@@ -390,6 +411,49 @@ function Indicator({ label, value, tone }: { label: string; value: string; tone?
       <p className={`font-mono font-bold ${tone ?? "text-foreground"}`}>{value}</p>
     </div>
   );
+}
+
+function CasePill({
+  label,
+  analystSource,
+  analysts,
+  price,
+  upside,
+  tone,
+}: {
+  label: string;
+  analystSource: string;
+  analysts?: number | null;
+  price: number;
+  upside: number;
+  tone: "success" | "neutral" | "destructive";
+}) {
+  const toneClasses =
+    tone === "success"
+      ? { border: "border-success/20", bg: "bg-success/5", label: "text-success/80", upside: "text-success" }
+      : tone === "destructive"
+        ? { border: "border-destructive/20", bg: "bg-destructive/5", label: "text-destructive/80", upside: "text-destructive" }
+        : { border: "border-white/20", bg: "bg-white/[0.06]", label: "text-muted-foreground", upside: upside >= 0 ? "text-success" : "text-destructive" };
+  const analystText = analysts && analysts > 0 ? `(${analysts} analysts)` : "(model)";
+  return (
+    <div className={`rounded-lg border ${toneClasses.border} ${toneClasses.bg} px-2 py-1.5`}>
+      <div className="flex items-baseline justify-between gap-1">
+        <p className={`text-[9px] uppercase tracking-wider font-bold ${toneClasses.label}`}>{label}</p>
+        <p className="text-[8px] text-muted-foreground/80 font-mono">{analystText}</p>
+      </div>
+      <p className="text-sm font-bold text-foreground font-mono">${price.toFixed(2)}</p>
+      <div className="flex items-baseline justify-between gap-1">
+        <p className={`text-[10px] ${toneClasses.upside}`}>{fmtPct(upside)}</p>
+        <p className="text-[8px] text-muted-foreground/70">{analystSource}</p>
+      </div>
+    </div>
+  );
+}
+
+function ratingColor(label: string) {
+  if (label === "Strong Buy" || label === "Buy") return "text-success border-success/30 bg-success/10";
+  if (label === "Hold") return "text-foreground border-white/20 bg-white/[0.06]";
+  return "text-destructive border-destructive/30 bg-destructive/10";
 }
 
 function signedTone(v?: number | null) {
