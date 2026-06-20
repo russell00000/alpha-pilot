@@ -602,7 +602,7 @@ const Markets = () => {
             </Button>
             
             <SearchSuggestions
-              suggestions={filteredSuggestions}
+              suggestions={mergedSuggestions}
               onSelect={(asset) => handleQuickSearch(asset.symbol)}
               visible={showSuggestions && searchQuery.length > 0}
               query={searchQuery}
