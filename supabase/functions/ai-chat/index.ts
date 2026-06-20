@@ -409,6 +409,37 @@ interface ForecastStats {
   priceSeries?: Array<{ date: number; price: number }>;
 }
 
+async function fetchUnifiedMarketQuote(ticker: string): Promise<{ price: number; changePercent: number; name?: string } | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !anonKey) return null;
+    const baseSym = ticker.replace(/-USD$/i, '').toUpperCase();
+    const mdResp = await fetch(`${supabaseUrl}/functions/v1/market-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${anonKey}`,
+        'apikey': anonKey,
+      },
+      body: JSON.stringify({ symbols: [baseSym] }),
+    });
+    if (!mdResp.ok) return null;
+    const md = await mdResp.json();
+    const row = Array.isArray(md?.data) ? md.data[0] : null;
+    const price = Number.parseFloat(String(row?.price ?? ''));
+    if (!row || !Number.isFinite(price) || price <= 0) return null;
+    return {
+      price,
+      changePercent: Number.isFinite(Number(row.changePercent)) ? Number(row.changePercent) : 0,
+      name: row.name,
+    };
+  } catch (e) {
+    console.log('unified market-data fetch failed:', e);
+    return null;
+  }
+}
+
 function calcReturn(prices: number[], lookbackDays: number): number | null {
   if (prices.length < lookbackDays + 1) return null;
   const recent = prices[prices.length - 1];
