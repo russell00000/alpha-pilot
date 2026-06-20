@@ -106,10 +106,10 @@ const fmtFullDate = (sec: number) =>
 
 const confidenceColor = (c: string) =>
   c === "High"
-    ? "text-success border-success/30 bg-success/10"
+    ? "text-success border-success/40 bg-success/10"
     : c === "Medium"
-      ? "text-foreground border-white/20 bg-white/[0.06]"
-      : "text-muted-foreground border-white/10 bg-white/[0.03]";
+      ? "text-foreground border-white/25 bg-white/[0.06]"
+      : "text-muted-foreground border-white/15 bg-white/[0.03]";
 
 export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   const data = buildChartSeries(forecast);
@@ -129,7 +129,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   }
   if (allVals.length === 0) {
     return (
-      <div className="mt-3 rounded-xl border border-white/[0.08] bg-black/30 backdrop-blur-sm p-6 text-center">
+      <div className="mt-3 border border-white/15 bg-black/40 backdrop-blur-sm p-6 text-center">
         <p className="text-sm text-muted-foreground">
           Forecast chart unavailable for {forecast.symbol} right now.
         </p>
@@ -142,70 +142,84 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   const symGrad = forecast.symbol.replace(/[^A-Za-z0-9]/g, "");
 
   return (
-    <div className="mt-3 rounded-xl border border-white/[0.08] bg-black/30 backdrop-blur-sm p-4 space-y-4">
+    <div className="mt-3 border border-white/15 bg-[#0b0b0c]/85 backdrop-blur-xl overflow-hidden shadow-[8px_8px_0_0_rgba(0,0,0,0.45)]">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-bold text-foreground tracking-wide">
-            {forecast.symbol}{" "}
-            <span className="text-muted-foreground font-normal">
-              · 12-Mo Analyst Forecast
+      <div className="p-5 border-b border-white/10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-1.5 py-0.5 bg-white text-black text-[9px] font-bold tracking-[0.2em] uppercase">
+              Equity
             </span>
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
-            Spot ${forecast.currentPrice.toFixed(2)}
-            {ind.numAnalysts ? ` · ${ind.numAnalysts} analysts covering` : ""}
-            {ind.annualVol != null ? ` · σ ${ind.annualVol.toFixed(1)}%` : ""}
-            {ind.sector ? ` · ${ind.sector}` : ""}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          {ind.recommendationLabel && (
-            <span className={`text-[9px] uppercase tracking-[0.15em] font-bold px-2 py-1 rounded-md border ${ratingColor(ind.recommendationLabel)}`}>
-              {ind.recommendationLabel}
-              {ind.recommendationMean != null ? ` · ${ind.recommendationMean.toFixed(2)}` : ""}
+            <span className="text-muted-foreground/80 text-[10px] tracking-[0.18em] uppercase font-medium">
+              12-Mo Analyst Forecast
             </span>
-          )}
-          <span
-            className={`text-[9px] uppercase tracking-[0.15em] font-bold px-2 py-1 rounded-md border ${confidenceColor(
-              forecast.confidence,
-            )}`}
+          </div>
+          <h1
+            className="text-5xl text-foreground tracking-tight leading-none"
+            style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700 }}
           >
-            {forecast.confidence} confidence
-          </span>
+            {forecast.symbol}
+          </h1>
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-foreground font-mono tracking-tighter leading-none">
+                ${forecast.currentPrice.toFixed(2)}
+              </span>
+              <span className="text-[10px] text-muted-foreground/80 uppercase tracking-widest mt-1 font-semibold">
+                Spot Price
+              </span>
+            </div>
+            <div className="h-10 w-px bg-white/15" />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                {ind.recommendationLabel && (
+                  <span className={`text-[10px] uppercase tracking-[0.18em] font-bold px-2 py-0.5 border ${ratingColor(ind.recommendationLabel)}`}>
+                    {ind.recommendationLabel}
+                    {ind.recommendationMean != null ? ` · ${ind.recommendationMean.toFixed(2)}` : ""}
+                  </span>
+                )}
+                <span className={`text-[9px] uppercase tracking-[0.18em] font-bold px-2 py-0.5 border ${confidenceColor(forecast.confidence)}`}>
+                  {forecast.confidence} Conf
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground/70 font-medium">
+                {ind.numAnalysts ? `${ind.numAnalysts} analysts` : "Model-derived"}
+                {ind.annualVol != null ? ` · σ ${ind.annualVol.toFixed(1)}%` : ""}
+                {ind.sector ? ` · ${ind.sector}` : ""}
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Target pills */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <CasePill
-          label="Bull"
-          analystSource={ind.targetHigh != null ? "Analyst High" : "Model"}
-          isAnalyst={ind.targetHigh != null}
-          price={forecast.bull}
-          upside={upsideBull}
-          tone="success"
-        />
-        <CasePill
-          label="Base"
-          analystSource={ind.targetMean != null ? "Analyst Mean" : "Model"}
-          isAnalyst={ind.targetMean != null}
-          price={forecast.base}
-          upside={upsideBase}
-          tone="neutral"
-        />
-        <CasePill
-          label="Bear"
-          analystSource={ind.targetLow != null ? "Analyst Low" : "Model"}
-          isAnalyst={ind.targetLow != null}
-          price={forecast.bear}
-          upside={upsideBear}
-          tone="destructive"
-        />
+        {/* Targets — horizontal editorial row */}
+        <div className="grid grid-cols-3 gap-6 md:text-right shrink-0">
+          <TargetBlock
+            label="Bull Case"
+            price={forecast.bull}
+            upside={upsideBull}
+            tone="success"
+            source={ind.targetHigh != null ? "Analyst High" : "Model"}
+          />
+          <TargetBlock
+            label="Base Case"
+            price={forecast.base}
+            upside={upsideBase}
+            tone="neutral"
+            source={ind.targetMean != null ? "Analyst Mean" : "Model"}
+          />
+          <TargetBlock
+            label="Bear Case"
+            price={forecast.bear}
+            upside={upsideBear}
+            tone="destructive"
+            source={ind.targetLow != null ? "Analyst Low" : "Model"}
+          />
+        </div>
       </div>
 
       {/* Chart */}
-      <div className="h-64 -mx-1">
+      <div className="relative bg-black/40 px-2 pt-6 pb-2">
+        <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
             <defs>
@@ -346,10 +360,11 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
             />
           </ComposedChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground -mt-1">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-muted-foreground px-5 py-3 border-t border-white/10">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-[2px] bg-foreground" /> Actual
         </span>
@@ -358,42 +373,42 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
           Projected base
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-2 rounded-sm bg-gradient-to-b from-success/40 via-primary/20 to-destructive/40" />
+          <span className="w-3 h-2 bg-gradient-to-b from-success/40 via-primary/20 to-destructive/40" />
           80% confidence band
         </span>
       </div>
 
-      {/* Key indicators */}
-      <div className="grid grid-cols-4 gap-1.5 text-[10px]">
-        <Indicator label="1Y" value={fmtPct(ind.return1Y)} tone={signedTone(ind.return1Y)} />
-        <Indicator label="3Y CAGR" value={fmtPct(ind.cagr3Y)} tone={signedTone(ind.cagr3Y)} />
-        <Indicator label="Vol" value={fmtPct(ind.annualVol)} />
-        <Indicator label="Max DD" value={fmtPct(ind.maxDrawdown)} tone="text-destructive" />
-        <Indicator label="Sharpe" value={fmtNum(ind.sharpe, 2)} tone={signedTone(ind.sharpe)} />
-        <Indicator label="RSI" value={fmtNum(ind.rsi14, 0)} tone={rsiTone(ind.rsi14)} />
-        <Indicator label="Fwd P/E" value={ind.forwardPE ?? "—"} />
-        <Indicator label="EPS Gr" value={ind.earningsGrowth ?? "—"} />
+      {/* Key indicators — bordered grid */}
+      <div className="grid grid-cols-4 border-t border-white/15">
+        <IndicatorCell label="1Y" value={fmtPct(ind.return1Y)} tone={signedTone(ind.return1Y)} />
+        <IndicatorCell label="3Y CAGR" value={fmtPct(ind.cagr3Y)} tone={signedTone(ind.cagr3Y)} />
+        <IndicatorCell label="Vol" value={fmtPct(ind.annualVol)} />
+        <IndicatorCell label="Max DD" value={fmtPct(ind.maxDrawdown)} tone="text-destructive" last />
+        <IndicatorCell label="Sharpe" value={fmtNum(ind.sharpe, 2)} tone={signedTone(ind.sharpe)} bottom />
+        <IndicatorCell label="RSI" value={fmtNum(ind.rsi14, 0)} tone={rsiTone(ind.rsi14)} bottom />
+        <IndicatorCell label="Fwd P/E" value={ind.forwardPE ?? "—"} bottom />
+        <IndicatorCell label="EPS Gr" value={ind.earningsGrowth ?? "—"} bottom last />
       </div>
 
       {/* Trend + analyst signals */}
-      <div className="flex flex-wrap gap-1.5 text-[9px] uppercase tracking-wider">
+      <div className="flex flex-wrap gap-1.5 text-[9px] uppercase tracking-wider px-5 py-3 border-t border-white/10">
         {ind.trend && (
-          <span className="px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-muted-foreground">
+          <span className="px-2 py-1 bg-white/[0.04] border border-white/[0.12] text-muted-foreground tracking-[0.15em]">
             {ind.trend}
           </span>
         )}
         {ind.numAnalysts ? (
-          <span className="px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-muted-foreground">
+          <span className="px-2 py-1 bg-white/[0.04] border border-white/[0.12] text-muted-foreground tracking-[0.15em]">
             {ind.numAnalysts} analysts
           </span>
         ) : null}
         {(ind.upgradesLast90d ?? 0) > 0 && (
-          <span className="px-2 py-1 rounded-md bg-success/10 border border-success/20 text-success">
+          <span className="px-2 py-1 bg-success/10 border border-success/30 text-success tracking-[0.15em]">
             ▲ {ind.upgradesLast90d} upgrades 90d
           </span>
         )}
         {(ind.downgradesLast90d ?? 0) > 0 && (
-          <span className="px-2 py-1 rounded-md bg-destructive/10 border border-destructive/20 text-destructive">
+          <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive tracking-[0.15em]">
             ▼ {ind.downgradesLast90d} downgrades 90d
           </span>
         )}
@@ -402,51 +417,62 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   );
 }
 
-function Indicator({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function IndicatorCell({
+  label,
+  value,
+  tone,
+  last,
+  bottom,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  last?: boolean;
+  bottom?: boolean;
+}) {
   return (
-    <div className="rounded-md bg-white/[0.03] border border-white/[0.06] px-1.5 py-1">
-      <p className="text-muted-foreground/70 font-semibold uppercase tracking-wider text-[8px]">
+    <div className={`px-4 py-3 ${last ? "" : "border-r border-white/10"} ${bottom ? "border-t border-white/10" : ""}`}>
+      <p className="text-muted-foreground/70 font-bold uppercase tracking-[0.18em] text-[9px] mb-1">
         {label}
       </p>
-      <p className={`font-mono font-bold ${tone ?? "text-foreground"}`}>{value}</p>
+      <p className={`font-mono font-bold text-sm tracking-tight ${tone ?? "text-foreground"}`}>
+        {value}
+      </p>
     </div>
   );
 }
 
-function CasePill({
+function TargetBlock({
   label,
-  analystSource,
-  isAnalyst,
   price,
   upside,
   tone,
+  source,
 }: {
   label: string;
-  analystSource: string;
-  isAnalyst: boolean;
   price: number;
   upside: number;
   tone: "success" | "neutral" | "destructive";
+  source: string;
 }) {
-  const toneClasses =
+  const upsideClass =
     tone === "success"
-      ? { border: "border-success/20", bg: "bg-success/5", label: "text-success/80", upside: "text-success" }
+      ? "text-success"
       : tone === "destructive"
-        ? { border: "border-destructive/20", bg: "bg-destructive/5", label: "text-destructive/80", upside: "text-destructive" }
-        : { border: "border-white/20", bg: "bg-white/[0.06]", label: "text-muted-foreground", upside: upside >= 0 ? "text-success" : "text-destructive" };
+        ? "text-destructive"
+        : "text-muted-foreground";
   return (
-    <div className={`rounded-lg border ${toneClasses.border} ${toneClasses.bg} px-2 py-1.5`}>
-      <div className="flex items-baseline justify-between gap-1">
-        <p className={`text-[9px] uppercase tracking-wider font-bold ${toneClasses.label}`}>{label}</p>
-        <p className="text-[8px] text-muted-foreground/80 font-mono">
-          {isAnalyst ? "consensus" : "model"}
-        </p>
-      </div>
-      <p className="text-sm font-bold text-foreground font-mono">${price.toFixed(2)}</p>
-      <div className="flex items-baseline justify-between gap-1">
-        <p className={`text-[10px] ${toneClasses.upside}`}>{fmtPct(upside)}</p>
-        <p className="text-[8px] text-muted-foreground/70">{analystSource}</p>
-      </div>
+    <div>
+      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-[0.2em] mb-1">
+        {label}
+      </p>
+      <p className="text-xl font-bold text-foreground font-mono tracking-tighter leading-none">
+        ${price.toFixed(2)}
+      </p>
+      <p className={`text-[11px] font-bold mt-1 ${upsideClass}`}>{fmtPct(upside)}</p>
+      <p className="text-[8px] text-muted-foreground/50 uppercase tracking-widest mt-0.5">
+        {source}
+      </p>
     </div>
   );
 }
