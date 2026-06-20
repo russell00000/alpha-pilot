@@ -1141,7 +1141,7 @@ serve(async (req) => {
     // Only do the slower free-text name → symbol resolution when we couldn't
     // pull any tickers out of the user message directly. Saves ~300-800ms.
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content || "";
-    let resolvedFromName: string[] = [];
+    let resolvedFromName: ResolvedSymbol[] = [];
     // Always run free-text symbol resolution so company names + casual phrasing
     // ("how's nvidia doing", "thoughts on rheinmetall", "is palantir overvalued")
     // reliably surface live data alongside any tickers we detected directly.
@@ -1166,7 +1166,11 @@ serve(async (req) => {
       }
       console.log("Resolved from name:", resolvedFromName, "(query:", cleaned, ")");
     }
-    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedFromName.slice(0, 5)]));
+    const resolvedSymbols = resolvedFromName.map((r) => r.symbol);
+    const resolutionBlock = resolvedFromName.length > 0
+      ? `\n\nSYMBOL RESOLUTION (highest confidence first):\n${resolvedFromName.slice(0, 5).map((r, i) => `${i + 1}. ${r.symbol}${r.name ? ` — ${r.name}` : ''}${r.exchange ? ` (${r.exchange})` : ''}`).join('\n')}\nUse #1 as the intended company unless the user explicitly corrects it.\n`
+      : "";
+    const allRequested = Array.from(new Set([...requestedTickers, ...resolvedSymbols.slice(0, 5)]));
 
     // Fetch philosophy and market data in parallel
     const [philosophy, marketData] = await Promise.all([
@@ -1193,7 +1197,7 @@ serve(async (req) => {
     // Only render a forecast for the single primary ticker the user asked about.
     // Prefer an explicit ticker from the user message; fall back to the first
     // name-resolved symbol.
-    const primaryTicker = requestedTickers[0] ?? resolvedFromName[0];
+    const primaryTicker = requestedTickers[0] ?? resolvedSymbols[0];
     const forecastTickers = primaryTicker ? [primaryTicker] : [];
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
