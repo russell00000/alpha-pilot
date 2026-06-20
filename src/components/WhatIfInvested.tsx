@@ -202,20 +202,43 @@ export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvest
             Historical prices were unavailable for this portfolio. Please try again later.
           </p>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Invested {horizonMeta.label.toLowerCase()} ago
-              </p>
-              <p className="text-2xl font-bold text-foreground">{formatMoney(investmentAmount)}</p>
+          const gain = totalNowValue - investmentAmount;
+          const returnPct = investmentAmount > 0 ? (gain / investmentAmount) * 100 : 0;
+
+          return (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Invested {horizonMeta.label.toLowerCase()} ago
+                </p>
+                <p className="text-2xl font-bold text-foreground">{formatMoney(investmentAmount)}</p>
+              </div>
+              <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Worth today
+                </p>
+                <p className="text-2xl font-bold text-foreground">{formatMoney(totalNowValue)}</p>
+              </div>
+              <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Total return
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className={cn("text-2xl font-bold", gain >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    {gain >= 0 ? "+" : ""}{formatMoney(gain)}
+                  </p>
+                  {gain >= 0 ? (
+                    <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+                  ) : (
+                    <ArrowDownRight className="w-5 h-5 text-red-500" />
+                  )}
+                </div>
+                <p className={cn("text-sm font-medium mt-0.5", gain >= 0 ? "text-emerald-500/70" : "text-red-500/70")}>
+                  {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Worth today
-              </p>
-              <p className="text-2xl font-bold text-foreground">{formatMoney(totalNowValue)}</p>
-            </div>
-          </div>
+          );
         )}
 
         {(horizonUnavailable || unpriced.length > 0) && hasResult && (

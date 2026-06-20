@@ -462,12 +462,6 @@ const PortfolioRecommendation = ({
                 const dailyChange = liveData?.change ?? null;
                 const dailyChangePercent = liveData?.changePercent ?? null;
                 
-                // Simulate total gain based on daily change as a proxy
-                // In a real app this would track from purchase date
-                const totalGain = dailyChange !== null && currentPrice !== null
-                  ? (allocatedAmount * (dailyChangePercent! / 100))
-                  : null;
-                const totalGainPercent = dailyChangePercent;
 
                 return (
                   <tr
@@ -547,20 +541,6 @@ const PortfolioRecommendation = ({
                     <td className="p-4 text-right font-medium text-foreground">{fund.allocation}%</td>
                     <td className="p-4 text-right text-foreground">
                       ${allocatedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="p-4 text-right">
-                      {totalGain !== null ? (
-                        <div>
-                          <span className={cn("font-medium", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
-                            {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <p className={cn("text-xs", totalGainPercent! >= 0 ? "text-emerald-500/70" : "text-red-500/70")}>
-                            {totalGainPercent! >= 0 ? "+" : ""}{totalGainPercent!.toFixed(2)}%
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
                     </td>
                   </tr>
                 );
