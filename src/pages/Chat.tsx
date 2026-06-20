@@ -28,7 +28,7 @@ const ForecastChart = lazy(() =>
 
 type ForecastData = Parameters<
   typeof import("@/components/ForecastChart").ForecastChart
->[0]["data"];
+>[0]["forecast"];
 
 interface Message {
   role: "user" | "assistant";
@@ -258,7 +258,7 @@ const Chat = () => {
                             <div className="h-64 rounded-xl bg-secondary/40 border border-border/40 animate-pulse" />
                           }
                         >
-                          <ForecastChart data={forecast} />
+                          <ForecastChart forecast={forecast} />
                         </Suspense>
                       ))}
                     </div>
