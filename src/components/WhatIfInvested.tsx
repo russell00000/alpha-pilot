@@ -37,7 +37,6 @@ interface SymbolState {
 function pickPriceAt(history: HistoryPoint[], targetDays: number): number | null {
   if (!history || history.length === 0) return null;
   const targetTime = Date.now() - targetDays * 24 * 60 * 60 * 1000;
-  // Find the data point closest to targetTime that is not after it
   let best: HistoryPoint | null = null;
   let bestDelta = Infinity;
   for (const p of history) {
@@ -56,11 +55,11 @@ const formatMoney = (n: number) =>
 
 export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvestedProps) {
   const tradable = useMemo(() => funds.filter((f) => f.symbol !== "CASH"), [funds]);
-  const [selected, setSelected] = useState<Record<string, Horizon>>(() => {
-    const init: Record<string, Horizon> = {};
-    tradable.forEach((f) => (init[f.symbol] = "1Y"));
-    return init;
-  });
+  const cashAllocation = useMemo(
+    () => funds.filter((f) => f.symbol === "CASH").reduce((s, f) => s + f.allocation, 0),
+    [funds]
+  );
+  const [horizon, setHorizon] = useState<Horizon>("1Y");
   const [data, setData] = useState<Record<string, SymbolState>>({});
 
   useEffect(() => {
@@ -110,137 +109,166 @@ export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvest
 
   if (tradable.length === 0) return null;
 
+  // Aggregate across all holdings for the selected horizon.
+  const horizonMeta = HORIZONS.find((h) => h.key === horizon)!;
+  const stillLoading = tradable.some((f) => !data[f.symbol] || data[f.symbol].loading);
+
+  let totalNowValue = 0;
+  let totalAllocated = 0;
+  let priced = 0;
+  let unpriced: string[] = [];
+  let earliestAvailableDays = Infinity;
+
+  for (const fund of tradable) {
+    const allocated = (investmentAmount * fund.allocation) / 100;
+    totalAllocated += allocated;
+    const state = data[fund.symbol];
+    if (!state || state.loading || !state.history || !state.current) {
+      unpriced.push(fund.symbol);
+      continue;
+    }
+    const oldest = state.history[0];
+    if (oldest) {
+      const daysAvail = Math.floor(
+        (Date.now() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysAvail < earliestAvailableDays) earliestAvailableDays = daysAvail;
+    }
+    const past = pickPriceAt(state.history, horizonMeta.days);
+    if (!past || past <= 0) {
+      unpriced.push(fund.symbol);
+      continue;
+    }
+    const shares = allocated / past;
+    totalNowValue += shares * state.current;
+    priced++;
+  }
+
+  // Add the cash portion at face value (no growth)
+  const cashAmount = (investmentAmount * cashAllocation) / 100;
+  totalNowValue += cashAmount;
+  totalAllocated += cashAmount;
+
+  const gain = totalNowValue - investmentAmount;
+  const returnPct =
+    investmentAmount > 0 ? ((totalNowValue - investmentAmount) / investmentAmount) * 100 : 0;
+  const hasResult = priced > 0 && !stillLoading;
+  const horizonUnavailable =
+    !stillLoading && isFinite(earliestAvailableDays) && earliestAvailableDays + 30 < horizonMeta.days;
+
   return (
     <div className="glass-card overflow-hidden">
-      <div className="p-4 border-b border-border/50 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <History className="w-4 h-4 text-primary" />
+      <div className="p-4 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <History className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">What If You'd Invested Earlier?</h3>
+            <p className="text-sm text-muted-foreground">
+              Hypothetical value of your full portfolio if {formatMoney(investmentAmount)} had been invested across these allocations earlier.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">What If You'd Invested Earlier?</h3>
-          <p className="text-sm text-muted-foreground">
-            See what each holding's allocation would be worth today, based on prices from 6 months to 5 years ago.
-          </p>
+
+        {/* Horizon toggle */}
+        <div className="flex rounded-lg border border-border/50 bg-muted/30 p-0.5">
+          {HORIZONS.map((h) => {
+            const active = h.key === horizon;
+            return (
+              <button
+                key={h.key}
+                type="button"
+                onClick={() => setHorizon(h.key)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {h.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="divide-y divide-border/40">
-        {tradable.map((fund) => {
-          const allocated = (investmentAmount * fund.allocation) / 100;
-          const state = data[fund.symbol];
-          const horizon = selected[fund.symbol] || "1Y";
-          const horizonMeta = HORIZONS.find((h) => h.key === horizon)!;
-
-          let nowValue: number | null = null;
-          let returnPct: number | null = null;
-          let pastPrice: number | null = null;
-          if (state?.history && state.current) {
-            pastPrice = pickPriceAt(state.history, horizonMeta.days);
-            if (pastPrice && pastPrice > 0) {
-              const shares = allocated / pastPrice;
-              nowValue = shares * state.current;
-              returnPct = ((state.current - pastPrice) / pastPrice) * 100;
-            }
-          }
-          const gain = nowValue !== null ? nowValue - allocated : null;
-          const oldestPoint = state?.history?.[0];
-          const oldestDays = oldestPoint
-            ? Math.floor((Date.now() - new Date(oldestPoint.date).getTime()) / (1000 * 60 * 60 * 24))
-            : 0;
-
-          return (
-            <div key={fund.symbol} className="p-4 space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{fund.symbol}</span>
-                    <span className="font-semibold text-foreground truncate">{fund.name}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Allocation today: {formatMoney(allocated)} ({fund.allocation.toFixed(1)}%)
-                  </p>
-                </div>
-
-                {/* Horizon toggle */}
-                <div className="flex rounded-lg border border-border/50 bg-muted/30 p-0.5">
-                  {HORIZONS.map((h) => {
-                    const active = h.key === horizon;
-                    const disabled =
-                      !!state?.history && oldestDays > 0 && h.days > oldestDays + 30;
-                    return (
-                      <button
-                        key={h.key}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          setSelected((prev) => ({ ...prev, [fund.symbol]: h.key }))
-                        }
-                        className={cn(
-                          "px-3 py-1 text-xs font-medium rounded-md transition-colors",
-                          active
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground",
-                          disabled && "opacity-40 cursor-not-allowed hover:text-muted-foreground"
-                        )}
-                        title={disabled ? "Not enough price history" : undefined}
-                      >
-                        {h.key}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Result row */}
-              <div className="rounded-lg bg-muted/20 border border-border/30 p-3">
-                {state?.loading || !state ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading price history…
-                  </div>
-                ) : state.error ? (
-                  <p className="text-sm text-muted-foreground">
-                    Price history unavailable for this holding.
-                  </p>
-                ) : nowValue === null || returnPct === null || gain === null ? (
-                  <p className="text-sm text-muted-foreground">
-                    Not enough history for {horizonMeta.label.toLowerCase()} of data.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-sm text-foreground">
-                      <span className="text-muted-foreground">
-                        Investing {formatMoney(allocated)} {horizonMeta.label.toLowerCase()} ago would be worth
-                      </span>{" "}
-                      <span className="font-semibold">{formatMoney(nowValue)}</span> today.
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {returnPct >= 0 ? (
-                        <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-red-500" />
-                      )}
-                      <span
-                        className={cn(
-                          "font-semibold text-sm",
-                          returnPct >= 0 ? "text-emerald-500" : "text-red-500"
-                        )}
-                      >
-                        {gain >= 0 ? "+" : "-"}
-                        {formatMoney(Math.abs(gain))} ({returnPct >= 0 ? "+" : ""}
-                        {returnPct.toFixed(2)}%)
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+      <div className="p-6">
+        {stillLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading historical prices for your holdings…
+          </div>
+        ) : !hasResult ? (
+          <p className="text-sm text-muted-foreground">
+            Historical prices were unavailable for this portfolio. Please try again later.
+          </p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                Invested {horizonMeta.label.toLowerCase()} ago
+              </p>
+              <p className="text-2xl font-bold text-foreground">{formatMoney(investmentAmount)}</p>
             </div>
-          );
-        })}
+            <div className="rounded-xl bg-muted/20 border border-border/30 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                Worth today
+              </p>
+              <p className="text-2xl font-bold text-foreground">{formatMoney(totalNowValue)}</p>
+            </div>
+            <div
+              className={cn(
+                "rounded-xl border p-4",
+                gain >= 0
+                  ? "bg-emerald-500/10 border-emerald-500/30"
+                  : "bg-red-500/10 border-red-500/30"
+              )}
+            >
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                Total return
+              </p>
+              <div className="flex items-center gap-2">
+                {gain >= 0 ? (
+                  <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+                ) : (
+                  <ArrowDownRight className="w-5 h-5 text-red-500" />
+                )}
+                <p
+                  className={cn(
+                    "text-2xl font-bold",
+                    gain >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}
+                >
+                  {gain >= 0 ? "+" : "-"}
+                  {formatMoney(Math.abs(gain))}
+                </p>
+              </div>
+              <p
+                className={cn(
+                  "text-sm font-medium mt-1",
+                  gain >= 0 ? "text-emerald-500/80" : "text-red-500/80"
+                )}
+              >
+                {returnPct >= 0 ? "+" : ""}
+                {returnPct.toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        )}
+
+        {(horizonUnavailable || unpriced.length > 0) && hasResult && (
+          <p className="text-xs text-muted-foreground mt-4">
+            {horizonUnavailable
+              ? `Some holdings don't have a full ${horizonMeta.label.toLowerCase()} of price history, so their earliest available price was used.`
+              : `Excluded from the calculation due to missing price history: ${unpriced.join(", ")}.`}
+          </p>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground p-3 border-t border-border/40 bg-muted/10">
-        Hypothetical, price-only calculation using your current target allocation. Excludes dividends, fees, and rebalancing. Past performance is not indicative of future results.
+        Hypothetical, price-only calculation using your current target allocation. Cash sleeve held at face value. Excludes dividends, fees, and rebalancing. Past performance is not indicative of future results.
       </p>
     </div>
   );
