@@ -215,43 +215,6 @@ export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvest
               </p>
               <p className="text-2xl font-bold text-foreground">{formatMoney(totalNowValue)}</p>
             </div>
-            <div
-              className={cn(
-                "rounded-xl border p-4",
-                gain >= 0
-                  ? "bg-emerald-500/10 border-emerald-500/30"
-                  : "bg-red-500/10 border-red-500/30"
-              )}
-            >
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Total return
-              </p>
-              <div className="flex items-center gap-2">
-                {gain >= 0 ? (
-                  <ArrowUpRight className="w-5 h-5 text-emerald-500" />
-                ) : (
-                  <ArrowDownRight className="w-5 h-5 text-red-500" />
-                )}
-                <p
-                  className={cn(
-                    "text-2xl font-bold",
-                    gain >= 0 ? "text-emerald-500" : "text-red-500"
-                  )}
-                >
-                  {gain >= 0 ? "+" : "-"}
-                  {formatMoney(Math.abs(gain))}
-                </p>
-              </div>
-              <p
-                className={cn(
-                  "text-sm font-medium mt-1",
-                  gain >= 0 ? "text-emerald-500/80" : "text-red-500/80"
-                )}
-              >
-                {returnPct >= 0 ? "+" : ""}
-                {returnPct.toFixed(2)}%
-              </p>
-            </div>
           </div>
         )}
 
