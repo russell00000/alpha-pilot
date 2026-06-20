@@ -688,6 +688,53 @@ serve(async (req) => {
       return new Response(JSON.stringify({ data: searchResults }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Lightweight symbol-only search (no quote fetch) for autocomplete.
+    // Uses Yahoo Finance's public search endpoint so ANY listed security is reachable.
+    if (body.symbolSearch && typeof body.symbolSearch === "string") {
+      const q = body.symbolSearch.trim();
+      if (!q) {
+        return new Response(JSON.stringify({ data: [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      try {
+        const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0&listsCount=0`;
+        const resp = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; VantageBot/1.0)",
+            "Accept": "application/json",
+          },
+        });
+        if (!resp.ok) {
+          return new Response(JSON.stringify({ data: [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const json = await resp.json();
+        const quotes = Array.isArray(json?.quotes) ? json.quotes : [];
+        const mapType = (qt: string, type: string) => {
+          const t = (qt || type || "").toLowerCase();
+          if (t.includes("etf")) return "etf";
+          if (t.includes("mutual")) return "mutual_fund";
+          if (t.includes("crypto")) return "crypto";
+          if (t.includes("index")) return "index";
+          if (t.includes("future")) return "future";
+          if (t.includes("currency")) return "currency";
+          return "stock";
+        };
+        const data = quotes
+          .filter((q: any) => q && (q.symbol || q.shortname))
+          .map((q: any) => ({
+            symbol: q.symbol as string,
+            name: (q.shortname || q.longname || q.symbol) as string,
+            type: mapType(q.quoteType, q.typeDisp),
+            exchange: q.exchDisp || q.exchange || null,
+          }));
+        return new Response(JSON.stringify({ data }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60, s-maxage=300" },
+        });
+      } catch (e) {
+        console.error("symbolSearch error:", e);
+        return new Response(JSON.stringify({ data: [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     if (symbols && Array.isArray(symbols)) {
       const results: MarketData[] = [];
       const cryptoSymbols: string[] = [];

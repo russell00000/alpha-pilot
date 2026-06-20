@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import { SearchSuggestions } from "@/components/SearchSuggestions";
+import { useSymbolSearch } from "@/hooks/useSymbolSearch";
 
 interface PriceAlert {
   id: string;
@@ -81,10 +82,20 @@ const Alerts = () => {
             const lenB = b.asset.symbol.length + b.asset.name.length;
             return lenA - lenB;
           })
-          .slice(0, 16)
+          .slice(0, 8)
           .map((x) => x.asset);
       })()
     : [];
+
+  // Dynamic, market-wide search so any listed security is reachable.
+  const { results: remoteSuggestions } = useSymbolSearch(symbolQuery, 1, 250);
+  const mergedSuggestions = (() => {
+    const seen = new Set(filteredSuggestions.map((s: any) => s.symbol.toUpperCase()));
+    const remote = remoteSuggestions
+      .filter((r) => r.symbol && !seen.has(r.symbol.toUpperCase()))
+      .map((r) => ({ symbol: r.symbol, name: r.name, type: r.type }));
+    return [...filteredSuggestions, ...remote].slice(0, 16);
+  })();
 
   const handleSelectSymbol = (asset: { symbol: string; name: string; type: string }) => {
     setSelectedSymbol({ symbol: asset.symbol, name: asset.name });
@@ -212,7 +223,7 @@ const Alerts = () => {
               </div>
               
               <SearchSuggestions
-                suggestions={filteredSuggestions}
+               suggestions={mergedSuggestions}
                 onSelect={handleSelectSymbol}
                 visible={showSuggestions && symbolQuery.length > 0}
                 query={symbolQuery}

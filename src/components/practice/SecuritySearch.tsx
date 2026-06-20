@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { top100Stocks, topETFs } from "@/data/top-stocks";
+import { useSymbolSearch } from "@/hooks/useSymbolSearch";
 
 interface SecuritySearchProps {
   onBuy: (symbol: string, name: string) => void;
@@ -34,8 +35,25 @@ export default function SecuritySearch({ onBuy }: SecuritySearchProps) {
     const q = query.toLowerCase();
     return allSecurities
       .filter(s => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
-      .slice(0, 8);
+      .slice(0, 5);
   }, [query]);
+
+  // Market-wide fallback so any listed security is searchable.
+  const { results: remote } = useSymbolSearch(query, 1, 250);
+  const mapType = (t: string) => {
+    if (t === "etf") return "ETF";
+    if (t === "mutual_fund") return "Mutual Fund";
+    if (t === "crypto") return "Crypto";
+    if (t === "index") return "Index";
+    return "Stock";
+  };
+  const merged = (() => {
+    const seen = new Set(results.map(r => r.symbol.toUpperCase()));
+    const extra = remote
+      .filter(r => r.symbol && !seen.has(r.symbol.toUpperCase()))
+      .map(r => ({ symbol: r.symbol, name: r.name, type: mapType(r.type) }));
+    return [...results, ...extra].slice(0, 12);
+  })();
 
   return (
     <div className="space-y-3">
@@ -49,9 +67,9 @@ export default function SecuritySearch({ onBuy }: SecuritySearchProps) {
         />
       </div>
 
-      {results.length > 0 && (
+      {merged.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-card divide-y divide-border/40 max-h-80 overflow-y-auto">
-          {results.map((s) => (
+          {merged.map((s) => (
             <div key={s.symbol} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => onBuy(s.symbol, s.name)}>
               <div className="flex items-center gap-3">
                 <img
