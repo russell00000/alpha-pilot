@@ -452,7 +452,6 @@ const PortfolioRecommendation = ({
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Daily Change</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Allocation</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Value</th>
-                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total Gain</th>
               </tr>
             </thead>
             <tbody>
