@@ -149,9 +149,6 @@ export default function WhatIfInvested({ funds, investmentAmount }: WhatIfInvest
   totalNowValue += cashAmount;
   totalAllocated += cashAmount;
 
-  const gain = totalNowValue - investmentAmount;
-  const returnPct =
-    investmentAmount > 0 ? ((totalNowValue - investmentAmount) / investmentAmount) * 100 : 0;
   const hasResult = priced > 0 && !stillLoading;
   const horizonUnavailable =
     !stillLoading && isFinite(earliestAvailableDays) && earliestAvailableDays + 30 < horizonMeta.days;
