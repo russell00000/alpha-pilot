@@ -452,7 +452,6 @@ const PortfolioRecommendation = ({
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Daily Change</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Allocation</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Value</th>
-                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total Gain</th>
               </tr>
             </thead>
             <tbody>
@@ -463,12 +462,6 @@ const PortfolioRecommendation = ({
                 const dailyChange = liveData?.change ?? null;
                 const dailyChangePercent = liveData?.changePercent ?? null;
                 
-                // Simulate total gain based on daily change as a proxy
-                // In a real app this would track from purchase date
-                const totalGain = dailyChange !== null && currentPrice !== null
-                  ? (allocatedAmount * (dailyChangePercent! / 100))
-                  : null;
-                const totalGainPercent = dailyChangePercent;
 
                 return (
                   <tr
@@ -549,50 +542,10 @@ const PortfolioRecommendation = ({
                     <td className="p-4 text-right text-foreground">
                       ${allocatedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="p-4 text-right">
-                      {totalGain !== null ? (
-                        <div>
-                          <span className={cn("font-medium", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
-                            {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <p className={cn("text-xs", totalGainPercent! >= 0 ? "text-emerald-500/70" : "text-red-500/70")}>
-                            {totalGainPercent! >= 0 ? "+" : ""}{totalGainPercent!.toFixed(2)}%
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </td>
                   </tr>
                 );
               })}
             </tbody>
-            {/* Portfolio Total Row */}
-            {Object.keys(liveMarketData).length > 0 && (
-              <tfoot>
-                <tr className="bg-muted/30 font-medium">
-                  <td className="p-4 text-foreground" colSpan={5}>Portfolio Total</td>
-                  <td className="p-4 text-right text-foreground">
-                    ${investmentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-4 text-right">
-                    {(() => {
-                      const totalGain = funds.reduce((sum, fund) => {
-                        const liveData = liveMarketData[fund.symbol];
-                        if (!liveData) return sum;
-                        const allocatedAmount = (investmentAmount * fund.allocation) / 100;
-                        return sum + (allocatedAmount * (liveData.changePercent / 100));
-                      }, 0);
-                      return (
-                        <span className={cn("font-semibold", totalGain >= 0 ? "text-emerald-500" : "text-red-500")}>
-                          {totalGain >= 0 ? "+" : ""}${Math.abs(totalGain).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
       </div>
