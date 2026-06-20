@@ -173,7 +173,6 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
   // like "what do you think?" still resolve to the ticker we were just discussing.
   const recent = [...messages].slice(-4);
   const lastUserMsg = [...recent].reverse().find(m => m.role === "user")?.content || "";
-  const scanText = recent.map(m => m.content).join("\n");
   const found: string[] = [];
 
   // First priority: explicit $TICKER mentions (case-insensitive)
