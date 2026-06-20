@@ -22,7 +22,6 @@ const navItems = [
   { label: "Dashboard", href: "/", prefetch: () => import("@/pages/Index") },
   { label: "Markets", href: "/markets", prefetch: () => import("@/pages/Markets") },
   { label: "Portfolio", href: "/portfolio", prefetch: () => import("@/pages/Portfolio") },
-  { label: "Practice", href: "/practice", prefetch: () => import("@/pages/Practice") },
   { label: "Chat", href: "/chat", prefetch: () => import("@/pages/Chat") },
 ];
 
