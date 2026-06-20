@@ -1156,7 +1156,7 @@ serve(async (req) => {
     // Always run free-text symbol resolution so company names + casual phrasing
     // ("how's nvidia doing", "thoughts on rheinmetall", "is palantir overvalued")
     // reliably surface live data alongside any tickers we detected directly.
-    if (lastUserMsg.trim().length >= 3) {
+    if (shouldResolveFreeTextName(lastUserMsg)) {
       // Strip common filler words that confuse Yahoo's symbol search
       // (e.g. "tractor supply analysis" returns 0 quotes but "tractor supply" returns TSCO).
       const FILLER = /\b(analysis|analyze|stock|stocks|ticker|price|prices|quote|quotes|chart|charts|forecast|forecasts|target|targets|outlook|review|reviews|company|inc|corp|corporation|the|a|an|please|tell|me|about|what|whats|how|hows|is|are|do|does|on|of|for|to|with|and|or|thoughts|opinion|thinking|think|buy|sell|hold|today|now|currently|live)\b/gi;
@@ -1328,9 +1328,9 @@ ${philosophy}
 ## ABSOLUTE RULES
 1. ALWAYS answer the question. You have LIVE INTERNET DATA for every public security via Yahoo Finance + Finnhub (quotes, profile, sector, market cap, P/E, analyst targets, headlines), AND deep general finance knowledge (concepts, strategies, history, macro, ratios, tax basics, retirement accounts, options basics, etc.). NEVER say you "can't help", "can't find data", or "don't have access" — you do.
 2. For GENERAL / EDUCATIONAL questions (concepts, strategies, definitions, how-things-work, history, macro context, "what is X", "explain Y", "best ETFs for beginners", "how does dollar-cost averaging work"): answer fully from your knowledge. Be specific, give examples, name real tickers/funds when useful. The price-integrity rule below applies ONLY to live numeric quotes.
-3. For TICKER/COMPANY questions: use the LIVE MARKET DATA, ON-DEMAND LOOKUPS, and PERFORMANCE FORECAST INPUTS blocks below. The company name → ticker mapping has already been resolved for you.
+3. For TICKER/COMPANY questions: use SYMBOL RESOLUTION, LIVE MARKET DATA, ON-DEMAND LOOKUPS, and PERFORMANCE FORECAST INPUTS below. Trust SYMBOL RESOLUTION #1 for company-name queries. If the data block says TD — The Toronto-Dominion Bank, do not reinterpret TD as another company.
 4. PRICE INTEGRITY (non-negotiable, applies ONLY to live numeric quotes): every specific current price, today's % change, analyst target, P/E, market cap, 52-week level, or volume you cite MUST appear verbatim in one of the data blocks below. If a specific live number isn't there, describe qualitatively ("trading near recent highs", "well off its 52-week low") and recommend the user retry with "$TICKER" — NEVER invent or recall a stale price.
-5. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia"), the matching ticker and live data will be in ON-DEMAND LOOKUPS — use it. If a name didn't resolve, ask for the ticker rather than refusing.
+5. When the user mentions a company by name (e.g. "Palantir", "Rheinmetall", "Nvidia", "TD Bank"), the matching ticker and live data will be in SYMBOL RESOLUTION / ON-DEMAND LOOKUPS — use it. If a name didn't resolve, ask for the ticker rather than guessing.
 6. NEVER claim a stock is "private" or "not traded" unless the data explicitly returns nothing for that name.
 7. When relevant, weave in 1 specific live data point so the answer feels current ("Recent headline: ...").
 
@@ -1367,7 +1367,7 @@ Conviction & realism rules:
 
 ## LIVE MARKET DATA
 ${marketData}
-${onDemandData}${forecastBlock}`;
+${resolutionBlock}${onDemandData}${forecastBlock}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
