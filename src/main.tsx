@@ -1,7 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import "@fontsource/playfair-display/700.css";
 
 // Recover from stale lazy-loaded chunks after a redeploy.
 const RELOAD_KEY = "__chunk_reload__";

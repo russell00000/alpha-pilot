@@ -154,10 +154,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
               12-Mo Analyst Forecast
             </span>
           </div>
-          <h1
-            className="text-5xl text-foreground tracking-tight leading-none"
-            style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700 }}
-          >
+          <h1 className="font-mono text-5xl font-bold text-foreground tracking-tighter leading-none">
             {forecast.symbol}
           </h1>
           <div className="flex items-center gap-4 mt-4">
