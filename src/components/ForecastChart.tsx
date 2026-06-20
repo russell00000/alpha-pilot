@@ -172,7 +172,6 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
                 {ind.recommendationLabel && (
                   <span className={`text-[10px] uppercase tracking-[0.18em] font-bold px-2 py-0.5 border ${ratingColor(ind.recommendationLabel)}`}>
                     {ind.recommendationLabel}
-                    {ind.recommendationMean != null ? ` · ${ind.recommendationMean.toFixed(2)}` : ""}
                   </span>
                 )}
                 <span className={`text-[9px] uppercase tracking-[0.18em] font-bold px-2 py-0.5 border ${confidenceColor(forecast.confidence)}`}>
