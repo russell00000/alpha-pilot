@@ -23,6 +23,29 @@ interface MarketData {
   type: "stock" | "crypto" | "etf" | "mutual_fund";
 }
 
+const safeNumber = (value: unknown, fallback = 0) => {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const normalizeMarketData = (item: any, fallback?: Partial<MarketData>): MarketData => {
+  const symbol = String(item?.symbol || fallback?.symbol || "").toUpperCase();
+  const type = (item?.type || fallback?.type || "stock") as MarketData["type"];
+
+  return {
+    symbol,
+    name: String(item?.name || fallback?.name || symbol || "Unknown"),
+    price: item?.price === undefined || item?.price === null || item?.price === "" ? fallback?.price || "—" : String(item.price),
+    change: safeNumber(item?.change, fallback?.change || 0),
+    changePercent: safeNumber(item?.changePercent, fallback?.changePercent || 0),
+    volume: String(item?.volume || fallback?.volume || "—"),
+    sparkline: Array.isArray(item?.sparkline)
+      ? item.sparkline.map((point: unknown) => safeNumber(point)).filter(Number.isFinite)
+      : fallback?.sparkline,
+    type,
+  };
+};
+
 const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
@@ -76,10 +99,11 @@ const Markets = () => {
         body: { symbols: uncached },
       });
 
-      if (!error && data?.data) {
+      if (!error && Array.isArray(data?.data)) {
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
-          cache[item.symbol] = item;
+        data.data.forEach((item: any) => {
+          const normalized = normalizeMarketData(item);
+          if (normalized.symbol) cache[normalized.symbol] = normalized;
         });
         mergePriceCache(cache);
       }
@@ -97,12 +121,13 @@ const Markets = () => {
       if (error) throw error;
 
       if (data?.data && Array.isArray(data.data)) {
-        setLiveData(data.data);
+        const normalizedData = data.data.map((item: any) => normalizeMarketData(item)).filter((item) => item.symbol);
+        setLiveData(normalizedData);
         setLastUpdated(new Date());
         
         // Cache all returned prices immediately
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
+        normalizedData.forEach((item) => {
           cache[item.symbol] = item;
         });
         mergePriceCache(cache);
@@ -194,10 +219,11 @@ const Markets = () => {
       if (error) throw error;
 
       if (data?.data && Array.isArray(data.data)) {
-        setSearchResults(data.data);
+        const normalizedResults = data.data.map((item: any) => normalizeMarketData(item)).filter((item) => item.symbol);
+        setSearchResults(normalizedResults);
         // Cache results
         const cache: Record<string, MarketData> = {};
-        data.data.forEach((item: MarketData) => {
+        normalizedResults.forEach((item) => {
           cache[item.symbol] = item;
         });
         mergePriceCache(cache);
@@ -231,7 +257,8 @@ const Markets = () => {
       });
 
       if (!error && data?.data?.[0]) {
-        mergePriceCache({ [symbol]: data.data[0] });
+        const normalized = normalizeMarketData(data.data[0], { symbol });
+        mergePriceCache({ [normalized.symbol]: normalized });
       }
     } catch (err) {
       console.error("Error fetching stock:", err);
@@ -332,10 +359,11 @@ const Markets = () => {
 
   // Add sparkline to item if missing
   const ensureSparkline = (item: MarketData): MarketData => {
-    if (item.sparkline && item.sparkline.length > 0) return item;
+    const normalized = normalizeMarketData(item);
+    if (normalized.sparkline && normalized.sparkline.length > 0) return normalized;
     return {
-      ...item,
-      sparkline: generateSparkline(item.symbol, item.changePercent || 0),
+      ...normalized,
+      sparkline: generateSparkline(normalized.symbol, normalized.changePercent || 0),
     };
   };
 
@@ -781,7 +809,7 @@ const Markets = () => {
                               isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                             )}>
                               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                              {isPositive ? "+" : ""}{item.changePercent.toFixed(2)}%
+                              {isPositive ? "+" : ""}{safeNumber(item.changePercent).toFixed(2)}%
                             </div>
                           ) : (
                             <span className="text-muted-foreground">—</span>
