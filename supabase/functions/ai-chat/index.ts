@@ -1143,7 +1143,11 @@ serve(async (req) => {
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    const forecastTickers = allRequested.slice(0, 4);
+    // Only render a forecast for the single primary ticker the user asked about.
+    // Prefer an explicit ticker from the user message; fall back to the first
+    // name-resolved symbol.
+    const primaryTicker = requestedTickers[0] ?? resolvedFromName[0];
+    const forecastTickers = primaryTicker ? [primaryTicker] : [];
     if (forecastTickers.length > 0) {
       const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
       const valid = forecasts.filter((f): f is ForecastStats => !!f);
