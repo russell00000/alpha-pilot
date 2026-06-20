@@ -205,8 +205,11 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
     'BEST', 'GOOD', 'SAFE', 'RISK', 'FUND', 'NEWS', 'RATE', 'PAYS', 'WIN',
     'F', 'V', 'C', 'O', 'T', 'D', 'A',
   ]);
+  // Only scan the current user message for lowercase/mixed-case ticker matches.
+  // Scanning prior assistant turns caused tickers the assistant mentioned once
+  // (e.g. "EA") to be re-detected on every follow-up question.
   const lowerPattern = /\b([A-Za-z]{2,5})\b/g;
-  while ((match = lowerPattern.exec(scanText)) !== null) {
+  while ((match = lowerPattern.exec(lastUserMsg)) !== null) {
     const up = match[1].toUpperCase();
     // Only accept a lowercase/mixed-case token as a ticker if it's in our
     // known universe AND not an ambiguous English word. ALL-CAPS in original
