@@ -307,7 +307,17 @@ function extractTickers(messages: { role: string; content: string }[]): string[]
   }
   const lower = lastUserMsg.toLowerCase();
   for (const [name, sym] of Object.entries(NAME_MAP)) {
-    if (lower.includes(name)) found.push(sym);
+    // Short names (≤3 chars) like "ea", "bp", "dow", "amd" cause massive false
+    // positives via substring matching ("deal", "year", "really" → EA). Require
+    // a word-boundary match for any short name; substring is OK for longer ones.
+    if (name.length <= 3) {
+      // Escape regex special chars in the name (none in current map, but safe).
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(lower)) found.push(sym);
+    } else if (lower.includes(name)) {
+      found.push(sym);
+    }
   }
   
   // Extensive skip list of common English words that could be mistaken for tickers
