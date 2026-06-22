@@ -145,7 +145,7 @@ const Chat = () => {
           data.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
-            forecasts: (m.forecasts as ForecastData[] | null) ?? undefined,
+            forecasts: (m.forecasts as unknown as ForecastData[] | null) ?? undefined,
             isError: m.is_error,
           })),
         );
@@ -183,7 +183,7 @@ const Chat = () => {
       user_id: user.id,
       role: msg.role,
       content: msg.content,
-      forecasts: msg.forecasts ?? null,
+      forecasts: (msg.forecasts ?? null) as unknown as never,
       is_error: msg.isError ?? false,
     });
     if (error) console.error("Save message error:", error);
