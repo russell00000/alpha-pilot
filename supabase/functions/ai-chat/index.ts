@@ -1248,8 +1248,23 @@ serve(async (req) => {
           return cagr != null ? cp * (1 + cagr / 100) : cp * 1.08;
         })();
         const base = f.targetMean ?? fallbackBase;
-        const bull = f.targetHigh ?? base * (1 + vol / 100);
-        const bear = f.targetLow ?? base * (1 - vol / 100);
+
+        // 12-month bull/bear spread:
+        // Anchor to a vol-implied band of ±0.7σ around the base case (a ~52%
+        // confidence interval, not full 1σ in each direction). Then, if analyst
+        // extremes are available, blend 50/50 with them — this pulls in single
+        // outlier analyst targets that would otherwise create absurd 30-40%
+        // bear cases on volatile names. Hard-cap the band at ±35% so the chart
+        // never displays unrealistic apocalypse/moon spreads.
+        const sigma = Math.max(8, Math.min(vol, 70)) / 100; // clamp 8%–70%
+        const volBull = base * (1 + 0.7 * sigma);
+        const volBear = base * (1 - 0.7 * sigma);
+        const rawBull = f.targetHigh != null ? (f.targetHigh + volBull) / 2 : volBull;
+        const rawBear = f.targetLow  != null ? (f.targetLow  + volBear) / 2 : volBear;
+        // Final guardrails: bull at most +35% above base, bear at most -35% below base,
+        // and always keep bull > base > bear so the chart bands make sense.
+        const bull = Math.max(base * 1.02, Math.min(rawBull, base * 1.35));
+        const bear = Math.min(base * 0.98, Math.max(rawBear, base * 0.65));
         // Confidence: high if many analysts AND aligned trend + positive EPS growth.
         // Confidence — defaults to Medium and scores up to High when signals
         // line up. Missing optional fundamentals do NOT pull confidence down;
