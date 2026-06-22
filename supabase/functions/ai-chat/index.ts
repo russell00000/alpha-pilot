@@ -1204,19 +1204,26 @@ serve(async (req) => {
       console.log("On-demand data fetched successfully");
     }
 
-    // Fetch deep forecasting stats for the (up to 4) tickers the user is asking about.
+    // Fetch deep forecasting stats for the primary ticker the user is asking about.
     // This powers data-driven performance predictions (returns, vol, drawdown, momentum,
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    // Only render a forecast for the single primary ticker the user asked about.
-    // Prefer an explicit ticker from the user message; fall back to the first
-    // name-resolved symbol.
-    const primaryTicker = requestedTickers[0] ?? resolvedSymbols[0];
-    const forecastTickers = primaryTicker ? [primaryTicker] : [];
-    if (forecastTickers.length > 0) {
-      const forecasts = await Promise.all(forecastTickers.map(fetchForecastStats));
-      const valid = forecasts.filter((f): f is ForecastStats => !!f);
+    // If the user is correcting us ("no I meant…", "actually…", "not X, Y"),
+    // trust the freshly resolved company name OVER any ticker token in the
+    // message — the ticker they typed may be the wrong one they're correcting.
+    const isCorrection = /\b(no|not|actually|i meant|i mean|instead|wrong|different|other|switch)\b/i.test(lastUserMsg);
+    const candidateTickers = isCorrection
+      ? Array.from(new Set([...resolvedSymbols, ...requestedTickers]))
+      : Array.from(new Set([...requestedTickers, ...resolvedSymbols]));
+    // Try each candidate in order until one returns usable forecast stats so a
+    // chart always renders when at least one ticker is recognizable.
+    let valid: ForecastStats[] = [];
+    for (const t of candidateTickers.slice(0, 4)) {
+      const f = await fetchForecastStats(t);
+      if (f) { valid = [f]; break; }
+    }
+    if (valid.length > 0) {
       const formatted = valid.map(formatForecast);
       const computedForecastLines: string[] = [];
       // Build structured payload for the client chart.
