@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Send,
-  Bot,
   User,
   Sparkles,
   Lightbulb,
@@ -10,7 +10,9 @@ import {
   DollarSign,
   Copy,
   Check,
-  Square,
+  Plus,
+  Trash2,
+  MessageSquare,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import financeBg from "@/assets/finance-bg.webp";
 import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 
@@ -30,6 +33,18 @@ interface Message {
   isError?: boolean;
 }
 
+interface ThreadRow {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
+const WELCOME: Message = {
+  role: "assistant",
+  content:
+    "Welcome to InvestAI Chat! 👋\n\nI'm your AI investing copilot, here to help you navigate the markets. I can help you with:\n\n• **Market Analysis** - Understanding trends and movements\n• **Stock Research** - Evaluating companies and investments\n• **Portfolio Strategy** - Building a diversified portfolio\n• **Investment Education** - Learning key concepts\n\nWhat would you like to explore today?",
+};
+
 const suggestedTopics = [
   { icon: TrendingUp, label: "Market Analysis", prompt: "What are the key market trends I should watch today?" },
   { icon: PieChart, label: "Portfolio Strategy", prompt: "How should I diversify my portfolio as a beginner investor?" },
@@ -38,20 +53,109 @@ const suggestedTopics = [
 ];
 
 const Chat = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Welcome to InvestAI Chat! 👋\n\nI'm your AI investing copilot, here to help you navigate the markets. I can help you with:\n\n• **Market Analysis** - Understanding trends and movements\n• **Stock Research** - Evaluating companies and investments\n• **Portfolio Strategy** - Building a diversified portfolio\n• **Investment Education** - Learning key concepts\n\nWhat would you like to explore today?",
-    },
-  ]);
+  const navigate = useNavigate();
+  const { threadId } = useParams<{ threadId?: string }>();
+  const { user, loading: authLoading } = useAuth();
+
+  const [threads, setThreads] = useState<ThreadRow[]>([]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingThread, setLoadingThread] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
+
+  // Redirect unauthenticated users to /auth so persistence works.
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/auth", { replace: true });
+  }, [user, authLoading, navigate]);
+
+  // Load thread list for the signed-in user.
+  const refreshThreads = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("chat_threads")
+      .select("id,title,updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("Load threads error:", error);
+      return;
+    }
+    setThreads(data ?? []);
+  }, [user]);
+
+  useEffect(() => {
+    refreshThreads();
+  }, [refreshThreads]);
+
+  // If on /chat with no threadId, pick most recent or create a new thread.
+  useEffect(() => {
+    if (!user || threadId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: existing } = await supabase
+        .from("chat_threads")
+        .select("id")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      if (existing && existing.length > 0) {
+        navigate(`/chat/${existing[0].id}`, { replace: true });
+        return;
+      }
+      const { data: created, error } = await supabase
+        .from("chat_threads")
+        .insert({ user_id: user.id, title: "New chat" })
+        .select("id")
+        .single();
+      if (error || !created) {
+        console.error("Create thread error:", error);
+        return;
+      }
+      navigate(`/chat/${created.id}`, { replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, threadId, navigate]);
+
+  // Load messages whenever active thread changes.
+  useEffect(() => {
+    if (!user || !threadId) return;
+    let cancelled = false;
+    setLoadingThread(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("role,content,forecasts,is_error,created_at")
+        .eq("thread_id", threadId)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.error("Load messages error:", error);
+        setMessages([WELCOME]);
+      } else if (!data || data.length === 0) {
+        setMessages([WELCOME]);
+      } else {
+        setMessages(
+          data.map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            forecasts: (m.forecasts as ForecastData[] | null) ?? undefined,
+            isError: m.is_error,
+          })),
+        );
+      }
+      setLoadingThread(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, threadId]);
 
   // Scroll only inside the chat container (never the page).
   useEffect(() => {
@@ -62,7 +166,7 @@ const Chat = () => {
 
   useEffect(() => {
     textareaRef.current?.focus();
-  }, []);
+  }, [threadId]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -72,14 +176,71 @@ const Chat = () => {
     ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
   }, [input]);
 
+  const persistMessage = async (msg: Message) => {
+    if (!user || !threadId) return;
+    const { error } = await supabase.from("chat_messages").insert({
+      thread_id: threadId,
+      user_id: user.id,
+      role: msg.role,
+      content: msg.content,
+      forecasts: msg.forecasts ?? null,
+      is_error: msg.isError ?? false,
+    });
+    if (error) console.error("Save message error:", error);
+  };
+
+  const touchThread = async (titleIfFirst: string | null) => {
+    if (!user || !threadId) return;
+    const patch: { updated_at: string; title?: string } = {
+      updated_at: new Date().toISOString(),
+    };
+    if (titleIfFirst) patch.title = titleIfFirst.slice(0, 60);
+    const { error } = await supabase.from("chat_threads").update(patch).eq("id", threadId);
+    if (error) console.error("Touch thread error:", error);
+    refreshThreads();
+  };
+
+  const createNewThread = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("chat_threads")
+      .insert({ user_id: user.id, title: "New chat" })
+      .select("id")
+      .single();
+    if (error || !data) {
+      toast({ title: "Couldn't start a new chat", variant: "destructive" });
+      return;
+    }
+    refreshThreads();
+    navigate(`/chat/${data.id}`);
+  };
+
+  const deleteThread = async (id: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("chat_threads").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Couldn't delete chat", variant: "destructive" });
+      return;
+    }
+    const remaining = threads.filter((t) => t.id !== id);
+    setThreads(remaining);
+    if (id === threadId) {
+      if (remaining.length > 0) navigate(`/chat/${remaining[0].id}`, { replace: true });
+      else navigate(`/chat`, { replace: true });
+    }
+  };
+
   const sendMessage = async (messageText: string) => {
-    if (!messageText.trim() || isLoading) return;
+    if (!messageText.trim() || isLoading || !threadId) return;
 
     const userMessage: Message = { role: "user", content: messageText };
+    const isFirstUserMsg = !messages.some((m) => m.role === "user");
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
     abortRef.current = new AbortController();
+    persistMessage(userMessage);
+    touchThread(isFirstUserMsg ? messageText : null);
 
     try {
       // Send full history minus prior error messages.
@@ -117,17 +278,17 @@ const Chat = () => {
         forecasts: response.data.forecasts ?? undefined,
       };
       setMessages((prev) => [...prev, assistantMessage]);
+      persistMessage(assistantMessage);
+      touchThread(null);
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "I hit a snag pulling that together. Mind trying again in a moment?",
-          isError: true,
-        },
-      ]);
+      const errMsg: Message = {
+        role: "assistant",
+        content: "I hit a snag pulling that together. Mind trying again in a moment?",
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errMsg]);
+      persistMessage(errMsg);
     } finally {
       setIsLoading(false);
       abortRef.current = null;
@@ -165,7 +326,54 @@ const Chat = () => {
 
       <Header />
       
-      <main className="flex-1 container mx-auto px-4 py-6 flex flex-col max-w-4xl relative">
+      <main className="flex-1 container mx-auto px-4 py-6 flex gap-4 max-w-6xl relative">
+        {/* Thread sidebar */}
+        <aside className="hidden md:flex w-64 flex-col rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-3 max-h-[calc(100vh-120px)]">
+          <Button
+            onClick={createNewThread}
+            variant="premium"
+            size="sm"
+            className="w-full mb-3 gap-2"
+          >
+            <Plus className="w-4 h-4" /> New chat
+          </Button>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {threads.length === 0 && (
+              <p className="text-xs text-muted-foreground px-2 py-3">No conversations yet.</p>
+            )}
+            {threads.map((t) => {
+              const active = t.id === threadId;
+              return (
+                <div
+                  key={t.id}
+                  className={cn(
+                    "group flex items-center gap-2 rounded-lg px-2 py-2 text-sm cursor-pointer transition-colors",
+                    active
+                      ? "bg-primary/15 text-foreground border border-primary/30"
+                      : "hover:bg-secondary/60 text-muted-foreground hover:text-foreground border border-transparent",
+                  )}
+                  onClick={() => navigate(`/chat/${t.id}`)}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="flex-1 truncate">{t.title || "New chat"}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteThread(t.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    aria-label="Delete chat"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col max-w-4xl">
         {/* Chat Header */}
         <div className="flex items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
@@ -182,16 +390,14 @@ const Chat = () => {
               </p>
             </div>
           </div>
-          {messages.length > 1 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMessages([messages[0]])}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              New chat
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={createNewThread}
+            className="text-muted-foreground hover:text-foreground md:hidden gap-1"
+          >
+            <Plus className="w-4 h-4" /> New
+          </Button>
         </div>
 
         {/* Messages Container */}
@@ -348,6 +554,7 @@ const Chat = () => {
         <p className="text-center text-xs text-muted-foreground mt-4">
           InvestAI provides educational information only. Not financial advice. Always do your own research.
         </p>
+        </div>
       </main>
     </div>
   );
