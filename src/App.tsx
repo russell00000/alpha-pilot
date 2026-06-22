@@ -45,6 +45,7 @@ const App = () => (
           <Route path="/markets" element={<ErrorBoundary><Markets /></ErrorBoundary>} />
           <Route path="/portfolio" element={<ErrorBoundary><Portfolio /></ErrorBoundary>} />
           <Route path="/chat" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
+          <Route path="/chat/:threadId" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
           <Route path="/terms" element={<ErrorBoundary><Terms /></ErrorBoundary>} />
           <Route path="/privacy" element={<ErrorBoundary><Privacy /></ErrorBoundary>} />
           <Route path="/stock/:symbol" element={<ErrorBoundary><Stock /></ErrorBoundary>} />
