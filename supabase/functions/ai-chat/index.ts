@@ -1219,13 +1219,28 @@ serve(async (req) => {
     // analyst targets, forward EPS estimates, sector benchmark, news signals).
     let forecastBlock = "";
     const forecastPayload: Array<Record<string, unknown>> = [];
-    // If the user is correcting us ("no I meant…", "actually…", "not X, Y"),
-    // trust the freshly resolved company name OVER any ticker token in the
-    // message — the ticker they typed may be the wrong one they're correcting.
-    const isCorrection = /\b(no|not|actually|i meant|i mean|instead|wrong|different|other|switch)\b/i.test(lastUserMsg);
+    // If the user is correcting us, trust the freshly resolved company name
+    // OVER any ticker token they typed. Use specific phrasing to avoid false
+    // positives ("no idea", "any other thoughts" should NOT trigger correction).
+    const isCorrection = /\b(i meant|i mean|actually i|not\s+\$?[A-Za-z]{1,6}\b|instead of|wrong (stock|ticker|one|company)|different (stock|ticker|one|company)|switch to|change to|i said)\b/i.test(lastUserMsg);
+
+    // PRIORITY: A high-confidence free-text company-name match beats a noisy
+    // ALL-CAPS token in the message. Yahoo's search score >= 100 means the
+    // query closely matches the symbol or company name; trust it.
+    const topResolved = resolvedFromName[0];
+    const highConfidenceResolved = topResolved && topResolved.score >= 100
+      ? [topResolved.symbol]
+      : [];
+    // Only count "explicit" message tickers — $TICKER mentions or company
+    // names mapped via NAME_MAP — as priority. Generic ALL-CAPS tokens are
+    // de-prioritized so a token like "SPY" mentioned in passing doesn't
+    // outrank a clearly-named company.
+    const explicitDollar = (lastUserMsg.match(/\$([A-Za-z]{1,5})/g) || [])
+      .map(s => s.slice(1).toUpperCase());
+
     const candidateTickers = isCorrection
-      ? Array.from(new Set([...resolvedSymbols, ...requestedTickers]))
-      : Array.from(new Set([...requestedTickers, ...resolvedSymbols]));
+      ? Array.from(new Set([...highConfidenceResolved, ...resolvedSymbols, ...explicitDollar, ...requestedTickers]))
+      : Array.from(new Set([...explicitDollar, ...highConfidenceResolved, ...resolvedSymbols, ...requestedTickers]));
     // Try each candidate in order until one returns usable forecast stats so a
     // chart always renders when at least one ticker is recognizable.
     let valid: ForecastStats[] = [];
