@@ -150,6 +150,7 @@ const Screener = () => {
   const [maxChange, setMaxChange] = useState<string>("");
   const [maxPE, setMaxPE] = useState<string>("");
   const [minDivYield, setMinDivYield] = useState<string>("");
+  const [recommendation, setRecommendation] = useState<Recommendation>("any");
   const [preset, setPreset] = useState<Preset>("none");
   const [showFilters, setShowFilters] = useState(true);
 
