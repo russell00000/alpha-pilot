@@ -15,6 +15,7 @@ import AdminPhilosophy from "./pages/AdminPhilosophy";
 import Alerts from "./pages/Alerts";
 import Practice from "./pages/Practice";
 import PracticeRisk from "./pages/PracticeRisk";
+import Screener from "./pages/Screener";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -43,6 +44,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
           <Route path="/markets" element={<ErrorBoundary><Markets /></ErrorBoundary>} />
+          <Route path="/screener" element={<ErrorBoundary><Screener /></ErrorBoundary>} />
           <Route path="/portfolio" element={<ErrorBoundary><Portfolio /></ErrorBoundary>} />
           <Route path="/chat" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
           <Route path="/chat/:threadId" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
