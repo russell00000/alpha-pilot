@@ -673,6 +673,59 @@ serve(async (req) => {
     
     const { type = "all", search, symbols, historical, symbol, range, details } = body;
 
+    // Screener enrichment: fundamentals for many symbols in one shot.
+    // Uses Yahoo v7 quote which returns marketCap, PE, 52W range, avg vol, dividendYield.
+    if (body.screener && Array.isArray(body.screener)) {
+      const syms: string[] = body.screener
+        .filter((s: unknown): s is string => typeof s === "string" && !!s)
+        .map((s: string) => s.toUpperCase());
+      const CHUNK = 50;
+      const results: any[] = [];
+      for (let i = 0; i < syms.length; i += CHUNK) {
+        const chunk = syms.slice(i, i + CHUNK);
+        try {
+          const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
+          const resp = await fetch(url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              "Accept": "application/json",
+            },
+          });
+          if (!resp.ok) continue;
+          const json = await resp.json();
+          const quotes = json?.quoteResponse?.result || [];
+          for (const q of quotes) {
+            results.push({
+              symbol: q.symbol,
+              name: q.shortName || q.longName || q.symbol,
+              price: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
+              changePercent: typeof q.regularMarketChangePercent === "number" ? q.regularMarketChangePercent : null,
+              marketCap: typeof q.marketCap === "number" ? q.marketCap : null,
+              peRatio: typeof q.trailingPE === "number" ? q.trailingPE : null,
+              forwardPE: typeof q.forwardPE === "number" ? q.forwardPE : null,
+              eps: typeof q.epsTrailingTwelveMonths === "number" ? q.epsTrailingTwelveMonths : null,
+              dividendYield: typeof q.trailingAnnualDividendYield === "number" ? q.trailingAnnualDividendYield * 100 : null,
+              volume: typeof q.regularMarketVolume === "number" ? q.regularMarketVolume : null,
+              avgVolume: typeof q.averageDailyVolume3Month === "number" ? q.averageDailyVolume3Month : null,
+              fiftyTwoWeekHigh: typeof q.fiftyTwoWeekHigh === "number" ? q.fiftyTwoWeekHigh : null,
+              fiftyTwoWeekLow: typeof q.fiftyTwoWeekLow === "number" ? q.fiftyTwoWeekLow : null,
+              exchange: q.fullExchangeName || q.exchange || null,
+              currency: q.currency || "USD",
+            });
+          }
+        } catch (e) {
+          console.error("screener chunk error", e);
+        }
+      }
+      return new Response(JSON.stringify({ data: results }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
+        },
+      });
+    }
+
     if (details && symbol) {
       const stockDetails = await fetchStockDetails(symbol.toUpperCase());
       return new Response(JSON.stringify({ data: stockDetails }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
