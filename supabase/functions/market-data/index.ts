@@ -723,20 +723,30 @@ serve(async (req) => {
         .map((s: string) => s.toUpperCase());
       const CHUNK = 50;
       const results: any[] = [];
+      const seen = new Set<string>();
+      const auth = await getYahooCrumb();
       for (let i = 0; i < syms.length; i += CHUNK) {
         const chunk = syms.slice(i, i + CHUNK);
         try {
-          const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
-          const resp = await fetch(url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-              "Accept": "application/json",
-            },
-          });
-          if (!resp.ok) continue;
-          const json = await resp.json();
-          const quotes = json?.quoteResponse?.result || [];
+          let quotes: any[] = [];
+          if (auth) {
+            const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+              chunk.join(","),
+            )}&crumb=${encodeURIComponent(auth.crumb)}`;
+            const resp = await fetch(url, {
+              headers: {
+                "User-Agent": YAHOO_UA,
+                "Cookie": auth.cookie,
+                "Accept": "application/json",
+              },
+            });
+            if (resp.ok) {
+              const json = await resp.json();
+              quotes = json?.quoteResponse?.result || [];
+            }
+          }
           for (const q of quotes) {
+            seen.add(q.symbol);
             results.push({
               symbol: q.symbol,
               name: q.shortName || q.longName || q.symbol,
@@ -760,6 +770,57 @@ serve(async (req) => {
         } catch (e) {
           console.error("screener chunk error", e);
         }
+      }
+      // Fallback: for any symbols the v7 quote endpoint didn't return
+      // (auth failed, or symbol not covered), use the public chart endpoint
+      // which still returns price + 52W range + volume + name without a crumb.
+      const missing = syms.filter((s) => !seen.has(s));
+      const CONCURRENCY = 8;
+      for (let i = 0; i < missing.length; i += CONCURRENCY) {
+        const batch = missing.slice(i, i + CONCURRENCY);
+        const rows = await Promise.all(
+          batch.map(async (sym) => {
+            try {
+              const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+                sym,
+              )}?interval=1d&range=5d`;
+              const r = await fetch(url, {
+                headers: { "User-Agent": YAHOO_UA, "Accept": "application/json" },
+              });
+              if (!r.ok) return null;
+              const j = await r.json();
+              const res = j?.chart?.result?.[0];
+              if (!res) return null;
+              const meta = res.meta || {};
+              const price = typeof meta.regularMarketPrice === "number" ? meta.regularMarketPrice : null;
+              const prev = typeof meta.chartPreviousClose === "number" ? meta.chartPreviousClose : null;
+              const changePercent =
+                price != null && prev ? ((price - prev) / prev) * 100 : null;
+              return {
+                symbol: sym,
+                name: meta.longName || meta.shortName || sym,
+                price,
+                changePercent,
+                marketCap: null,
+                peRatio: null,
+                forwardPE: null,
+                eps: null,
+                dividendYield: null,
+                volume: typeof meta.regularMarketVolume === "number" ? meta.regularMarketVolume : null,
+                avgVolume: null,
+                fiftyTwoWeekHigh: typeof meta.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh : null,
+                fiftyTwoWeekLow: typeof meta.fiftyTwoWeekLow === "number" ? meta.fiftyTwoWeekLow : null,
+                exchange: meta.fullExchangeName || meta.exchangeName || null,
+                currency: meta.currency || "USD",
+                recommendationMean: null,
+                recommendationKey: null,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const row of rows) if (row) results.push(row);
       }
       return new Response(JSON.stringify({ data: results }), {
         headers: {
