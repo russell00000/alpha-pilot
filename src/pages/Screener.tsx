@@ -464,6 +464,22 @@ const Screener = () => {
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Min Dividend %</label>
                 <Input value={minDivYield} onChange={(e) => setMinDivYield(e.target.value)} placeholder="e.g. 2" className="mt-1 h-10" inputMode="decimal" />
               </div>
+
+              {/* Analyst recommendation */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Analyst Rating</label>
+                <Select value={recommendation} onValueChange={(v) => setRecommendation(v as Recommendation)}>
+                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any rating</SelectItem>
+                    <SelectItem value="strong_buy">Strong Buy</SelectItem>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="hold">Hold</SelectItem>
+                    <SelectItem value="sell">Sell</SelectItem>
+                    <SelectItem value="strong_sell">Strong Sell</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </div>
