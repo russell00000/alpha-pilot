@@ -21,6 +21,7 @@ import {
 const navItems = [
   { label: "Dashboard", href: "/", prefetch: () => import("@/pages/Index") },
   { label: "Markets", href: "/markets", prefetch: () => import("@/pages/Markets") },
+  { label: "Screener", href: "/screener", prefetch: () => import("@/pages/Screener") },
   { label: "Portfolio", href: "/portfolio", prefetch: () => import("@/pages/Portfolio") },
   { label: "Chat", href: "/chat", prefetch: () => import("@/pages/Chat") },
 ];
