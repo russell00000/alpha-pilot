@@ -725,7 +725,124 @@ const Markets = () => {
         )}
 
 
+        {/* Sectors Grid */}
+        {searchResults.length === 0 && activeTab === "sectors" && (() => {
+          const sectorData = sectorProxies.map((sec) => {
+            const cached = priceCache[sec.symbol];
+            return {
+              ...sec,
+              price: cached?.price ?? "—",
+              changePercent: safeNumber(cached?.changePercent, 0),
+              change: safeNumber(cached?.change, 0),
+              sparkline: cached?.sparkline,
+              hasPrice: !!cached && cached.price !== "—",
+            };
+          });
+          const sorted = [...sectorData].sort((a, b) => b.changePercent - a.changePercent);
+          const withPrice = sorted.filter((s) => s.hasPrice);
+          const avg = withPrice.length
+            ? withPrice.reduce((sum, s) => sum + s.changePercent, 0) / withPrice.length
+            : 0;
+          const leader = withPrice[0];
+          const laggard = withPrice[withPrice.length - 1];
+
+          return (
+            <>
+              {/* Breadth summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div className="rounded-xl bg-background/50 backdrop-blur-sm border border-border/20 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground mb-1">Sector Average</p>
+                  <p className={cn("text-2xl font-semibold font-mono", avg >= 0 ? "text-success" : "text-destructive")}>
+                    {avg >= 0 ? "+" : ""}{avg.toFixed(2)}%
+                  </p>
+                </div>
+                <div className="rounded-xl bg-background/50 backdrop-blur-sm border border-border/20 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground mb-1">Leading Sector</p>
+                  <p className="text-lg font-semibold text-foreground truncate">
+                    {leader ? leader.name : "—"}
+                    {leader && <span className="ml-2 text-success font-mono text-sm">+{leader.changePercent.toFixed(2)}%</span>}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-background/50 backdrop-blur-sm border border-border/20 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground mb-1">Lagging Sector</p>
+                  <p className="text-lg font-semibold text-foreground truncate">
+                    {laggard ? laggard.name : "—"}
+                    {laggard && (
+                      <span className={cn("ml-2 font-mono text-sm", laggard.changePercent >= 0 ? "text-success" : "text-destructive")}>
+                        {laggard.changePercent >= 0 ? "+" : ""}{laggard.changePercent.toFixed(2)}%
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sector cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {sorted.map((sec) => {
+                  const isPositive = sec.changePercent >= 0;
+                  const intensity = Math.min(Math.abs(sec.changePercent) / 3, 1); // scale 0-1 (3% = full)
+                  return (
+                    <button
+                      key={sec.symbol}
+                      onClick={() => navigate(`/stock/${sec.symbol}`)}
+                      className={cn(
+                        "text-left rounded-xl border border-border/30 bg-background/50 backdrop-blur-sm p-5 transition-all duration-300 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-lg",
+                        "group relative overflow-hidden"
+                      )}
+                      style={{
+                        boxShadow: sec.hasPrice
+                          ? `inset 3px 0 0 0 ${isPositive ? "hsl(var(--success))" : "hsl(var(--destructive))"}`
+                          : undefined,
+                      }}
+                    >
+                      <div
+                        aria-hidden
+                        className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{
+                          background: `radial-gradient(600px circle at 0% 0%, ${isPositive ? "hsl(var(--success) / 0.08)" : "hsl(var(--destructive) / 0.08)"}, transparent 40%)`,
+                        }}
+                      />
+                      <div className="flex items-start justify-between mb-3 relative">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground">{sec.symbol}</p>
+                          <h3 className="text-base font-semibold text-foreground leading-tight">{sec.name}</h3>
+                        </div>
+                        {sec.hasPrice ? (
+                          <div
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-mono font-semibold",
+                              isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                            )}
+                            style={{ opacity: 0.7 + intensity * 0.3 }}
+                          >
+                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {isPositive ? "+" : ""}{sec.changePercent.toFixed(2)}%
+                          </div>
+                        ) : (
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">{sec.description}</p>
+                      <div className="h-10 -mx-1">
+                        <SparklineChart
+                          data={sec.sparkline && sec.sparkline.length ? sec.sparkline : generateSparkline(sec.symbol, sec.changePercent)}
+                          positive={isPositive}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/30">
+                        <span className="text-xs text-muted-foreground">Proxy · {sec.symbol}</span>
+                        <span className="text-sm font-mono text-foreground">{sec.hasPrice ? `$${sec.price}` : "—"}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
+
         {/* Market Table */}
+        {(searchResults.length > 0 || activeTab !== "sectors") && (
         <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -865,8 +982,9 @@ const Markets = () => {
             </table>
           </div>
         </div>
+        )}
 
-        {visibleRows < displayData.length && (
+        {(searchResults.length > 0 || activeTab !== "sectors") && visibleRows < displayData.length && (
           <div className="flex justify-center mt-4">
             <Button variant="outline" size="sm" onClick={() => setVisibleRows((count) => Math.min(count + 30, displayData.length))}>
               Load more assets
