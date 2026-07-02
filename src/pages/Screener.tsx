@@ -207,6 +207,10 @@ const Screener = () => {
       if (!isNaN(maxC) && (r.changePercent ?? Infinity) > maxC) return false;
       if (!isNaN(maxPeN) && (r.peRatio == null || r.peRatio > maxPeN)) return false;
       if (!isNaN(minDivN) && (r.dividendYield ?? -Infinity) < minDivN) return false;
+      if (recommendation !== "any") {
+        const [lo, hi] = RECO_RANGES[recommendation];
+        if (r.recommendationMean == null || r.recommendationMean < lo || r.recommendationMean >= hi) return false;
+      }
       return true;
     });
 
