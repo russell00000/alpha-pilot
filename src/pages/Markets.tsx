@@ -168,9 +168,6 @@ const Markets = () => {
     let isCancelled = false;
     
     const loadAdditionalPrices = async () => {
-      // Skip if we're on crypto tab (handled by fetchMarketData)
-      if (activeTab === "crypto") return;
-      
       let allSymbols: string[] = [];
       
       if (activeTab === "stocks") {
@@ -180,6 +177,8 @@ const Markets = () => {
         allSymbols = topETFs.map(e => e.symbol);
       } else if (activeTab === "mutual_fund") {
         allSymbols = topMutualFunds.map(m => m.symbol);
+      } else if (activeTab === "sectors") {
+        allSymbols = sectorProxies.map(s => s.symbol);
       }
       
       if (allSymbols.length === 0) return;
