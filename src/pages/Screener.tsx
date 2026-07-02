@@ -566,7 +566,7 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
                   <th className="text-center p-3">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Rating</span>
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Vantage Rating</span>
                   </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -638,7 +638,7 @@ const Screener = () => {
                         </td>
                         <td className="p-3 text-center">
                           {(() => {
-                            const { label, tone } = recoLabel(r.recommendationMean);
+                            const { label, tone } = recoLabel(vantageScore(r));
                             if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
                             return (
                               <span className={cn(
