@@ -401,8 +401,6 @@ const Markets = () => {
           };
           return ensureSparkline(item);
         });
-      case "crypto":
-        return liveData.filter(item => item.type === "crypto").map(ensureSparkline);
       case "etf":
         return topETFs.map(etf => {
           const cached = priceCache[etf.symbol];
