@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Bitcoin, Briefcase, PieChart } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Briefcase, PieChart, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,22 @@ const tabs = [
   { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
   { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
   { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
-  { id: "crypto", label: "Crypto", icon: Bitcoin, count: null, description: "Digital assets" },
+  { id: "sectors", label: "Sectors", icon: Layers, count: null, description: "S&P 500 sector moves" },
+];
+
+// SPDR sector ETFs used as proxies for how each S&P 500 sector is moving today.
+const sectorProxies: Array<{ symbol: string; name: string; description: string }> = [
+  { symbol: "XLK", name: "Technology", description: "Software, semis, hardware" },
+  { symbol: "XLV", name: "Health Care", description: "Pharma, biotech, devices" },
+  { symbol: "XLF", name: "Financials", description: "Banks, insurance, capital markets" },
+  { symbol: "XLY", name: "Consumer Discretionary", description: "Retail, autos, leisure" },
+  { symbol: "XLP", name: "Consumer Staples", description: "Food, beverage, household" },
+  { symbol: "XLI", name: "Industrials", description: "Aerospace, machinery, transport" },
+  { symbol: "XLE", name: "Energy", description: "Oil, gas, services" },
+  { symbol: "XLU", name: "Utilities", description: "Electric, water, gas utilities" },
+  { symbol: "XLB", name: "Materials", description: "Chemicals, metals, mining" },
+  { symbol: "XLRE", name: "Real Estate", description: "REITs & real estate services" },
+  { symbol: "XLC", name: "Communication Services", description: "Media, telecom, internet" },
 ];
 
 const popularSearches = [
