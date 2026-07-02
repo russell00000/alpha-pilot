@@ -50,6 +50,8 @@ const SECTORS = [
   "Utilities",
   "Real Estate",
   "Basic Materials",
+  "ETF",
+  "Mutual Fund",
 ];
 
 // Normalize inconsistent sector labels from static data.
