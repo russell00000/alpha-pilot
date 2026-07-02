@@ -36,6 +36,8 @@ type ScreenerRow = {
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
   exchange: string | null;
+  recommendationMean: number | null;
+  recommendationKey: string | null;
 };
 
 const SECTORS = [
@@ -62,6 +64,25 @@ const normalizeSector = (s?: string) => {
 };
 
 type MarketCapTier = "any" | "mega" | "large" | "mid" | "small";
+type Recommendation = "any" | "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+
+// Yahoo recommendationMean scale: 1=Strong Buy, 2=Buy, 3=Hold, 4=Sell, 5=Strong Sell
+const RECO_RANGES: Record<Exclude<Recommendation, "any">, [number, number]> = {
+  strong_buy: [1.0, 1.5],
+  buy: [1.5, 2.5],
+  hold: [2.5, 3.5],
+  sell: [3.5, 4.5],
+  strong_sell: [4.5, 5.01],
+};
+const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" | "sell" | "neutral" } => {
+  if (mean == null) return { label: "—", tone: "neutral" };
+  if (mean < 1.5) return { label: "Strong Buy", tone: "buy" };
+  if (mean < 2.5) return { label: "Buy", tone: "buy" };
+  if (mean < 3.5) return { label: "Hold", tone: "hold" };
+  if (mean < 4.5) return { label: "Sell", tone: "sell" };
+  return { label: "Strong Sell", tone: "sell" };
+};
+
 type Preset =
   | "none"
   | "top-gainers"
