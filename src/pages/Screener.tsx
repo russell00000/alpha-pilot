@@ -36,6 +36,8 @@ type ScreenerRow = {
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
   exchange: string | null;
+  recommendationMean: number | null;
+  recommendationKey: string | null;
 };
 
 const SECTORS = [
@@ -62,6 +64,25 @@ const normalizeSector = (s?: string) => {
 };
 
 type MarketCapTier = "any" | "mega" | "large" | "mid" | "small";
+type Recommendation = "any" | "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+
+// Yahoo recommendationMean scale: 1=Strong Buy, 2=Buy, 3=Hold, 4=Sell, 5=Strong Sell
+const RECO_RANGES: Record<Exclude<Recommendation, "any">, [number, number]> = {
+  strong_buy: [1.0, 1.5],
+  buy: [1.5, 2.5],
+  hold: [2.5, 3.5],
+  sell: [3.5, 4.5],
+  strong_sell: [4.5, 5.01],
+};
+const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" | "sell" | "neutral" } => {
+  if (mean == null) return { label: "—", tone: "neutral" };
+  if (mean < 1.5) return { label: "Strong Buy", tone: "buy" };
+  if (mean < 2.5) return { label: "Buy", tone: "buy" };
+  if (mean < 3.5) return { label: "Hold", tone: "hold" };
+  if (mean < 4.5) return { label: "Sell", tone: "sell" };
+  return { label: "Strong Sell", tone: "sell" };
+};
+
 type Preset =
   | "none"
   | "top-gainers"
@@ -129,6 +150,7 @@ const Screener = () => {
   const [maxChange, setMaxChange] = useState<string>("");
   const [maxPE, setMaxPE] = useState<string>("");
   const [minDivYield, setMinDivYield] = useState<string>("");
+  const [recommendation, setRecommendation] = useState<Recommendation>("any");
   const [preset, setPreset] = useState<Preset>("none");
   const [showFilters, setShowFilters] = useState(true);
 
@@ -185,6 +207,10 @@ const Screener = () => {
       if (!isNaN(maxC) && (r.changePercent ?? Infinity) > maxC) return false;
       if (!isNaN(maxPeN) && (r.peRatio == null || r.peRatio > maxPeN)) return false;
       if (!isNaN(minDivN) && (r.dividendYield ?? -Infinity) < minDivN) return false;
+      if (recommendation !== "any") {
+        const [lo, hi] = RECO_RANGES[recommendation];
+        if (r.recommendationMean == null || r.recommendationMean < lo || r.recommendationMean >= hi) return false;
+      }
       return true;
     });
 
@@ -242,7 +268,7 @@ const Screener = () => {
     });
 
     return out;
-  }, [rows, query, sector, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, preset, sortKey, sortDir]);
+  }, [rows, query, sector, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, recommendation, preset, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -262,11 +288,12 @@ const Screener = () => {
     setMaxChange("");
     setMaxPE("");
     setMinDivYield("");
+    setRecommendation("any");
     setPreset("none");
   };
 
   const activeFilterCount =
-    [query, sector !== "any", cap !== "any", minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, preset !== "none"]
+    [query, sector !== "any", cap !== "any", minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, recommendation !== "any", preset !== "none"]
       .filter(Boolean).length;
 
   const SortHeader = ({ label, k, className }: { label: string; k: SortKey; className?: string }) => {
@@ -437,6 +464,22 @@ const Screener = () => {
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Min Dividend %</label>
                 <Input value={minDivYield} onChange={(e) => setMinDivYield(e.target.value)} placeholder="e.g. 2" className="mt-1 h-10" inputMode="decimal" />
               </div>
+
+              {/* Analyst recommendation */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Analyst Rating</label>
+                <Select value={recommendation} onValueChange={(v) => setRecommendation(v as Recommendation)}>
+                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any rating</SelectItem>
+                    <SelectItem value="strong_buy">Strong Buy</SelectItem>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="hold">Hold</SelectItem>
+                    <SelectItem value="sell">Sell</SelectItem>
+                    <SelectItem value="strong_sell">Strong Sell</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </div>
@@ -471,6 +514,9 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="P/E" k="peRatio" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Rating</span>
+                  </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
               </thead>
@@ -478,14 +524,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(10)].map((__, j) => (
+                      {[...Array(11)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="p-12 text-center">
+                    <td colSpan={11} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
@@ -539,6 +585,22 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-muted-foreground">
                           {r.dividendYield != null ? `${r.dividendYield.toFixed(2)}%` : "—"}
                         </td>
+                        <td className="p-3 text-center">
+                          {(() => {
+                            const { label, tone } = recoLabel(r.recommendationMean);
+                            if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
+                            return (
+                              <span className={cn(
+                                "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
+                                tone === "buy" && "bg-success/10 text-success border-success/30",
+                                tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
+                                tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
+                              )}>
+                                {label}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="p-3 pr-4 text-right font-mono text-muted-foreground">{formatVolume(r.volume)}</td>
                       </tr>
                     );
@@ -546,7 +608,7 @@ const Screener = () => {
                 )}
                 {refreshing && !loading && (
                   <tr>
-                    <td colSpan={10} className="p-2 text-center">
+                    <td colSpan={11} className="p-2 text-center">
                       <Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" />
                     </td>
                   </tr>

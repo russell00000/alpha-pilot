@@ -711,6 +711,8 @@ serve(async (req) => {
               fiftyTwoWeekLow: typeof q.fiftyTwoWeekLow === "number" ? q.fiftyTwoWeekLow : null,
               exchange: q.fullExchangeName || q.exchange || null,
               currency: q.currency || "USD",
+              recommendationMean: typeof q.recommendationMean === "number" ? q.recommendationMean : null,
+              recommendationKey: typeof q.averageAnalystRating === "string" ? q.averageAnalystRating : null,
             });
           }
         } catch (e) {
