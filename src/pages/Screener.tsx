@@ -83,6 +83,56 @@ const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" |
   return { label: "Strong Sell", tone: "sell" };
 };
 
+// Vantage rating: our own 1-5 score computed from data we already have in the
+// screener row. Lower is more bullish so it maps cleanly onto the same scale as
+// analyst consensus (1=Strong Buy … 5=Strong Sell).
+const vantageScore = (r: {
+  price: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  peRatio: number | null;
+  forwardPE: number | null;
+  changePercent: number | null;
+  recommendationMean: number | null;
+}): number | null => {
+  const signals: number[] = [];
+
+  // 1) 52W position — value if near lows, extended if near highs.
+  if (r.price != null && r.fiftyTwoWeekHigh != null && r.fiftyTwoWeekLow != null && r.fiftyTwoWeekHigh > r.fiftyTwoWeekLow) {
+    const pos = (r.price - r.fiftyTwoWeekLow) / (r.fiftyTwoWeekHigh - r.fiftyTwoWeekLow); // 0..1
+    // Sweet spot around 0.35 (accumulation zone). Map to 1..5.
+    signals.push(1 + Math.min(4, Math.max(0, pos * 4)));
+  }
+
+  // 2) Earnings trajectory — forward PE below trailing PE means EPS is expected to grow.
+  if (r.peRatio != null && r.forwardPE != null && r.peRatio > 0 && r.forwardPE > 0) {
+    const ratio = r.forwardPE / r.peRatio; // <1 = improving earnings
+    if (ratio < 0.75) signals.push(1.3);
+    else if (ratio < 0.9) signals.push(2.0);
+    else if (ratio < 1.1) signals.push(3.0);
+    else if (ratio < 1.3) signals.push(3.8);
+    else signals.push(4.5);
+  }
+
+  // 3) Momentum — fade extreme daily moves both ways.
+  if (r.changePercent != null) {
+    if (r.changePercent > 4) signals.push(3.6);
+    else if (r.changePercent > 1) signals.push(2.4);
+    else if (r.changePercent > -1) signals.push(3.0);
+    else if (r.changePercent > -4) signals.push(2.6);
+    else signals.push(2.0);
+  }
+
+  // 4) Analyst mean acts as a soft anchor (weighted lower than our own signals).
+  if (r.recommendationMean != null) {
+    signals.push(r.recommendationMean);
+  }
+
+  if (signals.length === 0) return null;
+  const avg = signals.reduce((a, b) => a + b, 0) / signals.length;
+  return Math.max(1, Math.min(5, avg));
+};
+
 type Preset =
   | "none"
   | "top-gainers"
@@ -209,7 +259,8 @@ const Screener = () => {
       if (!isNaN(minDivN) && (r.dividendYield ?? -Infinity) < minDivN) return false;
       if (recommendation !== "any") {
         const [lo, hi] = RECO_RANGES[recommendation];
-        if (r.recommendationMean == null || r.recommendationMean < lo || r.recommendationMean >= hi) return false;
+        const score = vantageScore(r);
+        if (score == null || score < lo || score >= hi) return false;
       }
       return true;
     });
@@ -515,7 +566,7 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
                   <th className="text-center p-3">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Rating</span>
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Vantage Rating</span>
                   </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -587,7 +638,7 @@ const Screener = () => {
                         </td>
                         <td className="p-3 text-center">
                           {(() => {
-                            const { label, tone } = recoLabel(r.recommendationMean);
+                            const { label, tone } = recoLabel(vantageScore(r));
                             if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
                             return (
                               <span className={cn(
