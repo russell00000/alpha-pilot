@@ -25,6 +25,48 @@ const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // Minimum 100ms between Finnhub requests
 
+// Yahoo Finance crumb + cookie cache (v7 quote endpoint requires this since 2024).
+let yahooCrumb: string | null = null;
+let yahooCookie: string | null = null;
+let yahooCrumbFetchedAt = 0;
+const YAHOO_CRUMB_TTL = 30 * 60 * 1000; // 30 min
+const YAHOO_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  const now = Date.now();
+  if (yahooCrumb && yahooCookie && now - yahooCrumbFetchedAt < YAHOO_CRUMB_TTL) {
+    return { crumb: yahooCrumb, cookie: yahooCookie };
+  }
+  try {
+    const seed = await fetch("https://fc.yahoo.com/", {
+      headers: { "User-Agent": YAHOO_UA, "Accept": "*/*" },
+      redirect: "manual",
+    });
+    const setCookie = seed.headers.get("set-cookie") || "";
+    // Extract just the name=value pairs, joined for the Cookie header.
+    const cookie = setCookie
+      .split(/,(?=[^ ]+=)/)
+      .map((c) => c.split(";")[0].trim())
+      .filter(Boolean)
+      .join("; ");
+    if (!cookie) return null;
+    const crumbResp = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": YAHOO_UA, "Cookie": cookie, "Accept": "*/*" },
+    });
+    if (!crumbResp.ok) return null;
+    const crumb = (await crumbResp.text()).trim();
+    if (!crumb || crumb.length > 32) return null;
+    yahooCrumb = crumb;
+    yahooCookie = cookie;
+    yahooCrumbFetchedAt = now;
+    return { crumb, cookie };
+  } catch (e) {
+    console.error("getYahooCrumb error", e);
+    return null;
+  }
+}
+
 // Known crypto symbols - these should NOT be looked up via Finnhub
 const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC", "USDC"]);
 
@@ -681,20 +723,30 @@ serve(async (req) => {
         .map((s: string) => s.toUpperCase());
       const CHUNK = 50;
       const results: any[] = [];
+      const seen = new Set<string>();
+      const auth = await getYahooCrumb();
       for (let i = 0; i < syms.length; i += CHUNK) {
         const chunk = syms.slice(i, i + CHUNK);
         try {
-          const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(","))}`;
-          const resp = await fetch(url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-              "Accept": "application/json",
-            },
-          });
-          if (!resp.ok) continue;
-          const json = await resp.json();
-          const quotes = json?.quoteResponse?.result || [];
+          let quotes: any[] = [];
+          if (auth) {
+            const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+              chunk.join(","),
+            )}&crumb=${encodeURIComponent(auth.crumb)}`;
+            const resp = await fetch(url, {
+              headers: {
+                "User-Agent": YAHOO_UA,
+                "Cookie": auth.cookie,
+                "Accept": "application/json",
+              },
+            });
+            if (resp.ok) {
+              const json = await resp.json();
+              quotes = json?.quoteResponse?.result || [];
+            }
+          }
           for (const q of quotes) {
+            seen.add(q.symbol);
             results.push({
               symbol: q.symbol,
               name: q.shortName || q.longName || q.symbol,
@@ -718,6 +770,57 @@ serve(async (req) => {
         } catch (e) {
           console.error("screener chunk error", e);
         }
+      }
+      // Fallback: for any symbols the v7 quote endpoint didn't return
+      // (auth failed, or symbol not covered), use the public chart endpoint
+      // which still returns price + 52W range + volume + name without a crumb.
+      const missing = syms.filter((s) => !seen.has(s));
+      const CONCURRENCY = 8;
+      for (let i = 0; i < missing.length; i += CONCURRENCY) {
+        const batch = missing.slice(i, i + CONCURRENCY);
+        const rows = await Promise.all(
+          batch.map(async (sym) => {
+            try {
+              const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+                sym,
+              )}?interval=1d&range=5d`;
+              const r = await fetch(url, {
+                headers: { "User-Agent": YAHOO_UA, "Accept": "application/json" },
+              });
+              if (!r.ok) return null;
+              const j = await r.json();
+              const res = j?.chart?.result?.[0];
+              if (!res) return null;
+              const meta = res.meta || {};
+              const price = typeof meta.regularMarketPrice === "number" ? meta.regularMarketPrice : null;
+              const prev = typeof meta.chartPreviousClose === "number" ? meta.chartPreviousClose : null;
+              const changePercent =
+                price != null && prev ? ((price - prev) / prev) * 100 : null;
+              return {
+                symbol: sym,
+                name: meta.longName || meta.shortName || sym,
+                price,
+                changePercent,
+                marketCap: null,
+                peRatio: null,
+                forwardPE: null,
+                eps: null,
+                dividendYield: null,
+                volume: typeof meta.regularMarketVolume === "number" ? meta.regularMarketVolume : null,
+                avgVolume: null,
+                fiftyTwoWeekHigh: typeof meta.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh : null,
+                fiftyTwoWeekLow: typeof meta.fiftyTwoWeekLow === "number" ? meta.fiftyTwoWeekLow : null,
+                exchange: meta.fullExchangeName || meta.exchangeName || null,
+                currency: meta.currency || "USD",
+                recommendationMean: null,
+                recommendationKey: null,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const row of rows) if (row) results.push(row);
       }
       return new Response(JSON.stringify({ data: results }), {
         headers: {
