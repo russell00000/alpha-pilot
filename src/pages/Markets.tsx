@@ -996,9 +996,9 @@ const Markets = () => {
         <div className="mt-6 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20">
           <h3 className="font-semibold text-foreground mb-2">About Market Data</h3>
           <p className="text-sm text-muted-foreground">
-            Browse the top 100 US stocks by market cap, popular ETFs, and major cryptocurrencies. 
-            Prices update automatically when you switch tabs. Use the search bar to find any publicly traded asset. 
-            Real-time data provided by Finnhub and CoinGecko.
+            Browse the top 100 US stocks by market cap, popular ETFs, mutual funds, and how the eleven S&P 500 sectors are moving today.
+            Prices update automatically when you switch tabs. Use the search bar to find any publicly traded asset.
+            Real-time data provided by Finnhub. Sector moves are tracked via SPDR sector ETFs.
           </p>
         </div>
 
