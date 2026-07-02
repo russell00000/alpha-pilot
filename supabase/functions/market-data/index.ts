@@ -25,6 +25,48 @@ const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // Minimum 100ms between Finnhub requests
 
+// Yahoo Finance crumb + cookie cache (v7 quote endpoint requires this since 2024).
+let yahooCrumb: string | null = null;
+let yahooCookie: string | null = null;
+let yahooCrumbFetchedAt = 0;
+const YAHOO_CRUMB_TTL = 30 * 60 * 1000; // 30 min
+const YAHOO_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  const now = Date.now();
+  if (yahooCrumb && yahooCookie && now - yahooCrumbFetchedAt < YAHOO_CRUMB_TTL) {
+    return { crumb: yahooCrumb, cookie: yahooCookie };
+  }
+  try {
+    const seed = await fetch("https://fc.yahoo.com/", {
+      headers: { "User-Agent": YAHOO_UA, "Accept": "*/*" },
+      redirect: "manual",
+    });
+    const setCookie = seed.headers.get("set-cookie") || "";
+    // Extract just the name=value pairs, joined for the Cookie header.
+    const cookie = setCookie
+      .split(/,(?=[^ ]+=)/)
+      .map((c) => c.split(";")[0].trim())
+      .filter(Boolean)
+      .join("; ");
+    if (!cookie) return null;
+    const crumbResp = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": YAHOO_UA, "Cookie": cookie, "Accept": "*/*" },
+    });
+    if (!crumbResp.ok) return null;
+    const crumb = (await crumbResp.text()).trim();
+    if (!crumb || crumb.length > 32) return null;
+    yahooCrumb = crumb;
+    yahooCookie = cookie;
+    yahooCrumbFetchedAt = now;
+    return { crumb, cookie };
+  } catch (e) {
+    console.error("getYahooCrumb error", e);
+    return null;
+  }
+}
+
 // Known crypto symbols - these should NOT be looked up via Finnhub
 const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC", "USDC"]);
 
