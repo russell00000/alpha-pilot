@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { top100Stocks } from "@/data/top-stocks";
+import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import { cn } from "@/lib/utils";
 import financeBg from "@/assets/finance-bg.jpg";
+
+// Combined universe: stocks + ETFs + mutual funds. Screener pulls fundamentals for all.
+const UNIVERSE: { symbol: string; name: string; sector?: string }[] = [
+  ...top100Stocks.map((s) => ({ symbol: s.symbol, name: s.name, sector: (s as { sector?: string }).sector })),
+  ...topETFs.map((s) => ({ symbol: s.symbol, name: s.name, sector: "ETF" })),
+  ...topMutualFunds.map((s) => ({ symbol: s.symbol, name: s.name, sector: "Mutual Fund" })),
+];
+const UNIVERSE_SYMBOLS = Array.from(new Set(UNIVERSE.map((u) => u.symbol)));
+const UNIVERSE_META = new Map(UNIVERSE.map((u) => [u.symbol, u]));
 
 // Row model returned by the screener edge action.
 type ScreenerRow = {
@@ -130,12 +139,12 @@ const Screener = () => {
     else setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("market-data", {
-        body: { screener: top100Stocks.map((s) => s.symbol) },
+        body: { screener: UNIVERSE_SYMBOLS },
       });
       if (error) throw error;
       const enriched: ScreenerRow[] = (data?.data || []).map((r: ScreenerRow) => {
-        const meta = top100Stocks.find((s) => s.symbol === r.symbol);
-        return { ...r, sector: normalizeSector(meta?.sector), name: meta?.name || r.name };
+        const meta = UNIVERSE_META.get(r.symbol);
+        return { ...r, sector: normalizeSector(meta?.sector) || r.sector, name: meta?.name || r.name };
       });
       setRows(enriched);
       setLastUpdated(new Date());
