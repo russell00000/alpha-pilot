@@ -259,7 +259,8 @@ const Screener = () => {
       if (!isNaN(minDivN) && (r.dividendYield ?? -Infinity) < minDivN) return false;
       if (recommendation !== "any") {
         const [lo, hi] = RECO_RANGES[recommendation];
-        if (r.recommendationMean == null || r.recommendationMean < lo || r.recommendationMean >= hi) return false;
+        const score = vantageScore(r);
+        if (score == null || score < lo || score >= hi) return false;
       }
       return true;
     });
