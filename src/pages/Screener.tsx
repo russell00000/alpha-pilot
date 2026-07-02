@@ -268,7 +268,7 @@ const Screener = () => {
     });
 
     return out;
-  }, [rows, query, sector, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, preset, sortKey, sortDir]);
+  }, [rows, query, sector, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, recommendation, preset, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -288,11 +288,12 @@ const Screener = () => {
     setMaxChange("");
     setMaxPE("");
     setMinDivYield("");
+    setRecommendation("any");
     setPreset("none");
   };
 
   const activeFilterCount =
-    [query, sector !== "any", cap !== "any", minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, preset !== "none"]
+    [query, sector !== "any", cap !== "any", minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, recommendation !== "any", preset !== "none"]
       .filter(Boolean).length;
 
   const SortHeader = ({ label, k, className }: { label: string; k: SortKey; className?: string }) => {
