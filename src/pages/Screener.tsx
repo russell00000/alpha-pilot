@@ -514,6 +514,9 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="P/E" k="peRatio" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Rating</span>
+                  </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
               </thead>
@@ -521,14 +524,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(10)].map((__, j) => (
+                      {[...Array(11)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="p-12 text-center">
+                    <td colSpan={11} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
@@ -582,6 +585,22 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-muted-foreground">
                           {r.dividendYield != null ? `${r.dividendYield.toFixed(2)}%` : "—"}
                         </td>
+                        <td className="p-3 text-center">
+                          {(() => {
+                            const { label, tone } = recoLabel(r.recommendationMean);
+                            if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
+                            return (
+                              <span className={cn(
+                                "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
+                                tone === "buy" && "bg-success/10 text-success border-success/30",
+                                tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
+                                tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
+                              )}>
+                                {label}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="p-3 pr-4 text-right font-mono text-muted-foreground">{formatVolume(r.volume)}</td>
                       </tr>
                     );
@@ -589,7 +608,7 @@ const Screener = () => {
                 )}
                 {refreshing && !loading && (
                   <tr>
-                    <td colSpan={10} className="p-2 text-center">
+                    <td colSpan={11} className="p-2 text-center">
                       <Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" />
                     </td>
                   </tr>
