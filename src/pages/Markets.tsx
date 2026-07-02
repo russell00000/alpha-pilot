@@ -703,8 +703,8 @@ const Markets = () => {
             <div>
               <h2 className="text-xl font-semibold text-foreground">
                 {activeTab === "stocks" ? "Stocks" :
-                 activeTab === "crypto" ? "Cryptocurrencies" :
                  activeTab === "etf" ? "ETFs" :
+                 activeTab === "sectors" ? "Market Sectors — Today" :
                  "Mutual Funds"}
               </h2>
               <p className="text-sm text-muted-foreground">
