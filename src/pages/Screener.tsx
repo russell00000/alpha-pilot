@@ -94,43 +94,101 @@ const vantageScore = (r: {
   forwardPE: number | null;
   changePercent: number | null;
   recommendationMean: number | null;
+  eps: number | null;
+  marketCap: number | null;
 }): number | null => {
-  const signals: number[] = [];
+  // Weighted signals — each returns 1..5 (1 = Strong Buy, 5 = Strong Sell).
+  const signals: { score: number; weight: number }[] = [];
 
-  // 1) 52W position — value if near lows, extended if near highs.
+  // 1) 52W position — punish extended/overbought names hard, reward pullbacks.
   if (r.price != null && r.fiftyTwoWeekHigh != null && r.fiftyTwoWeekLow != null && r.fiftyTwoWeekHigh > r.fiftyTwoWeekLow) {
     const pos = (r.price - r.fiftyTwoWeekLow) / (r.fiftyTwoWeekHigh - r.fiftyTwoWeekLow); // 0..1
-    // Sweet spot around 0.35 (accumulation zone). Map to 1..5.
-    signals.push(1 + Math.min(4, Math.max(0, pos * 4)));
+    let s: number;
+    if (pos >= 0.95) s = 5.0;        // pinned at 52W high — overbought
+    else if (pos >= 0.85) s = 4.3;
+    else if (pos >= 0.70) s = 3.6;
+    else if (pos >= 0.50) s = 2.8;
+    else if (pos >= 0.30) s = 2.0;
+    else if (pos >= 0.15) s = 1.6;
+    else s = 1.3;                    // deeply discounted
+    signals.push({ score: s, weight: 1.2 });
   }
 
-  // 2) Earnings trajectory — forward PE below trailing PE means EPS is expected to grow.
+  // 2) Earnings quality — no EPS is a red flag (no real fundamentals).
+  const hasEps = r.eps != null && r.eps > 0;
+  if (r.eps != null) {
+    if (r.eps <= 0) signals.push({ score: 4.6, weight: 1.3 }); // losing money
+  }
+
+  // 3) Valuation — trailing PE. Extreme multiples without earnings growth = sell.
+  if (r.peRatio != null && r.peRatio > 0) {
+    let s: number;
+    if (r.peRatio > 80) s = 4.7;
+    else if (r.peRatio > 50) s = 4.2;
+    else if (r.peRatio > 35) s = 3.7;
+    else if (r.peRatio > 22) s = 3.1;
+    else if (r.peRatio > 14) s = 2.4;
+    else if (r.peRatio > 8) s = 1.8;
+    else s = 2.2; // suspiciously cheap
+    signals.push({ score: s, weight: 1.0 });
+  } else if (hasEps === false && r.eps != null) {
+    // no earnings → can't justify multiple
+    signals.push({ score: 4.5, weight: 0.8 });
+  }
+
+  // 4) Growth trajectory — forward PE vs trailing PE.
   if (r.peRatio != null && r.forwardPE != null && r.peRatio > 0 && r.forwardPE > 0) {
     const ratio = r.forwardPE / r.peRatio; // <1 = improving earnings
-    if (ratio < 0.75) signals.push(1.3);
-    else if (ratio < 0.9) signals.push(2.0);
-    else if (ratio < 1.1) signals.push(3.0);
-    else if (ratio < 1.3) signals.push(3.8);
-    else signals.push(4.5);
+    let s: number;
+    if (ratio < 0.70) s = 1.2;
+    else if (ratio < 0.85) s = 1.8;
+    else if (ratio < 1.00) s = 2.6;
+    else if (ratio < 1.15) s = 3.5;
+    else if (ratio < 1.35) s = 4.2;
+    else s = 4.8;                    // earnings expected to shrink
+    signals.push({ score: s, weight: 1.1 });
+  } else if (r.forwardPE != null && r.forwardPE > 60) {
+    signals.push({ score: 4.5, weight: 0.9 });
   }
 
-  // 3) Momentum — fade extreme daily moves both ways.
+  // 5) Momentum — extreme up-days into strength are fades.
   if (r.changePercent != null) {
-    if (r.changePercent > 4) signals.push(3.6);
-    else if (r.changePercent > 1) signals.push(2.4);
-    else if (r.changePercent > -1) signals.push(3.0);
-    else if (r.changePercent > -4) signals.push(2.6);
-    else signals.push(2.0);
+    let s: number;
+    if (r.changePercent > 6) s = 4.4;
+    else if (r.changePercent > 3) s = 3.8;
+    else if (r.changePercent > 1) s = 3.2;
+    else if (r.changePercent > -1) s = 3.0;
+    else if (r.changePercent > -3) s = 2.6;
+    else if (r.changePercent > -6) s = 2.2;
+    else s = 2.6;                    // capitulation isn't automatically a buy
+    signals.push({ score: s, weight: 0.6 });
   }
 
-  // 4) Analyst mean acts as a soft anchor (weighted lower than our own signals).
+  // 6) Overbought + no earnings combo — the "story stock" penalty.
+  if (
+    r.price != null && r.fiftyTwoWeekHigh != null && r.fiftyTwoWeekLow != null && r.fiftyTwoWeekHigh > r.fiftyTwoWeekLow
+  ) {
+    const pos = (r.price - r.fiftyTwoWeekLow) / (r.fiftyTwoWeekHigh - r.fiftyTwoWeekLow);
+    const noEarnings = r.eps != null && r.eps <= 0;
+    const richPe = r.peRatio != null && r.peRatio > 50;
+    const growthDeteriorating =
+      r.peRatio != null && r.forwardPE != null && r.peRatio > 0 && r.forwardPE > 0 && r.forwardPE / r.peRatio > 1.15;
+    if (pos > 0.85 && (noEarnings || richPe || growthDeteriorating)) {
+      signals.push({ score: 5.0, weight: 1.4 }); // overbought without a real story
+    }
+  }
+
+  // 7) Analyst mean — soft anchor.
   if (r.recommendationMean != null) {
-    signals.push(r.recommendationMean);
+    signals.push({ score: r.recommendationMean, weight: 0.7 });
   }
 
   if (signals.length === 0) return null;
-  const avg = signals.reduce((a, b) => a + b, 0) / signals.length;
-  return Math.max(1, Math.min(5, avg));
+  const totalWeight = signals.reduce((a, b) => a + b.weight, 0);
+  const weighted = signals.reduce((a, b) => a + b.score * b.weight, 0) / totalWeight;
+  // Nudge the distribution slightly hawkish so Sell/Strong Sell actually appear.
+  const adjusted = weighted + 0.25;
+  return Math.max(1, Math.min(5, adjusted));
 };
 
 type Preset =
