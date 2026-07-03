@@ -157,15 +157,16 @@ const vantageScore = (r: {
     else if (ratio < 0.5) composite += composite >= 0 ? -0.5 : 0.5;
   }
 
-  // Map composite [-7..+7] to rating [1..5]
-  // +4..+6 = Strong Buy (1.0-1.4), +2..+3 = Buy (1.5-2.4), -1..+1 = Hold (2.5-3.4),
-  // -2..-3 = Sell (3.5-4.4), -4..-6 = Strong Sell (4.5-5.0)
+  // Map composite (typical range -6..+6 from 3 indicators, ±1 volume nudge) to rating.
+  // With only 3 signals summing to a max of +6, a "Strong Buy" requires broad bullish
+  // alignment across at least two indicators — +3 is the practical threshold.
+  // Sell side is intentionally wider to surface overbought/weakening names.
   let rating: number;
-  if (composite >= 4) rating = 1.2;
-  else if (composite >= 2) rating = 2.0;
-  else if (composite >= -1) rating = 3.0;
-  else if (composite >= -3) rating = 4.0;
-  else rating = 4.8;
+  if (composite >= 3) rating = 1.2;        // Strong Buy
+  else if (composite >= 1) rating = 2.0;   // Buy
+  else if (composite === 0) rating = 3.0;  // Hold
+  else if (composite >= -2) rating = 4.0;  // Sell (-1 or -2)
+  else rating = 4.8;                       // Strong Sell (<= -3)
   return rating;
 };
 
