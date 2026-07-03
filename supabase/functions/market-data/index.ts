@@ -879,6 +879,56 @@ serve(async (req) => {
         );
         for (const row of rows) if (row) results.push(row);
       }
+      // ---- Technical indicators: batch fetch 1y daily closes via Yahoo spark ----
+      // Spark endpoint supports multiple symbols in one request.
+      try {
+        const allSyms = results.map((r) => r.symbol);
+        const SPARK_CHUNK = 50;
+        const techMap = new Map<string, { rsi: number | null; macd: ReturnType<typeof computeMACD>; ma50: number | null; ma200: number | null; lastClose: number | null }>();
+        for (let i = 0; i < allSyms.length; i += SPARK_CHUNK) {
+          const chunk = allSyms.slice(i, i + SPARK_CHUNK);
+          try {
+            const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(chunk.join(","))}&range=1y&interval=1d&indicators=close&includeTimestamps=false`;
+            const r = await fetch(url, { headers: { "User-Agent": YAHOO_UA, "Accept": "application/json" } });
+            if (!r.ok) continue;
+            const j = await r.json();
+            const entries = j?.spark?.result || [];
+            for (const entry of entries) {
+              const sym = entry?.symbol;
+              const resArr = entry?.response?.[0];
+              const closes: number[] = (resArr?.indicators?.quote?.[0]?.close || []).filter((v: number | null) => typeof v === "number" && !isNaN(v));
+              if (!sym || closes.length < 30) continue;
+              techMap.set(sym, {
+                rsi: computeRSI(closes, 14),
+                macd: computeMACD(closes),
+                ma50: sma(closes, 50),
+                ma200: sma(closes, 200),
+                lastClose: closes[closes.length - 1],
+              });
+            }
+          } catch (e) {
+            console.error("spark chunk error", e);
+          }
+        }
+        for (const row of results) {
+          const t = techMap.get(row.symbol);
+          if (!t) {
+            row.rsi = null;
+            row.macdHist = null;
+            row.macdPrevHist = null;
+            row.ma50 = null;
+            row.ma200 = null;
+            continue;
+          }
+          row.rsi = t.rsi;
+          row.macdHist = t.macd?.hist ?? null;
+          row.macdPrevHist = t.macd?.prevHist ?? null;
+          row.ma50 = t.ma50;
+          row.ma200 = t.ma200;
+        }
+      } catch (e) {
+        console.error("technicals compute error", e);
+      }
       return new Response(JSON.stringify({ data: results }), {
         headers: {
           ...corsHeaders,
