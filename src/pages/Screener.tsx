@@ -101,6 +101,7 @@ const vantageScore = (r: {
   volume: number | null;
   avgVolume: number | null;
   recommendationMean: number | null;
+  recommendationKey?: string | null;
 }): number | null => {
   let composite = 0;
   let indicators = 0;
@@ -145,36 +146,44 @@ const vantageScore = (r: {
     indicators++;
   }
 
+  // 4) Analyst consensus (quality confirmation on top of technicals).
+  //    Yahoo mean scale: 1=Strong Buy .. 5=Strong Sell. Prefer numeric mean,
+  //    fall back to the numeric prefix embedded in recommendationKey ("1.3 - Strong Buy").
+  let analystMean: number | null = r.recommendationMean;
+  if (analystMean == null && typeof r.recommendationKey === "string") {
+    const m = r.recommendationKey.match(/^\s*(\d+(?:\.\d+)?)/);
+    if (m) analystMean = parseFloat(m[1]);
+  }
+  if (analystMean != null) {
+    let s: number;
+    if (analystMean < 1.5) s = 2;        // Strong Buy
+    else if (analystMean < 2.5) s = 1;   // Buy
+    else if (analystMean < 3.5) s = 0;   // Hold
+    else if (analystMean < 4.5) s = -1;  // Sell
+    else s = -2;                          // Strong Sell
+    composite += s;
+    indicators++;
+  }
+
   if (indicators === 0) {
-    // Fallback to analyst mean if we have no technical data at all.
-    // Yahoo often returns the numeric mean embedded in recommendationKey
-    // (e.g. "2.0 - Buy") while leaving recommendationMean null, so parse both.
-    if (r.recommendationMean != null) return r.recommendationMean;
-    const key = (r as { recommendationKey?: string | null }).recommendationKey;
-    if (typeof key === "string") {
-      const m = key.match(/^\s*(\d+(?:\.\d+)?)/);
-      if (m) return parseFloat(m[1]);
-    }
     return null;
   }
 
-  // 4) Optional volume confirmation modifier (nudges borderline scores)
+  // 5) Optional volume confirmation modifier (nudges borderline scores)
   if (r.volume != null && r.avgVolume != null && r.avgVolume > 0) {
     const ratio = r.volume / r.avgVolume;
     if (ratio > 1.5) composite += composite >= 0 ? 1 : -1;
     else if (ratio < 0.5) composite += composite >= 0 ? -0.5 : 0.5;
   }
 
-  // Map composite (typical range -6..+6 from 3 indicators, ±1 volume nudge) to rating.
-  // With only 3 signals summing to a max of +6, a "Strong Buy" requires broad bullish
-  // alignment across at least two indicators — +3 is the practical threshold.
-  // Sell side is intentionally wider to surface overbought/weakening names.
+  // Map composite to rating. With 4 signals summing to a max of ±8 (±9 with volume),
+  // Strong Buy requires broad bullish alignment across at least two indicators.
   let rating: number;
-  if (composite >= 3) rating = 1.2;        // Strong Buy
+  if (composite >= 4) rating = 1.2;        // Strong Buy
   else if (composite >= 1) rating = 2.0;   // Buy
   else if (composite === 0) rating = 3.0;  // Hold
-  else if (composite >= -2) rating = 4.0;  // Sell (-1 or -2)
-  else rating = 4.8;                       // Strong Sell (<= -3)
+  else if (composite >= -2) rating = 4.0;  // Sell
+  else rating = 4.8;                       // Strong Sell
   return rating;
 };
 
