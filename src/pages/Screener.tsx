@@ -10,14 +10,13 @@ import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import { cn } from "@/lib/utils";
 import financeBg from "@/assets/finance-bg.jpg";
 
-// Combined universe: stocks + ETFs + mutual funds. Screener pulls fundamentals for all.
-const UNIVERSE: { symbol: string; name: string; sector?: string }[] = [
+// Base universe: curated stocks + ETFs + mutual funds. The Screener also merges
+// in the `securities` table, which is refreshed daily with newly announced IPOs.
+const BASE_UNIVERSE: { symbol: string; name: string; sector?: string }[] = [
   ...top100Stocks.map((s) => ({ symbol: s.symbol, name: s.name, sector: (s as { sector?: string }).sector })),
   ...topETFs.map((s) => ({ symbol: s.symbol, name: s.name, sector: "ETF" })),
   ...topMutualFunds.map((s) => ({ symbol: s.symbol, name: s.name, sector: "Mutual Fund" })),
 ];
-const UNIVERSE_SYMBOLS = Array.from(new Set(UNIVERSE.map((u) => u.symbol)));
-const UNIVERSE_META = new Map(UNIVERSE.map((u) => [u.symbol, u]));
 
 // Row model returned by the screener edge action.
 type ScreenerRow = {
