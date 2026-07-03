@@ -698,6 +698,63 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ---- Technical indicator helpers (used by /screener) ----
+  // RSI(14) – Wilder's smoothing
+  const computeRSI = (closes: number[], period = 14): number | null => {
+    if (closes.length < period + 1) return null;
+    let gain = 0, loss = 0;
+    for (let i = 1; i <= period; i++) {
+      const d = closes[i] - closes[i - 1];
+      if (d >= 0) gain += d; else loss -= d;
+    }
+    let avgG = gain / period, avgL = loss / period;
+    for (let i = period + 1; i < closes.length; i++) {
+      const d = closes[i] - closes[i - 1];
+      const g = d > 0 ? d : 0;
+      const l = d < 0 ? -d : 0;
+      avgG = (avgG * (period - 1) + g) / period;
+      avgL = (avgL * (period - 1) + l) / period;
+    }
+    if (avgL === 0) return 100;
+    const rs = avgG / avgL;
+    return 100 - 100 / (1 + rs);
+  };
+  // EMA series
+  const ema = (values: number[], period: number): number[] => {
+    if (values.length < period) return [];
+    const k = 2 / (period + 1);
+    const out: number[] = [];
+    let prev = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    out.push(prev);
+    for (let i = period; i < values.length; i++) {
+      prev = values[i] * k + prev * (1 - k);
+      out.push(prev);
+    }
+    return out;
+  };
+  // MACD(12,26,9) – returns { macd, signal, hist, prevHist }
+  const computeMACD = (closes: number[]) => {
+    if (closes.length < 35) return null;
+    const ema12 = ema(closes, 12);
+    const ema26 = ema(closes, 26);
+    const offset = ema12.length - ema26.length;
+    const macdLine = ema26.map((v, i) => ema12[i + offset] - v);
+    const signalLine = ema(macdLine, 9);
+    if (signalLine.length < 2) return null;
+    const m = macdLine.slice(-signalLine.length);
+    const macd = m[m.length - 1];
+    const signal = signalLine[signalLine.length - 1];
+    const hist = macd - signal;
+    const prevHist = m[m.length - 2] - signalLine[signalLine.length - 2];
+    return { macd, signal, hist, prevHist };
+  };
+  const sma = (values: number[], period: number): number | null => {
+    if (values.length < period) return null;
+    let s = 0;
+    for (let i = values.length - period; i < values.length; i++) s += values[i];
+    return s / period;
+  };
+
   try {
     const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY");
     
@@ -821,6 +878,56 @@ serve(async (req) => {
           }),
         );
         for (const row of rows) if (row) results.push(row);
+      }
+      // ---- Technical indicators: batch fetch 1y daily closes via Yahoo spark ----
+      // Spark endpoint supports multiple symbols in one request.
+      try {
+        const allSyms = results.map((r) => r.symbol);
+        const SPARK_CHUNK = 50;
+        const techMap = new Map<string, { rsi: number | null; macd: ReturnType<typeof computeMACD>; ma50: number | null; ma200: number | null; lastClose: number | null }>();
+        for (let i = 0; i < allSyms.length; i += SPARK_CHUNK) {
+          const chunk = allSyms.slice(i, i + SPARK_CHUNK);
+          try {
+            const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(chunk.join(","))}&range=1y&interval=1d&indicators=close&includeTimestamps=false`;
+            const r = await fetch(url, { headers: { "User-Agent": YAHOO_UA, "Accept": "application/json" } });
+            if (!r.ok) continue;
+            const j = await r.json();
+            const entries = j?.spark?.result || [];
+            for (const entry of entries) {
+              const sym = entry?.symbol;
+              const resArr = entry?.response?.[0];
+              const closes: number[] = (resArr?.indicators?.quote?.[0]?.close || []).filter((v: number | null) => typeof v === "number" && !isNaN(v));
+              if (!sym || closes.length < 30) continue;
+              techMap.set(sym, {
+                rsi: computeRSI(closes, 14),
+                macd: computeMACD(closes),
+                ma50: sma(closes, 50),
+                ma200: sma(closes, 200),
+                lastClose: closes[closes.length - 1],
+              });
+            }
+          } catch (e) {
+            console.error("spark chunk error", e);
+          }
+        }
+        for (const row of results) {
+          const t = techMap.get(row.symbol);
+          if (!t) {
+            row.rsi = null;
+            row.macdHist = null;
+            row.macdPrevHist = null;
+            row.ma50 = null;
+            row.ma200 = null;
+            continue;
+          }
+          row.rsi = t.rsi;
+          row.macdHist = t.macd?.hist ?? null;
+          row.macdPrevHist = t.macd?.prevHist ?? null;
+          row.ma50 = t.ma50;
+          row.ma200 = t.ma200;
+        }
+      } catch (e) {
+        console.error("technicals compute error", e);
       }
       return new Response(JSON.stringify({ data: results }), {
         headers: {

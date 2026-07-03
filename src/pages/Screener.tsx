@@ -37,6 +37,11 @@ type ScreenerRow = {
   exchange: string | null;
   recommendationMean: number | null;
   recommendationKey: string | null;
+  rsi: number | null;
+  macdHist: number | null;
+  macdPrevHist: number | null;
+  ma50: number | null;
+  ma200: number | null;
 };
 
 const SECTORS = [
@@ -82,112 +87,86 @@ const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" |
   return { label: "Strong Sell", tone: "sell" };
 };
 
-// Vantage rating: our own 1-5 score computed from data we already have in the
-// screener row. Lower is more bullish so it maps cleanly onto the same scale as
-// analyst consensus (1=Strong Buy … 5=Strong Sell).
+// Vantage rating: composite technical score based on RSI + MACD + Moving Averages.
+// Each indicator scores -2 (strong bearish) to +2 (strong bullish). Optional volume
+// modifier nudges borderline scores. Composite (-6 to +6, or -7 to +7 with volume)
+// maps to a 1..5 scale where 1 = Strong Buy and 5 = Strong Sell.
 const vantageScore = (r: {
   price: number | null;
-  fiftyTwoWeekHigh: number | null;
-  fiftyTwoWeekLow: number | null;
-  peRatio: number | null;
-  forwardPE: number | null;
-  changePercent: number | null;
+  rsi: number | null;
+  macdHist: number | null;
+  macdPrevHist: number | null;
+  ma50: number | null;
+  ma200: number | null;
+  volume: number | null;
+  avgVolume: number | null;
   recommendationMean: number | null;
-  eps: number | null;
-  marketCap: number | null;
 }): number | null => {
-  // Weighted signals — each returns 1..5 (1 = Strong Buy, 5 = Strong Sell).
-  const signals: { score: number; weight: number }[] = [];
+  let composite = 0;
+  let indicators = 0;
 
-  // 1) 52W position — punish extended/overbought names hard, reward pullbacks.
-  if (r.price != null && r.fiftyTwoWeekHigh != null && r.fiftyTwoWeekLow != null && r.fiftyTwoWeekHigh > r.fiftyTwoWeekLow) {
-    const pos = (r.price - r.fiftyTwoWeekLow) / (r.fiftyTwoWeekHigh - r.fiftyTwoWeekLow); // 0..1
+  // 1) RSI
+  if (r.rsi != null) {
     let s: number;
-    if (pos >= 0.95) s = 5.0;        // pinned at 52W high — overbought
-    else if (pos >= 0.85) s = 4.3;
-    else if (pos >= 0.70) s = 3.6;
-    else if (pos >= 0.50) s = 2.8;
-    else if (pos >= 0.30) s = 2.0;
-    else if (pos >= 0.15) s = 1.6;
-    else s = 1.3;                    // deeply discounted
-    signals.push({ score: s, weight: 1.2 });
+    if (r.rsi < 30) s = 2;
+    else if (r.rsi < 45) s = 1;
+    else if (r.rsi <= 55) s = 0;
+    else if (r.rsi <= 70) s = -1;
+    else s = -2;
+    composite += s;
+    indicators++;
   }
 
-  // 2) Earnings quality — no EPS is a red flag (no real fundamentals).
-  const hasEps = r.eps != null && r.eps > 0;
-  if (r.eps != null) {
-    if (r.eps <= 0) signals.push({ score: 4.6, weight: 1.3 }); // losing money
-  }
-
-  // 3) Valuation — trailing PE. Extreme multiples without earnings growth = sell.
-  if (r.peRatio != null && r.peRatio > 0) {
+  // 2) MACD (histogram sign + slope)
+  if (r.macdHist != null && r.macdPrevHist != null) {
+    const h = r.macdHist, ph = r.macdPrevHist;
     let s: number;
-    if (r.peRatio > 80) s = 4.7;
-    else if (r.peRatio > 50) s = 4.2;
-    else if (r.peRatio > 35) s = 3.7;
-    else if (r.peRatio > 22) s = 3.1;
-    else if (r.peRatio > 14) s = 2.4;
-    else if (r.peRatio > 8) s = 1.8;
-    else s = 2.2; // suspiciously cheap
-    signals.push({ score: s, weight: 1.0 });
-  } else if (hasEps === false && r.eps != null) {
-    // no earnings → can't justify multiple
-    signals.push({ score: 4.5, weight: 0.8 });
+    if (ph <= 0 && h > 0) s = 2;              // bullish crossover
+    else if (h > 0 && h > ph) s = 2;          // above signal, widening
+    else if (h > 0) s = 1;                    // above signal, narrowing
+    else if (ph >= 0 && h < 0) s = -2;        // bearish crossover
+    else if (h < 0 && h < ph) s = -2;         // below signal, widening
+    else if (h < 0) s = -1;                   // below signal, narrowing
+    else s = 0;
+    composite += s;
+    indicators++;
   }
 
-  // 4) Growth trajectory — forward PE vs trailing PE.
-  if (r.peRatio != null && r.forwardPE != null && r.peRatio > 0 && r.forwardPE > 0) {
-    const ratio = r.forwardPE / r.peRatio; // <1 = improving earnings
+  // 3) Moving averages
+  if (r.price != null && r.ma50 != null && r.ma200 != null) {
+    const p = r.price;
     let s: number;
-    if (ratio < 0.70) s = 1.2;
-    else if (ratio < 0.85) s = 1.8;
-    else if (ratio < 1.00) s = 2.6;
-    else if (ratio < 1.15) s = 3.5;
-    else if (ratio < 1.35) s = 4.2;
-    else s = 4.8;                    // earnings expected to shrink
-    signals.push({ score: s, weight: 1.1 });
-  } else if (r.forwardPE != null && r.forwardPE > 60) {
-    signals.push({ score: 4.5, weight: 0.9 });
+    if (p > r.ma50 && p > r.ma200 && r.ma50 > r.ma200) s = 2; // golden-cross alignment
+    else if (p > r.ma50 && p > r.ma200) s = 1;
+    else if (p < r.ma50 && p < r.ma200 && r.ma50 < r.ma200) s = -2; // death-cross alignment
+    else if (p < r.ma50 && p < r.ma200) s = -1;
+    else s = 0;
+    composite += s;
+    indicators++;
   }
 
-  // 5) Momentum — extreme up-days into strength are fades.
-  if (r.changePercent != null) {
-    let s: number;
-    if (r.changePercent > 6) s = 4.4;
-    else if (r.changePercent > 3) s = 3.8;
-    else if (r.changePercent > 1) s = 3.2;
-    else if (r.changePercent > -1) s = 3.0;
-    else if (r.changePercent > -3) s = 2.6;
-    else if (r.changePercent > -6) s = 2.2;
-    else s = 2.6;                    // capitulation isn't automatically a buy
-    signals.push({ score: s, weight: 0.6 });
+  if (indicators === 0) {
+    // Fallback to analyst mean if we have no technical data at all
+    return r.recommendationMean;
   }
 
-  // 6) Overbought + no earnings combo — the "story stock" penalty.
-  if (
-    r.price != null && r.fiftyTwoWeekHigh != null && r.fiftyTwoWeekLow != null && r.fiftyTwoWeekHigh > r.fiftyTwoWeekLow
-  ) {
-    const pos = (r.price - r.fiftyTwoWeekLow) / (r.fiftyTwoWeekHigh - r.fiftyTwoWeekLow);
-    const noEarnings = r.eps != null && r.eps <= 0;
-    const richPe = r.peRatio != null && r.peRatio > 50;
-    const growthDeteriorating =
-      r.peRatio != null && r.forwardPE != null && r.peRatio > 0 && r.forwardPE > 0 && r.forwardPE / r.peRatio > 1.15;
-    if (pos > 0.85 && (noEarnings || richPe || growthDeteriorating)) {
-      signals.push({ score: 5.0, weight: 1.4 }); // overbought without a real story
-    }
+  // 4) Optional volume confirmation modifier (nudges borderline scores)
+  if (r.volume != null && r.avgVolume != null && r.avgVolume > 0) {
+    const ratio = r.volume / r.avgVolume;
+    if (ratio > 1.5) composite += composite >= 0 ? 1 : -1;
+    else if (ratio < 0.5) composite += composite >= 0 ? -0.5 : 0.5;
   }
 
-  // 7) Analyst mean — soft anchor.
-  if (r.recommendationMean != null) {
-    signals.push({ score: r.recommendationMean, weight: 0.7 });
-  }
-
-  if (signals.length === 0) return null;
-  const totalWeight = signals.reduce((a, b) => a + b.weight, 0);
-  const weighted = signals.reduce((a, b) => a + b.score * b.weight, 0) / totalWeight;
-  // Nudge the distribution slightly hawkish so Sell/Strong Sell actually appear.
-  const adjusted = weighted + 0.25;
-  return Math.max(1, Math.min(5, adjusted));
+  // Map composite [-7..+7] to rating [1..5]
+  // +4..+6 = Strong Buy (1.0-1.4), +2..+3 = Buy (1.5-2.4), -1..+1 = Hold (2.5-3.4),
+  // -2..-3 = Sell (3.5-4.4), -4..-6 = Strong Sell (4.5-5.0)
+  let rating: number;
+  if (composite >= 4) rating = 1.2;
+  else if (composite >= 2) rating = 2.0;
+  else if (composite >= -1) rating = 3.0;
+  else if (composite >= -3) rating = 4.0;
+  else rating = 4.8;
+  return rating;
 };
 
 type Preset =
