@@ -330,6 +330,45 @@ export type Database = {
         }
         Relationships: []
       }
+      securities: {
+        Row: {
+          created_at: string
+          exchange: string | null
+          id: string
+          ipo_date: string | null
+          is_active: boolean
+          name: string
+          sector: string | null
+          source: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exchange?: string | null
+          id?: string
+          ipo_date?: string | null
+          is_active?: boolean
+          name: string
+          sector?: string | null
+          source?: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exchange?: string | null
+          id?: string
+          ipo_date?: string | null
+          is_active?: boolean
+          name?: string
+          sector?: string | null
+          source?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
