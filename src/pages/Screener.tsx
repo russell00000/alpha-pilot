@@ -146,8 +146,16 @@ const vantageScore = (r: {
   }
 
   if (indicators === 0) {
-    // Fallback to analyst mean if we have no technical data at all
-    return r.recommendationMean;
+    // Fallback to analyst mean if we have no technical data at all.
+    // Yahoo often returns the numeric mean embedded in recommendationKey
+    // (e.g. "2.0 - Buy") while leaving recommendationMean null, so parse both.
+    if (r.recommendationMean != null) return r.recommendationMean;
+    const key = (r as { recommendationKey?: string | null }).recommendationKey;
+    if (typeof key === "string") {
+      const m = key.match(/^\s*(\d+(?:\.\d+)?)/);
+      if (m) return parseFloat(m[1]);
+    }
+    return null;
   }
 
   // 4) Optional volume confirmation modifier (nudges borderline scores)
