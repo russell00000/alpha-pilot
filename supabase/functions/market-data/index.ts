@@ -883,7 +883,7 @@ serve(async (req) => {
       // Spark endpoint supports multiple symbols in one request.
       try {
         const allSyms = results.map((r) => r.symbol);
-        const SPARK_CHUNK = 50;
+        const SPARK_CHUNK = 20;
         const techMap = new Map<string, { rsi: number | null; macd: ReturnType<typeof computeMACD>; ma50: number | null; ma200: number | null; lastClose: number | null }>();
         for (let i = 0; i < allSyms.length; i += SPARK_CHUNK) {
           const chunk = allSyms.slice(i, i + SPARK_CHUNK);
