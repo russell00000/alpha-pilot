@@ -269,12 +269,28 @@ const Screener = () => {
     if (silent) setRefreshing(true);
     else setLoading(true);
     try {
+      // Merge curated universe with the daily-refreshed `securities` table
+      // (adds newly announced IPOs automatically).
+      const { data: dbSecurities } = await supabase
+        .from("securities")
+        .select("symbol, name, sector, exchange")
+        .eq("is_active", true);
+
+      const universe = new Map<string, { symbol: string; name: string; sector?: string }>();
+      for (const u of BASE_UNIVERSE) universe.set(u.symbol, u);
+      for (const s of dbSecurities ?? []) {
+        if (!universe.has(s.symbol)) {
+          universe.set(s.symbol, { symbol: s.symbol, name: s.name, sector: s.sector ?? undefined });
+        }
+      }
+      const symbols = Array.from(universe.keys());
+
       const { data, error } = await supabase.functions.invoke("market-data", {
-        body: { screener: UNIVERSE_SYMBOLS },
+        body: { screener: symbols },
       });
       if (error) throw error;
       const enriched: ScreenerRow[] = (data?.data || []).map((r: ScreenerRow) => {
-        const meta = UNIVERSE_META.get(r.symbol);
+        const meta = universe.get(r.symbol);
         return { ...r, sector: normalizeSector(meta?.sector) || r.sector, name: meta?.name || r.name };
       });
       setRows(enriched);
