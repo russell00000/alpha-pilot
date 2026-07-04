@@ -42,6 +42,14 @@ type ScreenerRow = {
   macdPrevHist: number | null;
   ma50: number | null;
   ma200: number | null;
+  // Fundamentals (cached daily, joined by market-data function)
+  revenueGrowth: number | null;      // YoY, e.g. 0.15 = +15%
+  profitMargins: number | null;      // e.g. 0.22 = 22%
+  debtToEquity: number | null;       // raw ratio (Yahoo returns %-scaled: 45 = 0.45)
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  fundSector: string | null;
+  sectorAvgPE: number | null;
 };
 
 const SECTORS = [
@@ -87,11 +95,21 @@ const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" |
   return { label: "Strong Sell", tone: "sell" };
 };
 
-// Vantage rating: composite technical score based on RSI + MACD + Moving Averages.
-// Each indicator scores -2 (strong bearish) to +2 (strong bullish). Optional volume
-// modifier nudges borderline scores. Composite (-6 to +6, or -7 to +7 with volume)
-// maps to a 1..5 scale where 1 = Strong Buy and 5 = Strong Sell.
-const vantageScore = (r: {
+// ------------------------------------------------------------------
+// Vantage Signal Framework — Technical + Fundamental blend
+// ------------------------------------------------------------------
+// Technical: RSI + MACD + Moving Averages (each -2..+2). With volume
+// modifier, tech ranges roughly -7..+7.
+//
+// Fundamental: Revenue growth + EPS beat/miss trend + Profit margin
+// + P/E vs sector + Debt/Equity (each -2..+2, sums -10..+10, then
+// normalized to -6..+6 to line up with technical scale).
+//
+// Combined = tech * 0.4 + fund * 0.6 (fundamentals weighted higher
+// per the user's updated framework), then mapped to a rating.
+
+// Returns technical composite score (-7..+7) or null if no indicators available.
+const technicalScore = (r: {
   price: number | null;
   rsi: number | null;
   macdHist: number | null;
@@ -100,13 +118,10 @@ const vantageScore = (r: {
   ma200: number | null;
   volume: number | null;
   avgVolume: number | null;
-  recommendationMean: number | null;
-  recommendationKey?: string | null;
 }): number | null => {
   let composite = 0;
   let indicators = 0;
 
-  // 1) RSI
   if (r.rsi != null) {
     let s: number;
     if (r.rsi < 30) s = 2;
@@ -118,73 +133,158 @@ const vantageScore = (r: {
     indicators++;
   }
 
-  // 2) MACD (histogram sign + slope)
   if (r.macdHist != null && r.macdPrevHist != null) {
     const h = r.macdHist, ph = r.macdPrevHist;
     let s: number;
-    if (ph <= 0 && h > 0) s = 2;              // bullish crossover
-    else if (h > 0 && h > ph) s = 2;          // above signal, widening
-    else if (h > 0) s = 1;                    // above signal, narrowing
-    else if (ph >= 0 && h < 0) s = -2;        // bearish crossover
-    else if (h < 0 && h < ph) s = -2;         // below signal, widening
-    else if (h < 0) s = -1;                   // below signal, narrowing
+    if (ph <= 0 && h > 0) s = 2;
+    else if (h > 0 && h > ph) s = 2;
+    else if (h > 0) s = 1;
+    else if (ph >= 0 && h < 0) s = -2;
+    else if (h < 0 && h < ph) s = -2;
+    else if (h < 0) s = -1;
     else s = 0;
     composite += s;
     indicators++;
   }
 
-  // 3) Moving averages
   if (r.price != null && r.ma50 != null && r.ma200 != null) {
     const p = r.price;
     let s: number;
-    if (p > r.ma50 && p > r.ma200 && r.ma50 > r.ma200) s = 2; // golden-cross alignment
+    if (p > r.ma50 && p > r.ma200 && r.ma50 > r.ma200) s = 2;
     else if (p > r.ma50 && p > r.ma200) s = 1;
-    else if (p < r.ma50 && p < r.ma200 && r.ma50 < r.ma200) s = -2; // death-cross alignment
+    else if (p < r.ma50 && p < r.ma200 && r.ma50 < r.ma200) s = -2;
     else if (p < r.ma50 && p < r.ma200) s = -1;
     else s = 0;
     composite += s;
     indicators++;
   }
 
-  // 4) Analyst consensus (quality confirmation on top of technicals).
-  //    Yahoo mean scale: 1=Strong Buy .. 5=Strong Sell. Prefer numeric mean,
-  //    fall back to the numeric prefix embedded in recommendationKey ("1.3 - Strong Buy").
-  let analystMean: number | null = r.recommendationMean;
-  if (analystMean == null && typeof r.recommendationKey === "string") {
-    const m = r.recommendationKey.match(/^\s*(\d+(?:\.\d+)?)/);
-    if (m) analystMean = parseFloat(m[1]);
-  }
-  if (analystMean != null) {
-    let s: number;
-    if (analystMean < 1.5) s = 2;        // Strong Buy
-    else if (analystMean < 2.5) s = 1;   // Buy
-    else if (analystMean < 3.5) s = 0;   // Hold
-    else if (analystMean < 4.5) s = -1;  // Sell
-    else s = -2;                          // Strong Sell
-    composite += s;
-    indicators++;
-  }
+  if (indicators === 0) return null;
 
-  if (indicators === 0) {
-    return null;
-  }
-
-  // 5) Optional volume confirmation modifier (nudges borderline scores)
+  // Volume confirmation nudge on borderline scores.
   if (r.volume != null && r.avgVolume != null && r.avgVolume > 0) {
     const ratio = r.volume / r.avgVolume;
     if (ratio > 1.5) composite += composite >= 0 ? 1 : -1;
     else if (ratio < 0.5) composite += composite >= 0 ? -0.5 : 0.5;
   }
+  return composite;
+};
 
-  // Map composite to rating. With 4 signals summing to a max of ±8 (±9 with volume),
-  // Strong Buy requires broad bullish alignment across at least two indicators.
-  let rating: number;
-  if (composite >= 4) rating = 1.2;        // Strong Buy
-  else if (composite >= 1) rating = 2.0;   // Buy
-  else if (composite === 0) rating = 3.0;  // Hold
-  else if (composite >= -2) rating = 4.0;  // Sell
-  else rating = 4.8;                       // Strong Sell
-  return rating;
+// Returns fundamental composite normalized to -6..+6, or null if
+// too few fundamental data points are available.
+const fundamentalScore = (r: {
+  revenueGrowth: number | null;
+  profitMargins: number | null;
+  debtToEquity: number | null;
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  peRatio: number | null;
+  sectorAvgPE: number | null;
+}): number | null => {
+  let composite = 0;
+  let count = 0;
+
+  // 1) Revenue growth YoY
+  if (r.revenueGrowth != null) {
+    const g = r.revenueGrowth; // fraction
+    let s: number;
+    if (g >= 0.20) s = 2;
+    else if (g >= 0.10) s = 1;
+    else if (g >= 0.02) s = 0;
+    else if (g >= -0.05) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  // 2) EPS beat/miss trend
+  if (r.epsBeatStreak != null || r.epsMissStreak != null) {
+    const beat = r.epsBeatStreak ?? 0;
+    const miss = r.epsMissStreak ?? 0;
+    let s: number;
+    if (beat >= 3) s = 2;
+    else if (beat >= 2) s = 1;
+    else if (miss >= 3) s = -2;
+    else if (miss >= 2) s = -1;
+    else s = 0;
+    // Only count as a signal if we actually have evidence either way.
+    if (beat > 0 || miss > 0) { composite += s; count++; }
+  }
+
+  // 3) Profit margin (net)
+  if (r.profitMargins != null) {
+    const m = r.profitMargins;
+    let s: number;
+    if (m >= 0.20) s = 2;
+    else if (m >= 0.10) s = 1;
+    else if (m >= 0.03) s = 0;
+    else if (m >= 0) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  // 4) P/E vs sector average
+  if (r.peRatio != null && r.peRatio > 0 && r.sectorAvgPE != null && r.sectorAvgPE > 0) {
+    const ratio = r.peRatio / r.sectorAvgPE;
+    let s: number;
+    if (ratio <= 0.75) s = 2;       // heavy discount to sector
+    else if (ratio <= 0.95) s = 1;
+    else if (ratio <= 1.15) s = 0;
+    else if (ratio <= 1.5) s = -1;
+    else s = -2;                     // richly valued
+    composite += s; count++;
+  }
+
+  // 5) Debt / Equity (Yahoo returns as percent — 45 means 0.45)
+  if (r.debtToEquity != null) {
+    const de = r.debtToEquity > 5 ? r.debtToEquity / 100 : r.debtToEquity;
+    let s: number;
+    if (de <= 0.3) s = 2;
+    else if (de <= 0.6) s = 1;
+    else if (de <= 1.0) s = 0;
+    else if (de <= 2.0) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  if (count === 0) return null;
+  // Normalize to a -6..+6 scale (5 metrics × ±2 = ±10 → × 0.6).
+  return composite * 0.6;
+};
+
+// Blends technical + fundamental. If fundamentals missing, falls back to tech alone.
+const combinedScore = (r: {
+  price: number | null;
+  rsi: number | null;
+  macdHist: number | null;
+  macdPrevHist: number | null;
+  ma50: number | null;
+  ma200: number | null;
+  volume: number | null;
+  avgVolume: number | null;
+  revenueGrowth: number | null;
+  profitMargins: number | null;
+  debtToEquity: number | null;
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  peRatio: number | null;
+  sectorAvgPE: number | null;
+}): number | null => {
+  const t = technicalScore(r);
+  const f = fundamentalScore(r);
+  if (t == null && f == null) return null;
+  if (t == null) return f;
+  if (f == null) return t;
+  return t * 0.4 + f * 0.6;
+};
+
+// Map combined score (-6..+6) to a 1..5 rating (1 = Strong Buy).
+const scoreToRating = (score: number | null): number | null => {
+  if (score == null) return null;
+  if (score >= 4) return 1.2;
+  if (score >= 2) return 2.0;
+  if (score >= -1.9) return 3.0;
+  if (score >= -3.9) return 4.0;
+  return 4.8;
 };
 
 type Preset =
@@ -329,8 +429,8 @@ const Screener = () => {
       if (!isNaN(minDivN) && (r.dividendYield ?? -Infinity) < minDivN) return false;
       if (recommendation !== "any") {
         const [lo, hi] = RECO_RANGES[recommendation];
-        const score = vantageScore(r);
-        if (score == null || score < lo || score >= hi) return false;
+        const rating = scoreToRating(combinedScore(r));
+        if (rating == null || rating < lo || rating >= hi) return false;
       }
       return true;
     });
@@ -623,7 +723,7 @@ const Screener = () => {
         {/* Results table */}
         <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[1050px]">
               <thead>
                 <tr className="border-b border-border/50 bg-background/40">
                   <th className="text-left p-3 pl-4"><SortHeader label="Symbol" k="symbol" /></th>
@@ -636,7 +736,13 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
                   <th className="text-center p-3">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Vantage Rating</span>
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Technical composite (-7..+7): RSI + MACD + Moving averages + volume">Tech</span>
+                  </th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Fundamental composite (-6..+6): revenue growth, EPS trend, margins, P/E vs sector, D/E">Fund</span>
+                  </th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Combined: 40% technical + 60% fundamental">Vantage Rating</span>
                   </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -645,14 +751,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(11)].map((__, j) => (
+                      {[...Array(13)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-12 text-center">
+                    <td colSpan={13} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
@@ -706,22 +812,38 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-muted-foreground">
                           {r.dividendYield != null ? `${r.dividendYield.toFixed(2)}%` : "—"}
                         </td>
-                        <td className="p-3 text-center">
-                          {(() => {
-                            const { label, tone } = recoLabel(vantageScore(r));
-                            if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
-                            return (
-                              <span className={cn(
-                                "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
-                                tone === "buy" && "bg-success/10 text-success border-success/30",
-                                tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
-                                tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
-                              )}>
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </td>
+                        {(() => {
+                          const tech = technicalScore(r);
+                          const fund = fundamentalScore(r);
+                          const combined = combinedScore(r);
+                          const scoreCell = (v: number | null) => {
+                            if (v == null) return <span className="text-xs text-muted-foreground">—</span>;
+                            const tone = v >= 2 ? "text-success" : v <= -2 ? "text-destructive" : "text-muted-foreground";
+                            const sign = v > 0 ? "+" : "";
+                            return <span className={cn("font-mono text-xs font-semibold", tone)}>{sign}{v.toFixed(1)}</span>;
+                          };
+                          const { label, tone } = recoLabel(scoreToRating(combined));
+                          return (
+                            <>
+                              <td className="p-3 text-center">{scoreCell(tech)}</td>
+                              <td className="p-3 text-center">{scoreCell(fund)}</td>
+                              <td className="p-3 text-center">
+                                {label === "—" ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : (
+                                  <span className={cn(
+                                    "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
+                                    tone === "buy" && "bg-success/10 text-success border-success/30",
+                                    tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
+                                    tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
+                                  )}>
+                                    {label}
+                                  </span>
+                                )}
+                              </td>
+                            </>
+                          );
+                        })()}
                         <td className="p-3 pr-4 text-right font-mono text-muted-foreground">{formatVolume(r.volume)}</td>
                       </tr>
                     );
@@ -729,7 +851,7 @@ const Screener = () => {
                 )}
                 {refreshing && !loading && (
                   <tr>
-                    <td colSpan={11} className="p-2 text-center">
+                    <td colSpan={13} className="p-2 text-center">
                       <Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" />
                     </td>
                   </tr>

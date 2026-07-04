@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -928,6 +929,72 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error("technicals compute error", e);
+      }
+      // ---- Fundamentals join (cached daily by sync-fundamentals) ----
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (supabaseUrl && supabaseKey) {
+          const sb = createClient(supabaseUrl, supabaseKey);
+          const allSymsForFund = results.map((r) => r.symbol);
+          // Chunk the IN query to avoid huge URL sizes.
+          const F_CHUNK = 200;
+          const fundMap = new Map<string, any>();
+          for (let i = 0; i < allSymsForFund.length; i += F_CHUNK) {
+            const chunk = allSymsForFund.slice(i, i + F_CHUNK);
+            const { data: funds, error } = await sb
+              .from("fundamentals")
+              .select("symbol,sector,pe_ratio,revenue_growth,profit_margins,debt_to_equity,eps_beat_streak,eps_miss_streak")
+              .in("symbol", chunk);
+            if (error) { console.error("fundamentals query error", error); continue; }
+            for (const f of funds || []) fundMap.set(f.symbol, f);
+          }
+          // Sector-avg P/E across the current response (fallback benchmark).
+          const sectorBuckets = new Map<string, number[]>();
+          for (const f of fundMap.values()) {
+            if (f.sector && typeof f.pe_ratio === "number" && f.pe_ratio > 0 && f.pe_ratio < 200) {
+              const arr = sectorBuckets.get(f.sector) || [];
+              arr.push(f.pe_ratio);
+              sectorBuckets.set(f.sector, arr);
+            }
+          }
+          const sectorAvgPE = new Map<string, number>();
+          for (const [k, arr] of sectorBuckets) {
+            sectorAvgPE.set(k, arr.reduce((a, b) => a + b, 0) / arr.length);
+          }
+          for (const row of results) {
+            const f = fundMap.get(row.symbol);
+            row.revenueGrowth = f?.revenue_growth ?? null;
+            row.profitMargins = f?.profit_margins ?? null;
+            row.debtToEquity = f?.debt_to_equity ?? null;
+            row.epsBeatStreak = f?.eps_beat_streak ?? 0;
+            row.epsMissStreak = f?.eps_miss_streak ?? 0;
+            row.fundSector = f?.sector ?? null;
+            row.sectorAvgPE = f?.sector ? (sectorAvgPE.get(f.sector) ?? null) : null;
+          }
+          // Lazy backfill: fire-and-forget sync for any symbol not in the cache.
+          // This warms the cache organically as users hit the screener; the cron
+          // then keeps everything fresh daily.
+          const missing = allSymsForFund.filter((s) => !fundMap.has(s));
+          if (missing.length > 0) {
+            const anon = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+            const url = `${supabaseUrl}/functions/v1/sync-fundamentals`;
+            // Cap per invocation to avoid overwhelming Yahoo; the next screener
+            // call will backfill more.
+            const batch = missing.slice(0, 60);
+            fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(anon ? { "Authorization": `Bearer ${anon}`, "apikey": anon } : {}),
+              },
+              body: JSON.stringify({ symbols: batch }),
+            }).catch((e) => console.error("backfill fire error", e));
+            console.log(`fundamentals backfill queued for ${batch.length} symbols`);
+          }
+        }
+      } catch (e) {
+        console.error("fundamentals join error", e);
       }
       return new Response(JSON.stringify({ data: results }), {
         headers: {

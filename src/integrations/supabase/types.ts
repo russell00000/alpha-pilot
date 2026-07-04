@@ -79,6 +79,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fundamentals: {
+        Row: {
+          debt_to_equity: number | null
+          eps_beat_streak: number | null
+          eps_miss_streak: number | null
+          pe_ratio: number | null
+          profit_margins: number | null
+          revenue_growth: number | null
+          sector: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          debt_to_equity?: number | null
+          eps_beat_streak?: number | null
+          eps_miss_streak?: number | null
+          pe_ratio?: number | null
+          profit_margins?: number | null
+          revenue_growth?: number | null
+          sector?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          debt_to_equity?: number | null
+          eps_beat_streak?: number | null
+          eps_miss_streak?: number | null
+          pe_ratio?: number | null
+          profit_margins?: number | null
+          revenue_growth?: number | null
+          sector?: string | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       investing_philosophy: {
         Row: {
           asset_allocation_rules: string | null
