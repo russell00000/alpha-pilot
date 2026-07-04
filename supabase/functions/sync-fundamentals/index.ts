@@ -51,11 +51,15 @@ type Fundamentals = {
   symbol: string;
   sector: string | null;
   pe_ratio: number | null;
+  forward_pe: number | null;
+  eps: number | null;
+  dividend_yield: number | null;
   revenue_growth: number | null;
   profit_margins: number | null;
   debt_to_equity: number | null;
   eps_beat_streak: number;
   eps_miss_streak: number;
+  fundamental_score: number | null;
 };
 
 // Fetch Yahoo quoteSummary for a single symbol. Returns null on failure.
@@ -107,15 +111,68 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
       pe_ratio:
         typeof sd?.trailingPE?.raw === "number" ? sd.trailingPE.raw :
         typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null,
+      forward_pe: typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null,
+      eps: typeof ks?.trailingEps?.raw === "number" ? ks.trailingEps.raw : null,
+      dividend_yield: typeof sd?.dividendYield?.raw === "number" ? sd.dividendYield.raw * 100 : null,
       revenue_growth: typeof fd?.revenueGrowth?.raw === "number" ? fd.revenueGrowth.raw : null,
       profit_margins: typeof fd?.profitMargins?.raw === "number" ? fd.profitMargins.raw : null,
       debt_to_equity: typeof fd?.debtToEquity?.raw === "number" ? fd.debtToEquity.raw : null,
       eps_beat_streak: beat,
       eps_miss_streak: miss,
+      fundamental_score: null, // filled by scoreFundamental below
     };
   } catch {
     return null;
   }
+}
+
+// Recentered rubric (fixed benchmark, not response-average):
+//   profit margin: >=30 = +2, >=20 = +1, <10 = -1, <0 = -2
+//   debt/equity:   <=0.1 = +2, <=0.3 = +1, >1 = -1, >2 = -2
+//   revenue growth:>=25% = +2, >=15% = +1, <5% = -1, <0 = -2
+//   P/E vs 20:     <10 = +2, <15 = +1, >30 = -1, >45 = -2
+//   EPS streak:    unchanged (>=3 = +/-2, >=2 = +/-1)
+// Sum -10..+10, then × 0.6 to align with technical -6..+6 scale.
+function scoreFundamental(f: Fundamentals): number | null {
+  let c = 0, n = 0;
+  if (f.revenue_growth != null) {
+    const g = f.revenue_growth;
+    let s = 0;
+    if (g >= 0.25) s = 2; else if (g >= 0.15) s = 1;
+    else if (g < 0) s = -2; else if (g < 0.05) s = -1;
+    c += s; n++;
+  }
+  if (f.eps_beat_streak > 0 || f.eps_miss_streak > 0) {
+    let s = 0;
+    if (f.eps_beat_streak >= 3) s = 2;
+    else if (f.eps_beat_streak >= 2) s = 1;
+    else if (f.eps_miss_streak >= 3) s = -2;
+    else if (f.eps_miss_streak >= 2) s = -1;
+    c += s; n++;
+  }
+  if (f.profit_margins != null) {
+    const m = f.profit_margins;
+    let s = 0;
+    if (m >= 0.30) s = 2; else if (m >= 0.20) s = 1;
+    else if (m < 0) s = -2; else if (m < 0.10) s = -1;
+    c += s; n++;
+  }
+  if (f.pe_ratio != null && f.pe_ratio > 0) {
+    const p = f.pe_ratio;
+    let s = 0;
+    if (p < 10) s = 2; else if (p < 15) s = 1;
+    else if (p > 45) s = -2; else if (p > 30) s = -1;
+    c += s; n++;
+  }
+  if (f.debt_to_equity != null) {
+    const de = f.debt_to_equity > 5 ? f.debt_to_equity / 100 : f.debt_to_equity;
+    let s = 0;
+    if (de <= 0.1) s = 2; else if (de <= 0.3) s = 1;
+    else if (de > 2) s = -2; else if (de > 1) s = -1;
+    c += s; n++;
+  }
+  if (n === 0) return null;
+  return c * 0.6;
 }
 
 async function runBatch(symbols: string[], auth: { crumb: string; cookie: string }, concurrency = 6): Promise<Fundamentals[]> {
@@ -146,11 +203,14 @@ Deno.serve(async (req) => {
 
     // Optional body: { symbols?: string[] } lets callers refresh a subset.
     let requested: string[] | null = null;
+    let offset = 0, limit = 2000;
     try {
       const text = await req.text();
       if (text) {
         const body = JSON.parse(text);
         if (Array.isArray(body?.symbols)) requested = body.symbols;
+        if (typeof body?.offset === "number") offset = body.offset;
+        if (typeof body?.limit === "number") limit = Math.min(body.limit, 3000);
       }
     } catch { /* ignore */ }
 
@@ -158,11 +218,15 @@ Deno.serve(async (req) => {
     if (requested && requested.length > 0) {
       symbols = requested.map((s) => String(s).toUpperCase());
     } else {
-      const { data: securities } = await supabase
-        .from("securities")
+      // Source from securities_universe (full US-listed set), paged for sharded runs.
+      const { data: uni } = await supabase
+        .from("securities_universe")
         .select("symbol")
-        .eq("is_active", true);
-      symbols = (securities ?? []).map((s: any) => String(s.symbol).toUpperCase());
+        .eq("is_active", true)
+        .eq("asset_type", "stock")
+        .order("symbol")
+        .range(offset, offset + limit - 1);
+      symbols = (uni ?? []).map((s: any) => String(s.symbol).toUpperCase());
     }
 
     // Dedupe.
@@ -183,6 +247,11 @@ Deno.serve(async (req) => {
     }
     const rows = await runBatch(symbols, auth, 6);
 
+    // Score each row.
+    for (const r of rows) {
+      r.fundamental_score = scoreFundamental(r);
+    }
+
     if (rows.length > 0) {
       // Chunk upserts to keep payload small.
       const CHUNK = 200;
@@ -198,7 +267,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, requested: symbols.length, upserted: rows.length }),
+      JSON.stringify({ success: true, requested: symbols.length, upserted: rows.length, offset, limit }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
