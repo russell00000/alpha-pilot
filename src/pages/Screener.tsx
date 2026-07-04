@@ -386,8 +386,7 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="Market Cap" k="market_cap" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="P/E" k="pe_ratio" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividend_yield" className="ml-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Tech Δ%" k="technical_score" className="mx-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Fund Δ%" k="fundamental_score" className="mx-auto" /></th>
+                  <th className="text-center p-3"><SortHeader label="Expected Move" k="combined_score" className="mx-auto" /></th>
                   <th className="text-center p-3"><SortHeader label="Rating" k="combined_score" className="mx-auto" /></th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -439,8 +438,7 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-foreground">{formatCap(r.market_cap)}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.pe_ratio != null ? r.pe_ratio.toFixed(1) : "—"}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.dividend_yield != null ? `${r.dividend_yield.toFixed(2)}%` : "—"}</td>
-                        <td className="p-3 text-center">{expectedPctCell(r.technical_score)}</td>
-                        <td className="p-3 text-center">{expectedPctCell(r.fundamental_score)}</td>
+                        <td className="p-3 text-center">{expectedPctCell(r.combined_score)}</td>
                         <td className="p-3 text-center">
                           {label === "—" ? (
                             <span className="text-xs text-muted-foreground">—</span>
