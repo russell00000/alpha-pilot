@@ -42,6 +42,14 @@ type ScreenerRow = {
   macdPrevHist: number | null;
   ma50: number | null;
   ma200: number | null;
+  // Fundamentals (cached daily, joined by market-data function)
+  revenueGrowth: number | null;      // YoY, e.g. 0.15 = +15%
+  profitMargins: number | null;      // e.g. 0.22 = 22%
+  debtToEquity: number | null;       // raw ratio (Yahoo returns %-scaled: 45 = 0.45)
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  fundSector: string | null;
+  sectorAvgPE: number | null;
 };
 
 const SECTORS = [
