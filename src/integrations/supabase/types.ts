@@ -86,12 +86,14 @@ export type Database = {
           eps: number | null
           eps_beat_streak: number | null
           eps_miss_streak: number | null
+          fcf_growth: number | null
           forward_pe: number | null
           fundamental_score: number | null
           pe_ratio: number | null
           profit_margins: number | null
           revenue_growth: number | null
           sector: string | null
+          sector_avg_pe: number | null
           symbol: string
           updated_at: string
         }
@@ -101,12 +103,14 @@ export type Database = {
           eps?: number | null
           eps_beat_streak?: number | null
           eps_miss_streak?: number | null
+          fcf_growth?: number | null
           forward_pe?: number | null
           fundamental_score?: number | null
           pe_ratio?: number | null
           profit_margins?: number | null
           revenue_growth?: number | null
           sector?: string | null
+          sector_avg_pe?: number | null
           symbol: string
           updated_at?: string
         }
@@ -116,12 +120,14 @@ export type Database = {
           eps?: number | null
           eps_beat_streak?: number | null
           eps_miss_streak?: number | null
+          fcf_growth?: number | null
           forward_pe?: number | null
           fundamental_score?: number | null
           pe_ratio?: number | null
           profit_margins?: number | null
           revenue_growth?: number | null
           sector?: string | null
+          sector_avg_pe?: number | null
           symbol?: string
           updated_at?: string
         }
@@ -456,11 +462,14 @@ export type Database = {
           price: number | null
           rsi_14: number | null
           sma_200: number | null
+          sma_200_prev: number | null
           sma_50: number | null
+          sma_50_prev: number | null
           symbol: string
           technical_score: number | null
           updated_at: string
           volume: number | null
+          volume_score: number | null
         }
         Insert: {
           avg_volume?: number | null
@@ -473,11 +482,14 @@ export type Database = {
           price?: number | null
           rsi_14?: number | null
           sma_200?: number | null
+          sma_200_prev?: number | null
           sma_50?: number | null
+          sma_50_prev?: number | null
           symbol: string
           technical_score?: number | null
           updated_at?: string
           volume?: number | null
+          volume_score?: number | null
         }
         Update: {
           avg_volume?: number | null
@@ -490,11 +502,14 @@ export type Database = {
           price?: number | null
           rsi_14?: number | null
           sma_200?: number | null
+          sma_200_prev?: number | null
           sma_50?: number | null
+          sma_50_prev?: number | null
           symbol?: string
           technical_score?: number | null
           updated_at?: string
           volume?: number | null
+          volume_score?: number | null
         }
         Relationships: []
       }
@@ -533,6 +548,7 @@ export type Database = {
           eps_beat_streak: number | null
           eps_miss_streak: number | null
           exchange: string | null
+          fcf_growth: number | null
           fifty_two_week_high: number | null
           fifty_two_week_low: number | null
           forward_pe: number | null
@@ -547,11 +563,15 @@ export type Database = {
           revenue_growth: number | null
           rsi_14: number | null
           sector: string | null
+          sector_avg_pe: number | null
           sma_200: number | null
+          sma_200_prev: number | null
           sma_50: number | null
+          sma_50_prev: number | null
           symbol: string | null
           technical_score: number | null
           volume: number | null
+          volume_score: number | null
         }
         Relationships: []
       }
