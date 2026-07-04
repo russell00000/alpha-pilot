@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
 
     const rows = (data ?? []).map((r: any) => ({
       ...r,
-      rating: scoreToRating(r.combined_score),
+      rating: r.fundamental_score == null && r.technical_score == null
+        ? null
+        : scoreToRating(r.combined_score),
     }));
 
     return new Response(
