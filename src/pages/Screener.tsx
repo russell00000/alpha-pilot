@@ -95,11 +95,21 @@ const recoLabel = (mean: number | null): { label: string; tone: "buy" | "hold" |
   return { label: "Strong Sell", tone: "sell" };
 };
 
-// Vantage rating: composite technical score based on RSI + MACD + Moving Averages.
-// Each indicator scores -2 (strong bearish) to +2 (strong bullish). Optional volume
-// modifier nudges borderline scores. Composite (-6 to +6, or -7 to +7 with volume)
-// maps to a 1..5 scale where 1 = Strong Buy and 5 = Strong Sell.
-const vantageScore = (r: {
+// ------------------------------------------------------------------
+// Vantage Signal Framework — Technical + Fundamental blend
+// ------------------------------------------------------------------
+// Technical: RSI + MACD + Moving Averages (each -2..+2). With volume
+// modifier, tech ranges roughly -7..+7.
+//
+// Fundamental: Revenue growth + EPS beat/miss trend + Profit margin
+// + P/E vs sector + Debt/Equity (each -2..+2, sums -10..+10, then
+// normalized to -6..+6 to line up with technical scale).
+//
+// Combined = tech * 0.4 + fund * 0.6 (fundamentals weighted higher
+// per the user's updated framework), then mapped to a rating.
+
+// Returns technical composite score (-7..+7) or null if no indicators available.
+const technicalScore = (r: {
   price: number | null;
   rsi: number | null;
   macdHist: number | null;
@@ -108,13 +118,10 @@ const vantageScore = (r: {
   ma200: number | null;
   volume: number | null;
   avgVolume: number | null;
-  recommendationMean: number | null;
-  recommendationKey?: string | null;
 }): number | null => {
   let composite = 0;
   let indicators = 0;
 
-  // 1) RSI
   if (r.rsi != null) {
     let s: number;
     if (r.rsi < 30) s = 2;
@@ -126,73 +133,158 @@ const vantageScore = (r: {
     indicators++;
   }
 
-  // 2) MACD (histogram sign + slope)
   if (r.macdHist != null && r.macdPrevHist != null) {
     const h = r.macdHist, ph = r.macdPrevHist;
     let s: number;
-    if (ph <= 0 && h > 0) s = 2;              // bullish crossover
-    else if (h > 0 && h > ph) s = 2;          // above signal, widening
-    else if (h > 0) s = 1;                    // above signal, narrowing
-    else if (ph >= 0 && h < 0) s = -2;        // bearish crossover
-    else if (h < 0 && h < ph) s = -2;         // below signal, widening
-    else if (h < 0) s = -1;                   // below signal, narrowing
+    if (ph <= 0 && h > 0) s = 2;
+    else if (h > 0 && h > ph) s = 2;
+    else if (h > 0) s = 1;
+    else if (ph >= 0 && h < 0) s = -2;
+    else if (h < 0 && h < ph) s = -2;
+    else if (h < 0) s = -1;
     else s = 0;
     composite += s;
     indicators++;
   }
 
-  // 3) Moving averages
   if (r.price != null && r.ma50 != null && r.ma200 != null) {
     const p = r.price;
     let s: number;
-    if (p > r.ma50 && p > r.ma200 && r.ma50 > r.ma200) s = 2; // golden-cross alignment
+    if (p > r.ma50 && p > r.ma200 && r.ma50 > r.ma200) s = 2;
     else if (p > r.ma50 && p > r.ma200) s = 1;
-    else if (p < r.ma50 && p < r.ma200 && r.ma50 < r.ma200) s = -2; // death-cross alignment
+    else if (p < r.ma50 && p < r.ma200 && r.ma50 < r.ma200) s = -2;
     else if (p < r.ma50 && p < r.ma200) s = -1;
     else s = 0;
     composite += s;
     indicators++;
   }
 
-  // 4) Analyst consensus (quality confirmation on top of technicals).
-  //    Yahoo mean scale: 1=Strong Buy .. 5=Strong Sell. Prefer numeric mean,
-  //    fall back to the numeric prefix embedded in recommendationKey ("1.3 - Strong Buy").
-  let analystMean: number | null = r.recommendationMean;
-  if (analystMean == null && typeof r.recommendationKey === "string") {
-    const m = r.recommendationKey.match(/^\s*(\d+(?:\.\d+)?)/);
-    if (m) analystMean = parseFloat(m[1]);
-  }
-  if (analystMean != null) {
-    let s: number;
-    if (analystMean < 1.5) s = 2;        // Strong Buy
-    else if (analystMean < 2.5) s = 1;   // Buy
-    else if (analystMean < 3.5) s = 0;   // Hold
-    else if (analystMean < 4.5) s = -1;  // Sell
-    else s = -2;                          // Strong Sell
-    composite += s;
-    indicators++;
-  }
+  if (indicators === 0) return null;
 
-  if (indicators === 0) {
-    return null;
-  }
-
-  // 5) Optional volume confirmation modifier (nudges borderline scores)
+  // Volume confirmation nudge on borderline scores.
   if (r.volume != null && r.avgVolume != null && r.avgVolume > 0) {
     const ratio = r.volume / r.avgVolume;
     if (ratio > 1.5) composite += composite >= 0 ? 1 : -1;
     else if (ratio < 0.5) composite += composite >= 0 ? -0.5 : 0.5;
   }
+  return composite;
+};
 
-  // Map composite to rating. With 4 signals summing to a max of ±8 (±9 with volume),
-  // Strong Buy requires broad bullish alignment across at least two indicators.
-  let rating: number;
-  if (composite >= 4) rating = 1.2;        // Strong Buy
-  else if (composite >= 1) rating = 2.0;   // Buy
-  else if (composite === 0) rating = 3.0;  // Hold
-  else if (composite >= -2) rating = 4.0;  // Sell
-  else rating = 4.8;                       // Strong Sell
-  return rating;
+// Returns fundamental composite normalized to -6..+6, or null if
+// too few fundamental data points are available.
+const fundamentalScore = (r: {
+  revenueGrowth: number | null;
+  profitMargins: number | null;
+  debtToEquity: number | null;
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  peRatio: number | null;
+  sectorAvgPE: number | null;
+}): number | null => {
+  let composite = 0;
+  let count = 0;
+
+  // 1) Revenue growth YoY
+  if (r.revenueGrowth != null) {
+    const g = r.revenueGrowth; // fraction
+    let s: number;
+    if (g >= 0.20) s = 2;
+    else if (g >= 0.10) s = 1;
+    else if (g >= 0.02) s = 0;
+    else if (g >= -0.05) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  // 2) EPS beat/miss trend
+  if (r.epsBeatStreak != null || r.epsMissStreak != null) {
+    const beat = r.epsBeatStreak ?? 0;
+    const miss = r.epsMissStreak ?? 0;
+    let s: number;
+    if (beat >= 3) s = 2;
+    else if (beat >= 2) s = 1;
+    else if (miss >= 3) s = -2;
+    else if (miss >= 2) s = -1;
+    else s = 0;
+    // Only count as a signal if we actually have evidence either way.
+    if (beat > 0 || miss > 0) { composite += s; count++; }
+  }
+
+  // 3) Profit margin (net)
+  if (r.profitMargins != null) {
+    const m = r.profitMargins;
+    let s: number;
+    if (m >= 0.20) s = 2;
+    else if (m >= 0.10) s = 1;
+    else if (m >= 0.03) s = 0;
+    else if (m >= 0) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  // 4) P/E vs sector average
+  if (r.peRatio != null && r.peRatio > 0 && r.sectorAvgPE != null && r.sectorAvgPE > 0) {
+    const ratio = r.peRatio / r.sectorAvgPE;
+    let s: number;
+    if (ratio <= 0.75) s = 2;       // heavy discount to sector
+    else if (ratio <= 0.95) s = 1;
+    else if (ratio <= 1.15) s = 0;
+    else if (ratio <= 1.5) s = -1;
+    else s = -2;                     // richly valued
+    composite += s; count++;
+  }
+
+  // 5) Debt / Equity (Yahoo returns as percent — 45 means 0.45)
+  if (r.debtToEquity != null) {
+    const de = r.debtToEquity > 5 ? r.debtToEquity / 100 : r.debtToEquity;
+    let s: number;
+    if (de <= 0.3) s = 2;
+    else if (de <= 0.6) s = 1;
+    else if (de <= 1.0) s = 0;
+    else if (de <= 2.0) s = -1;
+    else s = -2;
+    composite += s; count++;
+  }
+
+  if (count === 0) return null;
+  // Normalize to a -6..+6 scale (5 metrics × ±2 = ±10 → × 0.6).
+  return composite * 0.6;
+};
+
+// Blends technical + fundamental. If fundamentals missing, falls back to tech alone.
+const combinedScore = (r: {
+  price: number | null;
+  rsi: number | null;
+  macdHist: number | null;
+  macdPrevHist: number | null;
+  ma50: number | null;
+  ma200: number | null;
+  volume: number | null;
+  avgVolume: number | null;
+  revenueGrowth: number | null;
+  profitMargins: number | null;
+  debtToEquity: number | null;
+  epsBeatStreak: number | null;
+  epsMissStreak: number | null;
+  peRatio: number | null;
+  sectorAvgPE: number | null;
+}): number | null => {
+  const t = technicalScore(r);
+  const f = fundamentalScore(r);
+  if (t == null && f == null) return null;
+  if (t == null) return f;
+  if (f == null) return t;
+  return t * 0.4 + f * 0.6;
+};
+
+// Map combined score (-6..+6) to a 1..5 rating (1 = Strong Buy).
+const scoreToRating = (score: number | null): number | null => {
+  if (score == null) return null;
+  if (score >= 4) return 1.2;
+  if (score >= 2) return 2.0;
+  if (score >= -1.9) return 3.0;
+  if (score >= -3.9) return 4.0;
+  return 4.8;
 };
 
 type Preset =
