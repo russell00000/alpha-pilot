@@ -39,6 +39,17 @@ const RequestSchema = z.object({
   volume: z.union([z.number(), z.string()]).optional(),
 });
 
+type ScreenerRating = "STRONG BUY" | "BUY" | "HOLD" | "SELL" | "STRONG SELL";
+
+function scoreToScreenerRecommendation(score: number | null): ScreenerRating | null {
+  if (score == null || !Number.isFinite(score)) return null;
+  if (score >= 2.5) return "STRONG BUY";
+  if (score >= 1.0) return "BUY";
+  if (score > -1.0) return "HOLD";
+  if (score > -2.5) return "SELL";
+  return "STRONG SELL";
+}
+
 // Fetch real fundamentals — Finnhub is primary (Yahoo's quoteSummary now requires
 // a crumb/cookie and returns 401 from edge runtimes). Pulls profile, metric, quote,
 // price-target, and recommendation in parallel and merges into one normalized blob.
@@ -465,9 +476,9 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
         .maybeSingle();
       const score = sv?.combined_score;
       if (typeof score === "number") {
-        const rec = score >= 1.0 ? "BUY" : score <= -1.0 ? "SELL" : "HOLD";
+        const recommendation = scoreToScreenerRecommendation(score);
         const conf = Math.abs(score) >= 2.5 ? "HIGH" : Math.abs(score) >= 1.0 ? "MEDIUM" : "LOW";
-        (analysis as any).recommendation = rec;
+        (analysis as any).recommendation = recommendation;
         (analysis as any).confidence = conf;
         (analysis as any).screenerScore = score;
         (analysis as any).fundamentalScore = sv?.fundamental_score ?? null;

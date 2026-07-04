@@ -46,7 +46,7 @@ interface StockDetails {
 }
 
 interface StockAnalysis {
-  recommendation: "BUY" | "HOLD" | "SELL";
+  recommendation: "STRONG BUY" | "BUY" | "HOLD" | "SELL" | "STRONG SELL";
   confidence: "HIGH" | "MEDIUM" | "LOW";
   reasoning: string;
   priceTarget: number;
@@ -62,6 +62,12 @@ interface StockAnalysis {
   bearTarget?: number;
   priceTargetRationale?: string;
 }
+
+const isBuyRecommendation = (recommendation: StockAnalysis["recommendation"]) =>
+  recommendation === "BUY" || recommendation === "STRONG BUY";
+
+const isSellRecommendation = (recommendation: StockAnalysis["recommendation"]) =>
+  recommendation === "SELL" || recommendation === "STRONG SELL";
 
 interface HistoricalDataPoint {
   date: string;
@@ -1381,12 +1387,12 @@ const Stock = () => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className={cn(
                   "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-lg",
-                  stockAnalysis.recommendation === "BUY" && "bg-success/20 text-success",
+                  isBuyRecommendation(stockAnalysis.recommendation) && "bg-success/20 text-success",
                   stockAnalysis.recommendation === "HOLD" && "bg-warning/20 text-warning",
-                  stockAnalysis.recommendation === "SELL" && "bg-destructive/20 text-destructive"
+                  isSellRecommendation(stockAnalysis.recommendation) && "bg-destructive/20 text-destructive"
                 )}>
-                  {stockAnalysis.recommendation === "BUY" && <TrendingUp className="w-5 h-5" />}
-                  {stockAnalysis.recommendation === "SELL" && <TrendingDown className="w-5 h-5" />}
+                  {isBuyRecommendation(stockAnalysis.recommendation) && <TrendingUp className="w-5 h-5" />}
+                  {isSellRecommendation(stockAnalysis.recommendation) && <TrendingDown className="w-5 h-5" />}
                   {stockAnalysis.recommendation}
                 </div>
                 <div className="flex gap-2">
