@@ -972,6 +972,26 @@ serve(async (req) => {
             row.fundSector = f?.sector ?? null;
             row.sectorAvgPE = f?.sector ? (sectorAvgPE.get(f.sector) ?? null) : null;
           }
+          // Lazy backfill: fire-and-forget sync for any symbol not in the cache.
+          // This warms the cache organically as users hit the screener; the cron
+          // then keeps everything fresh daily.
+          const missing = allSymsForFund.filter((s) => !fundMap.has(s));
+          if (missing.length > 0) {
+            const anon = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+            const url = `${supabaseUrl}/functions/v1/sync-fundamentals`;
+            // Cap per invocation to avoid overwhelming Yahoo; the next screener
+            // call will backfill more.
+            const batch = missing.slice(0, 60);
+            fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(anon ? { "Authorization": `Bearer ${anon}`, "apikey": anon } : {}),
+              },
+              body: JSON.stringify({ symbols: batch }),
+            }).catch((e) => console.error("backfill fire error", e));
+            console.log(`fundamentals backfill queued for ${batch.length} symbols`);
+          }
         }
       } catch (e) {
         console.error("fundamentals join error", e);
