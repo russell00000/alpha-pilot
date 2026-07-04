@@ -11,21 +11,24 @@ const corsHeaders = {
 type Rating = "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
 function scoreToRating(score: number | null): Rating | null {
   if (score == null) return null;
-  if (score >= 3.2) return "strong_buy";
-  if (score >= 1.5) return "buy";
-  if (score >= -1.4) return "hold";
-  if (score >= -3.2) return "sell";
+  // Distribution of combined_score across the universe runs roughly -3.4 to +3.7
+  // with avg ~0. Thresholds recentered to match that actual spread so ratings
+  // aren't collapsed into "Hold".
+  if (score >= 2.4) return "strong_buy";
+  if (score >= 1.0) return "buy";
+  if (score >= -1.0) return "hold";
+  if (score >= -2.4) return "sell";
   return "strong_sell";
 }
 
 // Server-side rating filter uses combined_score ranges directly to avoid
 // pulling every row through the network.
 const RATING_RANGES: Record<Rating, [number, number]> = {
-  strong_buy:  [3.2, 999],
-  buy:         [1.5, 3.2],
-  hold:        [-1.4, 1.5],
-  sell:        [-3.2, -1.4],
-  strong_sell: [-999, -3.2],
+  strong_buy:  [2.4, 999],
+  buy:         [1.0, 2.4],
+  hold:        [-1.0, 1.0],
+  sell:        [-2.4, -1.0],
+  strong_sell: [-999, -2.4],
 };
 
 const SORT_MAP: Record<string, string> = {
