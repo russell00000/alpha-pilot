@@ -280,10 +280,10 @@ const combinedScore = (r: {
 // Map combined score (-6..+6) to a 1..5 rating (1 = Strong Buy).
 const scoreToRating = (score: number | null): number | null => {
   if (score == null) return null;
-  if (score >= 4) return 1.2;
-  if (score >= 2) return 2.0;
-  if (score >= -1.9) return 3.0;
-  if (score >= -3.9) return 4.0;
+  if (score >= 3.2) return 1.2;
+  if (score >= 1.5) return 2.0;
+  if (score >= -1.4) return 3.0;
+  if (score >= -3.2) return 4.0;
   return 4.8;
 };
 
