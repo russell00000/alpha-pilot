@@ -72,6 +72,13 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
+    // Only show symbols that actually have scoreable data. Symbols missing
+    // fundamentals/technicals get combined_score=0 in the view, which would
+    // otherwise collapse ~10k rows into "Hold".
+    query = query
+      .not("fundamental_score", "is", null)
+      .not("technical_score", "is", null);
+
     if (q) {
       const like = `%${q}%`;
       query = query.or(`symbol.ilike.${like},name.ilike.${like}`);
