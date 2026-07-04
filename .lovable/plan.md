@@ -1,63 +1,98 @@
-# Fundamental Scoring Layer
+# Full US-Listed Screener (~8,000 symbols)
 
-Add the five-metric fundamental framework on top of the existing technical scoring and blend them 60/40 into a Combined Score displayed on the Screener.
+Move the Screener off live per-request Yahoo fetches and onto a cached, server-paginated architecture backed by frequent syncs.
 
 ## Architecture
 
-Fetching Yahoo `quoteSummary` per symbol at request time would take ~30s for a 700-symbol universe (per-symbol endpoint, no batch). Instead, cache fundamentals in a DB table refreshed daily by cron — the Screener joins them into results with zero added latency.
-
 ```text
- ┌──────────────┐   daily 6am    ┌─────────────────┐
- │  sync-       │ ─────────────► │  fundamentals    │
- │  fundamentals│                │  DB table        │
- └──────────────┘                └────────┬────────┘
-                                          │ join by symbol
-                                          ▼
- ┌──────────────┐  screener call ┌─────────────────┐
- │  Screener UI │ ─────────────► │  market-data    │
- └──────────────┘                └─────────────────┘
+NASDAQ Trader FTP ──► sync-universe ──► securities_universe (~8k rows)
+                                             │
+                     ┌───────────────────────┴─────────────────┐
+                     ▼                                          ▼
+              sync-fundamentals (minutely)          sync-technicals (minutely)
+                     │                                          │
+                     ▼                                          ▼
+                fundamentals table                     technicals table
+                                    │
+                                    ▼
+                         screener edge fn (paginated, filtered, sorted)
+                                    │
+                                    ▼
+                              Screener UI
 ```
 
-## Implementation
+Live Yahoo calls in the request path are removed. Everything the Screener shows comes from three DB tables joined server-side.
 
-**1. `fundamentals` DB table (migration)**
-Columns: `symbol` (PK), `revenue_growth`, `profit_margins`, `debt_to_equity`, `eps_beat_streak`, `eps_miss_streak`, `pe_ratio`, `sector`, `updated_at`. RLS + `GRANT SELECT` to anon/authenticated (read-only reference data).
+## What ships
 
-**2. New `sync-fundamentals` edge function**
-Reads the union of static universe + `securities` table, fetches Yahoo `quoteSummary?modules=financialData,earningsHistory,summaryProfile` per symbol with concurrency 10, upserts into `fundamentals`. Extracts:
-- `revenueGrowth` (YoY), `profitMargins`, `debtToEquity`
-- Last 4 quarters' EPS surprise → count consecutive beats/misses from most recent
-- `sector` (for sector-avg P/E)
+**1. New table `securities_universe**`
+`symbol` (PK), `name`, `exchange` (NASDAQ/NYSE/AMEX), `asset_type` (stock/etf), `is_active`, `updated_at`. GRANT SELECT to anon/authenticated.
 
-**3. Daily cron**
-Extend the existing `pg_cron` job (already runs `sync-ipos` at 06:00 UTC) to also call `sync-fundamentals` at 06:15 UTC.
+**2. New table `technicals**`
+`symbol` (PK), `price`, `change_pct`, `volume`, `rsi_14`, `macd`, `macd_signal`, `sma_50`, `sma_200`, `market_cap`, `updated_at`. GRANT SELECT to anon/authenticated.
 
-**4. Extend `market-data` screener branch**
-After the technical enrichment, `SELECT * FROM fundamentals WHERE symbol = ANY(...)` and merge fields into each row. Compute sector average P/E in-memory across the response and include it as `sectorAvgPE` on each row.
+**3. `fundamentals` table** — already exists, keep as-is.
 
-**5. Rewrite scoring in `src/pages/Screener.tsx`**
-Replace `vantageScore` with three functions:
-- `technicalScore(r)` → -6..+6 (RSI + MACD + MA, no rating mapping)
-- `fundamentalScore(r, sectorAvgPE)` → sum five -2..+2 metrics (-10..+10), normalize `× 6/10` → -6..+6
-- `combinedScore(t, f)` → `t*0.4 + f*0.6`, map to rating using user's thresholds (+4 SB, +2 B, ±1.9 H, -2 S, -4 SS)
+**4. New edge function `sync-universe**` (weekly)
+Fetches NASDAQ Trader's public symbol files (`nasdaqlisted.txt`, `otherlisted.txt`) — free, no auth, no rate limit. Parses ~11k rows, filters test issues/warrants/rights, upserts into `securities_universe`. Marks stale rows `is_active=false`.
 
-Analyst-consensus signal is removed from the composite (now covered by fundamentals + user's original framework).
+**5. Rewrite `sync-fundamentals**`
+Source symbols from `securities_universe` instead of the static list. Chunked runs: accept `{offset, limit}` in body so cron can invoke it in 4 shards (~2k symbols each) staggered 15 min apart to stay under Yahoo's tolerance. Concurrency 8, jittered throttle.
 
-**6. Screener UI**
-Add three columns to the table: `Tech`, `Fund`, `Score` (combined). The existing rating column keeps working, now derived from Combined Score. Table gets slightly wider — condense a couple of existing narrow columns.
+**6. New edge function `sync-technicals**` (nightly)
+For each symbol in `securities_universe`, fetches Yahoo `chart?range=1y&interval=1d` (batchable via v7 quote for price/volume/marketCap). Computes RSI(14), MACD(12,26,9), SMA50, SMA200 in-code and upserts. Same sharded pattern as fundamentals.
+
+**7. New edge function `screener**`
+Request: `{ q?, sector?, minMarketCap?, maxPE?, minScore?, rating?, sort, dir, page, pageSize }`.
+Query joins `securities_universe + fundamentals + technicals`, applies filters + sort in SQL, returns one page (default 50, max 200) + total count. All scoring math (technical/fundamental/combined) computed in the function so the UI just renders.
+
+**8. Rubric recentering** (from prior turn, applied in `screener` fn)
+
+- Profit margin: ≥20% = +1, ≥30% = +2, <10% = -1, <0 = -2
+- Debt/Equity: ≤0.3 = +1, ≤0.1 = +2, >1 = -1, >2 = -2
+- Revenue growth: ≥15% = +1, ≥25% = +2, <5% = -1, <0 = -2
+- P/E vs **fixed benchmark 20** (not response average): <15 = +1, <10 = +2, >30 = -1, >45 = -2
+- EPS streak: unchanged
+
+**9. Cron jobs**
+
+```
+sync-universe        weekly Sunday 05:00 UTC
+sync-fundamentals    daily 06:15 UTC, sharded 0/2000/4000/6000 at :15/:30/:45/07:00
+sync-technicals      daily 07:15 UTC, same 4-shard pattern
+```
+
+**10. Screener UI rewrite (`src/pages/Screener.tsx`)**
+
+- Debounced search input, sector dropdown, rating filter, min market cap slider — all trigger new `screener` edge fn call.
+- Server-side sort (click column headers).
+- Pagination: 50/page, prev/next + page count.
+- Remove all client-side scoring — rows come pre-scored.
+
+**11. First-run bootstrap**
+Manual invoke of `sync-universe`, then `sync-fundamentals` shards, then `sync-technicals` shards so the table is populated immediately.
+
+## Technical section
+
+- **NASDAQ Trader source**: `https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt` and `otherlisted.txt`. Pipe-delimited, updated daily.
+- **Yahoo capacity**: `quoteSummary` sustains ~5-8 req/s with crumb rotation. 8k symbols / 6 concurrency / ~200ms avg = ~5 min per shard, well under function timeout.
+- **v7 `quote` batch**: up to ~200 symbols per call for price/volume/marketCap — used in `sync-technicals` to avoid 8k individual calls for basic quote data. Chart calls (for RSI/MACD) are still per-symbol but only for the ~4k stocks with fundamentals (skip ETFs' MACD).
+- **DB size**: 8k × ~250 bytes ≈ 2 MB per table. Trivial.
+- **Failure handling**: any symbol that fails Yahoo keeps its previous row (upsert, no delete). Missing rows in join → row still shown with null scores.
+
+## Trade-offs
+
+- Nightly staleness (fine — RSI/MACD move slowly enough; users see intraday price via existing detail page).
+- First full sync will take ~30-40 min end-to-end across all shards.
+- No live intraday price on the Screener list (was already stale-ish given caching). Detail page still uses live data.
+- Yahoo TOS is a grey area at this scale; if we hit sustained blocks we'll need to add Alpha Vantage as fallback for the batch quote step.
 
 ## What ships in this change
 
-- New migration: `fundamentals` table + GRANTs + RLS
-- New edge function: `sync-fundamentals`
-- Cron entry pointing at it
-- Manual first-run trigger of `sync-fundamentals` so data is available immediately
-- Updated `market-data` (screener path + response shape)
-- Updated `Screener.tsx` (scoring + 3 new columns)
-
-## Trade-offs / caveats
-
-- Fundamentals are up to 24h stale (acceptable — these metrics change on quarterly cadence).
-- P/E-vs-sector uses the average across the current universe response, not a true broad-sector average. Close enough; a truer number would require an external sector-benchmark data source.
-- EPS beat/miss "streak" is computed from Yahoo's last 4 earnings surprises — so max detectable streak is 4, not the "3+ consecutive" the framework mentions unbounded. Scored the same either way (+2 for 3+).
-- First `sync-fundamentals` run will take ~2–3 minutes to warm the cache for 700 symbols; subsequent daily runs are the same but scheduled off-peak.
+- Migrations: `securities_universe`, `technicals` tables + GRANTs + RLS
+- New edge functions: `sync-universe`, `sync-technicals`, `screener`
+- Updated `sync-fundamentals` (sharded, sources from universe)
+- Updated cron schedule
+- Rewritten `Screener.tsx` (server-paginated, filter/sort UI)
+- Deprecated: live Yahoo fetch path in `market-data` screener branch (kept for other callers)
+- Manual first-run triggers for all three sync jobs

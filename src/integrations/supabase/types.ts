@@ -82,8 +82,12 @@ export type Database = {
       fundamentals: {
         Row: {
           debt_to_equity: number | null
+          dividend_yield: number | null
+          eps: number | null
           eps_beat_streak: number | null
           eps_miss_streak: number | null
+          forward_pe: number | null
+          fundamental_score: number | null
           pe_ratio: number | null
           profit_margins: number | null
           revenue_growth: number | null
@@ -93,8 +97,12 @@ export type Database = {
         }
         Insert: {
           debt_to_equity?: number | null
+          dividend_yield?: number | null
+          eps?: number | null
           eps_beat_streak?: number | null
           eps_miss_streak?: number | null
+          forward_pe?: number | null
+          fundamental_score?: number | null
           pe_ratio?: number | null
           profit_margins?: number | null
           revenue_growth?: number | null
@@ -104,8 +112,12 @@ export type Database = {
         }
         Update: {
           debt_to_equity?: number | null
+          dividend_yield?: number | null
+          eps?: number | null
           eps_beat_streak?: number | null
           eps_miss_streak?: number | null
+          forward_pe?: number | null
+          fundamental_score?: number | null
           pe_ratio?: number | null
           profit_margins?: number | null
           revenue_growth?: number | null
@@ -405,6 +417,87 @@ export type Database = {
         }
         Relationships: []
       }
+      securities_universe: {
+        Row: {
+          asset_type: string
+          exchange: string | null
+          is_active: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          asset_type?: string
+          exchange?: string | null
+          is_active?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          asset_type?: string
+          exchange?: string | null
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      technicals: {
+        Row: {
+          avg_volume: number | null
+          change_pct: number | null
+          fifty_two_week_high: number | null
+          fifty_two_week_low: number | null
+          macd_hist: number | null
+          macd_prev_hist: number | null
+          market_cap: number | null
+          price: number | null
+          rsi_14: number | null
+          sma_200: number | null
+          sma_50: number | null
+          symbol: string
+          technical_score: number | null
+          updated_at: string
+          volume: number | null
+        }
+        Insert: {
+          avg_volume?: number | null
+          change_pct?: number | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          macd_hist?: number | null
+          macd_prev_hist?: number | null
+          market_cap?: number | null
+          price?: number | null
+          rsi_14?: number | null
+          sma_200?: number | null
+          sma_50?: number | null
+          symbol: string
+          technical_score?: number | null
+          updated_at?: string
+          volume?: number | null
+        }
+        Update: {
+          avg_volume?: number | null
+          change_pct?: number | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          macd_hist?: number | null
+          macd_prev_hist?: number | null
+          market_cap?: number | null
+          price?: number | null
+          rsi_14?: number | null
+          sma_200?: number | null
+          sma_50?: number | null
+          symbol?: string
+          technical_score?: number | null
+          updated_at?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -428,7 +521,40 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      screener_view: {
+        Row: {
+          asset_type: string | null
+          avg_volume: number | null
+          change_pct: number | null
+          combined_score: number | null
+          debt_to_equity: number | null
+          dividend_yield: number | null
+          eps: number | null
+          eps_beat_streak: number | null
+          eps_miss_streak: number | null
+          exchange: string | null
+          fifty_two_week_high: number | null
+          fifty_two_week_low: number | null
+          forward_pe: number | null
+          fundamental_score: number | null
+          macd_hist: number | null
+          macd_prev_hist: number | null
+          market_cap: number | null
+          name: string | null
+          pe_ratio: number | null
+          price: number | null
+          profit_margins: number | null
+          revenue_growth: number | null
+          rsi_14: number | null
+          sector: string | null
+          sma_200: number | null
+          sma_50: number | null
+          symbol: string | null
+          technical_score: number | null
+          volume: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
