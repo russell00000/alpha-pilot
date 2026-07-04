@@ -453,6 +453,32 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
 
     cacheSet(analysisCacheKey, analysis);
 
+    // Align the Stock page recommendation with the Screener rating so both
+    // surfaces show the same call for the same symbol. Screener rating is
+    // derived from the pre-computed combined_score in screener_view.
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, serviceKey);
+      const { data: sv } = await sb
+        .from("screener_view")
+        .select("combined_score, fundamental_score, technical_score")
+        .eq("symbol", symbol.toUpperCase())
+        .maybeSingle();
+      const score = sv?.combined_score;
+      if (typeof score === "number") {
+        const rec = score >= 1.0 ? "BUY" : score <= -1.0 ? "SELL" : "HOLD";
+        const conf = Math.abs(score) >= 2.5 ? "HIGH" : Math.abs(score) >= 1.0 ? "MEDIUM" : "LOW";
+        (analysis as any).recommendation = rec;
+        (analysis as any).confidence = conf;
+        (analysis as any).screenerScore = score;
+        (analysis as any).fundamentalScore = sv?.fundamental_score ?? null;
+        (analysis as any).technicalScore = sv?.technical_score ?? null;
+      }
+    } catch (e) {
+      console.log("screener alignment skipped:", e);
+    }
+
     return new Response(
       JSON.stringify({ data: analysis }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
