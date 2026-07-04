@@ -386,8 +386,7 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="Market Cap" k="market_cap" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="P/E" k="pe_ratio" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividend_yield" className="ml-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Tech Δ%" k="technical_score" className="mx-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Fund Δ%" k="fundamental_score" className="mx-auto" /></th>
+                  <th className="text-center p-3"><SortHeader label="Expected Move" k="combined_score" className="mx-auto" /></th>
                   <th className="text-center p-3"><SortHeader label="Rating" k="combined_score" className="mx-auto" /></th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -396,14 +395,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(12)].map((__, j) => (
+                      {[...Array(11)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="p-12 text-center">
+                    <td colSpan={11} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
@@ -439,8 +438,7 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-foreground">{formatCap(r.market_cap)}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.pe_ratio != null ? r.pe_ratio.toFixed(1) : "—"}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.dividend_yield != null ? `${r.dividend_yield.toFixed(2)}%` : "—"}</td>
-                        <td className="p-3 text-center">{expectedPctCell(r.technical_score)}</td>
-                        <td className="p-3 text-center">{expectedPctCell(r.fundamental_score)}</td>
+                        <td className="p-3 text-center">{expectedPctCell(r.combined_score)}</td>
                         <td className="p-3 text-center">
                           {label === "—" ? (
                             <span className="text-xs text-muted-foreground">—</span>
@@ -459,7 +457,7 @@ const Screener = () => {
                   })
                 )}
                 {refreshing && !loading && (
-                  <tr><td colSpan={12} className="p-2 text-center"><Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" /></td></tr>
+                  <tr><td colSpan={11} className="p-2 text-center"><Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" /></td></tr>
                 )}
               </tbody>
             </table>
