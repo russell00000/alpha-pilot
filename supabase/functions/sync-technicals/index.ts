@@ -101,46 +101,73 @@ function macd(values: number[]): { hist: number; prevHist: number } | null {
 
 // ---------------- Scoring (matches Screener rubric) ----------------
 
+// v2 rubric: RSI ±2, MACD ±2 (magnitude aware), MA/cross ±2, volume ±1.
+// Sum max ±7, normalize to ±6 by multiplying by 6/7.
+function volumeSubScore(volume: number | null, avgVolume: number | null, changePct: number | null): number {
+  if (volume == null || avgVolume == null || avgVolume <= 0 || changePct == null) return 0;
+  const ratio = volume / avgVolume;
+  if (ratio < 1.5) return 0;
+  return changePct >= 0 ? 1 : -1;
+}
+
 function technicalScore(input: {
-  price: number | null; rsi: number | null; macdHist: number | null; macdPrev: number | null;
-  sma50: number | null; sma200: number | null; volume: number | null; avgVolume: number | null;
-}): number | null {
+  price: number | null;
+  rsi: number | null;
+  macdHist: number | null; macdPrev: number | null;
+  sma50: number | null; sma200: number | null;
+  sma50Prev: number | null; sma200Prev: number | null;
+  volume: number | null; avgVolume: number | null; changePct: number | null;
+}): { score: number | null; volumeSub: number } {
   let c = 0, n = 0;
+
+  // RSI(14): oversold bullish, overbought bearish.
   if (input.rsi != null) {
-    let s: number;
-    if (input.rsi < 30) s = 2; else if (input.rsi < 45) s = 1;
-    else if (input.rsi <= 55) s = 0; else if (input.rsi <= 70) s = -1; else s = -2;
+    let s = 0;
+    if (input.rsi < 30) s = 2;
+    else if (input.rsi < 40) s = 1;
+    else if (input.rsi > 70) s = -2;
+    else if (input.rsi > 60) s = -1;
     c += s; n++;
   }
+
+  // MACD histogram: direction + widening magnitude.
   if (input.macdHist != null && input.macdPrev != null) {
     const h = input.macdHist, ph = input.macdPrev;
-    let s: number;
-    if (ph <= 0 && h > 0) s = 2;
-    else if (h > 0 && h > ph) s = 2;
-    else if (h > 0) s = 1;
-    else if (ph >= 0 && h < 0) s = -2;
-    else if (h < 0 && h < ph) s = -2;
-    else if (h < 0) s = -1;
-    else s = 0;
+    let s = 0;
+    if (h > 0 && ph > 0 && h > ph) s = 2;         // positive & widening
+    else if (h > 0 && ph <= 0) s = 1;              // just crossed positive
+    else if (h > 0) s = 1;                         // positive but narrowing
+    else if (h < 0 && ph < 0 && h < ph) s = -2;    // negative & widening
+    else if (h < 0 && ph >= 0) s = -1;             // just crossed negative
+    else if (h < 0) s = -1;                        // negative but narrowing
     c += s; n++;
   }
+
+  // Price vs SMA50/SMA200 with golden/death cross detection.
   if (input.price != null && input.sma50 != null && input.sma200 != null) {
     const p = input.price;
-    let s: number;
-    if (p > input.sma50 && p > input.sma200 && input.sma50 > input.sma200) s = 2;
-    else if (p > input.sma50 && p > input.sma200) s = 1;
-    else if (p < input.sma50 && p < input.sma200 && input.sma50 < input.sma200) s = -2;
-    else if (p < input.sma50 && p < input.sma200) s = -1;
-    else s = 0;
+    const above50 = p > input.sma50;
+    const above200 = p > input.sma200;
+    const goldenCross =
+      input.sma50Prev != null && input.sma200Prev != null &&
+      input.sma50Prev <= input.sma200Prev && input.sma50 > input.sma200;
+    const deathCross =
+      input.sma50Prev != null && input.sma200Prev != null &&
+      input.sma50Prev >= input.sma200Prev && input.sma50 < input.sma200;
+    let s = 0;
+    if (goldenCross && above50 && above200) s = 2;
+    else if (above50 && above200) s = 1;
+    else if (deathCross && !above50 && !above200) s = -2;
+    else if (!above50 && !above200) s = -1;
     c += s; n++;
   }
-  if (n === 0) return null;
-  if (input.volume != null && input.avgVolume != null && input.avgVolume > 0) {
-    const ratio = input.volume / input.avgVolume;
-    if (ratio > 1.5) c += c >= 0 ? 1 : -1;
-    else if (ratio < 0.5) c += c >= 0 ? -0.5 : 0.5;
-  }
-  return c;
+
+  const volSub = volumeSubScore(input.volume, input.avgVolume, input.changePct);
+  c += volSub; // volume can bump ±1 regardless of other n count
+
+  if (n === 0) return { score: null, volumeSub: volSub };
+  // Max raw sum is ±7 (2+2+2+1); scale to the ±6 band used by fundamentals.
+  return { score: (c * 6) / 7, volumeSub: volSub };
 }
 
 // ---------------- Yahoo fetchers ----------------
@@ -231,6 +258,7 @@ Deno.serve(async (req) => {
         let rsiVal: number | null = null;
         let macdRes: { hist: number; prevHist: number } | null = null;
         let sma50: number | null = null, sma200: number | null = null;
+        let sma50Prev: number | null = null, sma200Prev: number | null = null;
 
         // ETFs skip indicator computation to keep the sync fast; they still
         // get price/market cap. Uncomment to include:
@@ -241,13 +269,18 @@ Deno.serve(async (req) => {
             macdRes = macd(closes);
             sma50 = sma(closes, 50);
             sma200 = sma(closes, 200);
+            // Prior-day SMAs so we can detect golden/death cross transitions.
+            sma50Prev = closes.length > 50 ? sma(closes.slice(0, -1), 50) : null;
+            sma200Prev = closes.length > 200 ? sma(closes.slice(0, -1), 200) : null;
           }
           await new Promise((r) => setTimeout(r, 25));
         }
 
-        const techScore = technicalScore({
-          price: q.price, rsi: rsiVal, macdHist: macdRes?.hist ?? null, macdPrev: macdRes?.prevHist ?? null,
-          sma50, sma200, volume: q.volume, avgVolume: q.avgVolume,
+        const { score: techScore, volumeSub } = technicalScore({
+          price: q.price, rsi: rsiVal,
+          macdHist: macdRes?.hist ?? null, macdPrev: macdRes?.prevHist ?? null,
+          sma50, sma200, sma50Prev, sma200Prev,
+          volume: q.volume, avgVolume: q.avgVolume, changePct: q.changePct,
         });
 
         outputs.push({
@@ -262,6 +295,9 @@ Deno.serve(async (req) => {
           macd_prev_hist: macdRes?.prevHist ?? null,
           sma_50: sma50,
           sma_200: sma200,
+          sma_50_prev: sma50Prev,
+          sma_200_prev: sma200Prev,
+          volume_score: volumeSub,
           fifty_two_week_high: q.high52,
           fifty_two_week_low: q.low52,
           technical_score: techScore,

@@ -11,24 +11,21 @@ const corsHeaders = {
 type Rating = "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
 function scoreToRating(score: number | null): Rating | null {
   if (score == null) return null;
-  // Distribution of combined_score across the universe runs roughly -3.4 to +3.7
-  // with avg ~0. Thresholds recentered to match that actual spread so ratings
-  // aren't collapsed into "Hold".
-  if (score >= 2.4) return "strong_buy";
+  // v2 thresholds (combined score range ±6).
+  if (score >= 2.5) return "strong_buy";
   if (score >= 1.0) return "buy";
-  if (score >= -1.0) return "hold";
-  if (score >= -2.4) return "sell";
+  if (score > -1.0) return "hold";
+  if (score > -2.5) return "sell";
   return "strong_sell";
 }
 
-// Server-side rating filter uses combined_score ranges directly to avoid
-// pulling every row through the network.
+// Server-side rating filter uses combined_score ranges directly.
 const RATING_RANGES: Record<Rating, [number, number]> = {
-  strong_buy:  [2.4, 999],
-  buy:         [1.0, 2.4],
+  strong_buy:  [2.5, 999],
+  buy:         [1.0, 2.5],
   hold:        [-1.0, 1.0],
-  sell:        [-2.4, -1.0],
-  strong_sell: [-999, -2.4],
+  sell:        [-2.5, -1.0],
+  strong_sell: [-999, -2.5],
 };
 
 const SORT_MAP: Record<string, string> = {
@@ -72,12 +69,18 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // Only list symbols with full data — both fundamentals and technicals
-    // present — so the detail page can render charts and a recommendation.
+    // v2 exclusion rules:
+    //  - both fundamental and technical scores must be present
+    //  - stock only (ETFs/SPACs/funds are excluded from ratings)
+    //  - at least 4 quarters of earnings history (beat + miss streak >= 4
+    //    is a proxy — we track up to 4)
+    //  - average daily volume >= 500,000
     query = query
       .not("fundamental_score", "is", null)
       .not("technical_score", "is", null)
-      .not("price", "is", null);
+      .not("price", "is", null)
+      .eq("asset_type", "stock")
+      .gte("avg_volume", 500000);
 
     if (q) {
       const like = `%${q}%`;
