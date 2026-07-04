@@ -812,22 +812,38 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-muted-foreground">
                           {r.dividendYield != null ? `${r.dividendYield.toFixed(2)}%` : "—"}
                         </td>
-                        <td className="p-3 text-center">
-                          {(() => {
-                            const { label, tone } = recoLabel(vantageScore(r));
-                            if (label === "—") return <span className="text-xs text-muted-foreground">—</span>;
-                            return (
-                              <span className={cn(
-                                "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
-                                tone === "buy" && "bg-success/10 text-success border-success/30",
-                                tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
-                                tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
-                              )}>
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </td>
+                        {(() => {
+                          const tech = technicalScore(r);
+                          const fund = fundamentalScore(r);
+                          const combined = combinedScore(r);
+                          const scoreCell = (v: number | null) => {
+                            if (v == null) return <span className="text-xs text-muted-foreground">—</span>;
+                            const tone = v >= 2 ? "text-success" : v <= -2 ? "text-destructive" : "text-muted-foreground";
+                            const sign = v > 0 ? "+" : "";
+                            return <span className={cn("font-mono text-xs font-semibold", tone)}>{sign}{v.toFixed(1)}</span>;
+                          };
+                          const { label, tone } = recoLabel(scoreToRating(combined));
+                          return (
+                            <>
+                              <td className="p-3 text-center">{scoreCell(tech)}</td>
+                              <td className="p-3 text-center">{scoreCell(fund)}</td>
+                              <td className="p-3 text-center">
+                                {label === "—" ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : (
+                                  <span className={cn(
+                                    "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
+                                    tone === "buy" && "bg-success/10 text-success border-success/30",
+                                    tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
+                                    tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
+                                  )}>
+                                    {label}
+                                  </span>
+                                )}
+                              </td>
+                            </>
+                          );
+                        })()}
                         <td className="p-3 pr-4 text-right font-mono text-muted-foreground">{formatVolume(r.volume)}</td>
                       </tr>
                     );
@@ -835,7 +851,7 @@ const Screener = () => {
                 )}
                 {refreshing && !loading && (
                   <tr>
-                    <td colSpan={11} className="p-2 text-center">
+                    <td colSpan={13} className="p-2 text-center">
                       <Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" />
                     </td>
                   </tr>
