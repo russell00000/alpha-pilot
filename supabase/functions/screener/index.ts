@@ -72,9 +72,12 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // Hide symbols with no fundamentals AND no technicals (delisted / no
-    // Yahoo data). Anything with at least one score is shown.
-    query = query.or("fundamental_score.not.is.null,technical_score.not.is.null");
+    // Only list symbols with full data — both fundamentals and technicals
+    // present — so the detail page can render charts and a recommendation.
+    query = query
+      .not("fundamental_score", "is", null)
+      .not("technical_score", "is", null)
+      .not("price", "is", null);
 
     if (q) {
       const like = `%${q}%`;
