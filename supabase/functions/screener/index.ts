@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // Show the full universe. Symbols with no fundamentals/technicals get a
-    // null rating rather than being hidden.
+    // Hide symbols with no fundamentals AND no technicals (delisted / no
+    // Yahoo data). Anything with at least one score is shown.
+    query = query.or("fundamental_score.not.is.null,technical_score.not.is.null");
 
     if (q) {
       const like = `%${q}%`;
