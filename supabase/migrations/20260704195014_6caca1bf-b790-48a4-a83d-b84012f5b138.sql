@@ -1,0 +1,1 @@
+ALTER VIEW public.screener_view SET (security_invoker = true);
