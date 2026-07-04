@@ -101,8 +101,8 @@ function macd(values: number[]): { hist: number; prevHist: number } | null {
 
 // ---------------- Scoring (matches Screener rubric) ----------------
 
-// v2 rubric: RSI ±2, MACD ±2 (magnitude aware), MA/cross ±2, volume ±1.
-// Sum max ±7, normalize to ±6 by multiplying by 6/7.
+// v3 rubric: RSI ±2, MACD ±2 (magnitude aware), MA/cross ±2, volume ±1,
+// extension vs SMA200 ±2. Sum max ±9, normalize to ±6 by multiplying by 6/9.
 function volumeSubScore(volume: number | null, avgVolume: number | null, changePct: number | null): number {
   if (volume == null || avgVolume == null || avgVolume <= 0 || changePct == null) return 0;
   const ratio = volume / avgVolume;
@@ -162,12 +162,26 @@ function technicalScore(input: {
     c += s; n++;
   }
 
+  // Extension vs SMA200: penalize stocks trading far above (or reward far
+  // below) the long-term trend. This is what catches "great fundamentals
+  // but blow-off top" names like MU near a cyclical peak.
+  if (input.price != null && input.sma200 != null && input.sma200 > 0) {
+    const ratio = input.price / input.sma200;
+    let s = 0;
+    if (ratio >= 2.0) s = -2;         // >100% above 200-day = extremely stretched
+    else if (ratio >= 1.5) s = -1;    // >50% above = stretched
+    else if (ratio <= 0.5) s = 2;     // >50% below = deep-value opportunity
+    else if (ratio <= 0.75) s = 1;    // >25% below
+    c += s; n++;
+  }
+
   const volSub = volumeSubScore(input.volume, input.avgVolume, input.changePct);
   c += volSub; // volume can bump ±1 regardless of other n count
 
   if (n === 0) return { score: null, volumeSub: volSub };
-  // Max raw sum is ±7 (2+2+2+1); scale to the ±6 band used by fundamentals.
-  return { score: (c * 6) / 7, volumeSub: volSub };
+  // Max raw sum is ±9 (RSI 2 + MACD 2 + MA 2 + extension 2 + volume 1);
+  // scale to the ±6 band used by fundamentals.
+  return { score: (c * 6) / 9, volumeSub: volSub };
 }
 
 // ---------------- Yahoo fetchers ----------------
