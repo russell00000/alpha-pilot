@@ -723,7 +723,7 @@ const Screener = () => {
         {/* Results table */}
         <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[1050px]">
               <thead>
                 <tr className="border-b border-border/50 bg-background/40">
                   <th className="text-left p-3 pl-4"><SortHeader label="Symbol" k="symbol" /></th>
@@ -736,7 +736,13 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="EPS" k="eps" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividendYield" className="ml-auto" /></th>
                   <th className="text-center p-3">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Vantage Rating</span>
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Technical composite (-7..+7): RSI + MACD + Moving averages + volume">Tech</span>
+                  </th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Fundamental composite (-6..+6): revenue growth, EPS trend, margins, P/E vs sector, D/E">Fund</span>
+                  </th>
+                  <th className="text-center p-3">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground" title="Combined: 40% technical + 60% fundamental">Vantage Rating</span>
                   </th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -745,14 +751,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(11)].map((__, j) => (
+                      {[...Array(13)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-12 text-center">
+                    <td colSpan={13} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
