@@ -451,8 +451,6 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
       analysis = fallbackAnalysis(symbol, currentPrice, fundamentals);
     }
 
-    cacheSet(analysisCacheKey, analysis);
-
     // Align the Stock page recommendation with the Screener rating so both
     // surfaces show the same call for the same symbol. Screener rating is
     // derived from the pre-computed combined_score in screener_view.
@@ -478,6 +476,8 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
     } catch (e) {
       console.log("screener alignment skipped:", e);
     }
+
+    cacheSet(analysisCacheKey, analysis);
 
     return new Response(
       JSON.stringify({ data: analysis }),
