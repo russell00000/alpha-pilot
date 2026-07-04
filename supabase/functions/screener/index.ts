@@ -72,12 +72,10 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // Only show symbols that actually have scoreable data. Symbols missing
-    // fundamentals/technicals get combined_score=0 in the view, which would
-    // otherwise collapse ~10k rows into "Hold".
-    query = query
-      .not("fundamental_score", "is", null)
-      .not("technical_score", "is", null);
+    // Show symbols that have at least one score available. ETFs never have
+    // fundamentals, and stock coverage between fundamentals/technicals syncs
+    // only partially overlaps — requiring both collapsed the universe to ~1.5k.
+    query = query.or("fundamental_score.not.is.null,technical_score.not.is.null");
 
     if (q) {
       const like = `%${q}%`;
