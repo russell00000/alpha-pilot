@@ -122,18 +122,53 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
       if (prev !== 0 && Math.abs(prev) > 1) fcfGrowth = (cur - prev) / Math.abs(prev);
     }
 
+    // Sanity guards — Yahoo occasionally returns absurd or off-scale values
+    // (e.g. gross margin misreported as net, 500% "growth" from a tiny
+    // denominator, negative D/E). Nulling these keeps them out of scoring
+    // rather than letting bad data inflate the fundamental score.
+    const sector = sp?.sector ?? null;
+    const isFinancialOrRE = sector === "Financial Services" || sector === "Real Estate";
+
+    let peRaw =
+      typeof sd?.trailingPE?.raw === "number" ? sd.trailingPE.raw :
+      typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null;
+    if (peRaw != null && (peRaw <= 0 || peRaw > 500)) peRaw = null;
+
+    let fwdPe = typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null;
+    if (fwdPe != null && (fwdPe <= 0 || fwdPe > 500)) fwdPe = null;
+
+    let rev = typeof fd?.revenueGrowth?.raw === "number" ? fd.revenueGrowth.raw : null;
+    // Cap growth at ±200%. Anything outside is almost always a data glitch.
+    if (rev != null && (rev > 2 || rev < -1)) rev = null;
+
+    let margin = typeof fd?.profitMargins?.raw === "number" ? fd.profitMargins.raw : null;
+    // Net margin realistic ceiling: ~40% for non-financials, ~60% for
+    // financials/REITs. Values above these usually reflect Yahoo returning
+    // a gross or operating margin instead of net.
+    if (margin != null) {
+      const ceiling = isFinancialOrRE ? 0.6 : 0.4;
+      if (margin > ceiling || margin < -1) margin = null;
+    }
+
+    let de = typeof fd?.debtToEquity?.raw === "number" ? fd.debtToEquity.raw : null;
+    // Negative equity or nonsense multiples → null. Yahoo reports D/E as
+    // percentage (e.g. 79.5 for 0.795); scoring handles the /100.
+    if (de != null && (de < 0 || de > 2000)) de = null;
+
+    let eps = typeof ks?.trailingEps?.raw === "number" ? ks.trailingEps.raw : null;
+    let divYield = typeof sd?.dividendYield?.raw === "number" ? sd.dividendYield.raw * 100 : null;
+    if (divYield != null && (divYield < 0 || divYield > 30)) divYield = null;
+
     return {
       symbol,
-      sector: sp?.sector ?? null,
-      pe_ratio:
-        typeof sd?.trailingPE?.raw === "number" ? sd.trailingPE.raw :
-        typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null,
-      forward_pe: typeof ks?.forwardPE?.raw === "number" ? ks.forwardPE.raw : null,
-      eps: typeof ks?.trailingEps?.raw === "number" ? ks.trailingEps.raw : null,
-      dividend_yield: typeof sd?.dividendYield?.raw === "number" ? sd.dividendYield.raw * 100 : null,
-      revenue_growth: typeof fd?.revenueGrowth?.raw === "number" ? fd.revenueGrowth.raw : null,
-      profit_margins: typeof fd?.profitMargins?.raw === "number" ? fd.profitMargins.raw : null,
-      debt_to_equity: typeof fd?.debtToEquity?.raw === "number" ? fd.debtToEquity.raw : null,
+      sector,
+      pe_ratio: peRaw,
+      forward_pe: fwdPe,
+      eps,
+      dividend_yield: divYield,
+      revenue_growth: rev,
+      profit_margins: margin,
+      debt_to_equity: de,
       eps_beat_streak: beat,
       eps_miss_streak: miss,
       fcf_growth: fcfGrowth,
