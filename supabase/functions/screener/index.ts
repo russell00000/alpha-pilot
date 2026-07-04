@@ -72,10 +72,8 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // Show symbols that have at least one score available. ETFs never have
-    // fundamentals, and stock coverage between fundamentals/technicals syncs
-    // only partially overlaps — requiring both collapsed the universe to ~1.5k.
-    query = query.or("fundamental_score.not.is.null,technical_score.not.is.null");
+    // Show the full universe. Symbols with no fundamentals/technicals get a
+    // null rating rather than being hidden.
 
     if (q) {
       const like = `%${q}%`;
@@ -105,7 +103,9 @@ Deno.serve(async (req) => {
 
     const rows = (data ?? []).map((r: any) => ({
       ...r,
-      rating: scoreToRating(r.combined_score),
+      rating: r.fundamental_score == null && r.technical_score == null
+        ? null
+        : scoreToRating(r.combined_score),
     }));
 
     return new Response(
