@@ -59,13 +59,15 @@ type Fundamentals = {
   debt_to_equity: number | null;
   eps_beat_streak: number;
   eps_miss_streak: number;
+  fcf_growth: number | null;
+  sector_avg_pe: number | null;
   fundamental_score: number | null;
 };
 
 // Fetch Yahoo quoteSummary for a single symbol. Returns null on failure.
 async function fetchOne(symbol: string, auth: { crumb: string; cookie: string }): Promise<Fundamentals | null> {
   try {
-    const modules = "financialData,summaryProfile,earningsHistory,defaultKeyStatistics,summaryDetail";
+    const modules = "financialData,summaryProfile,earningsHistory,defaultKeyStatistics,summaryDetail,cashflowStatementHistory";
     const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}&crumb=${encodeURIComponent(auth.crumb)}`;
     const r = await fetch(url, {
       headers: {
@@ -83,6 +85,7 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
     const eh = result.earningsHistory?.history || [];
     const sd = result.summaryDetail || {};
     const ks = result.defaultKeyStatistics || {};
+    const cf = result.cashflowStatementHistory?.cashflowStatements || [];
 
     // EPS beat/miss streaks — walk from most recent quarter backwards.
     // Yahoo returns earningsHistory in chronological order (oldest → newest),
@@ -105,6 +108,20 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
       else break;
     }
 
+    // FCF growth YoY: compare most recent annual FCF vs. prior year.
+    // Yahoo cashflowStatementHistory returns entries newest -> oldest.
+    let fcfGrowth: number | null = null;
+    const fcf0 = cf?.[0]?.totalCashFromOperatingActivities?.raw;
+    const cap0 = cf?.[0]?.capitalExpenditures?.raw;
+    const fcf1 = cf?.[1]?.totalCashFromOperatingActivities?.raw;
+    const cap1 = cf?.[1]?.capitalExpenditures?.raw;
+    if (typeof fcf0 === "number" && typeof fcf1 === "number") {
+      // capex is reported as a negative; free cash flow = operating cash + capex.
+      const cur = fcf0 + (typeof cap0 === "number" ? cap0 : 0);
+      const prev = fcf1 + (typeof cap1 === "number" ? cap1 : 0);
+      if (prev !== 0 && Math.abs(prev) > 1) fcfGrowth = (cur - prev) / Math.abs(prev);
+    }
+
     return {
       symbol,
       sector: sp?.sector ?? null,
@@ -119,6 +136,8 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
       debt_to_equity: typeof fd?.debtToEquity?.raw === "number" ? fd.debtToEquity.raw : null,
       eps_beat_streak: beat,
       eps_miss_streak: miss,
+      fcf_growth: fcfGrowth,
+      sector_avg_pe: null, // filled after batch pass
       fundamental_score: null, // filled by scoreFundamental below
     };
   } catch {
@@ -126,22 +145,66 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
   }
 }
 
-// Recentered rubric (fixed benchmark, not response-average):
-//   profit margin: >=30 = +2, >=20 = +1, <10 = -1, <0 = -2
-//   debt/equity:   <=0.1 = +2, <=0.3 = +1, >1 = -1, >2 = -2
-//   revenue growth:>=25% = +2, >=15% = +1, <5% = -1, <0 = -2
-//   P/E vs 20:     <10 = +2, <15 = +1, >30 = -1, >45 = -2
-//   EPS streak:    unchanged (>=3 = +/-2, >=2 = +/-1)
-// Sum -10..+10, then × 0.6 to align with technical -6..+6 scale.
+// v2 rubric — six metrics, each -2..+2. Sum (max ±12), divide by 2 for ±6.
+// P/E is sector-relative when a sector average is available.
 function scoreFundamental(f: Fundamentals): number | null {
   let c = 0, n = 0;
+
+  // Revenue growth YoY
   if (f.revenue_growth != null) {
     const g = f.revenue_growth;
     let s = 0;
-    if (g >= 0.25) s = 2; else if (g >= 0.15) s = 1;
-    else if (g < 0) s = -2; else if (g < 0.05) s = -1;
+    if (g >= 0.20) s = 2;
+    else if (g >= 0.10) s = 1;
+    else if (g < 0) s = -2;
+    else if (g < 0.05) s = -1;
     c += s; n++;
   }
+
+  // Profit margin
+  if (f.profit_margins != null) {
+    const m = f.profit_margins;
+    let s = 0;
+    if (m >= 0.25) s = 2;
+    else if (m >= 0.15) s = 1;
+    else if (m < 0) s = -2;
+    else if (m < 0.05) s = -1;
+    c += s; n++;
+  }
+
+  // P/E vs sector avg
+  if (f.pe_ratio != null && f.pe_ratio > 0) {
+    const p = f.pe_ratio;
+    const avg = f.sector_avg_pe;
+    let s = 0;
+    if (avg != null && avg > 0) {
+      const rel = (p - avg) / avg;
+      if (rel <= -0.30) s = 2;
+      else if (rel <= -0.10) s = 1;
+      else if (rel >= 0.30) s = -2;
+      else if (rel >= 0.10) s = -1;
+    } else {
+      // Fallback: fixed benchmark 20 when no sector average is known.
+      if (p < 10) s = 2;
+      else if (p < 15) s = 1;
+      else if (p > 45) s = -2;
+      else if (p > 30) s = -1;
+    }
+    c += s; n++;
+  }
+
+  // Debt to equity (Yahoo returns as percentage, e.g. 79.5 for 0.795)
+  if (f.debt_to_equity != null) {
+    const de = f.debt_to_equity > 5 ? f.debt_to_equity / 100 : f.debt_to_equity;
+    let s = 0;
+    if (de <= 0.3) s = 2;
+    else if (de <= 0.6) s = 1;
+    else if (de > 2.0) s = -2;
+    else if (de > 1.0) s = -1;
+    c += s; n++;
+  }
+
+  // EPS beat/miss streak
   if (f.eps_beat_streak > 0 || f.eps_miss_streak > 0) {
     let s = 0;
     if (f.eps_beat_streak >= 3) s = 2;
@@ -150,29 +213,21 @@ function scoreFundamental(f: Fundamentals): number | null {
     else if (f.eps_miss_streak >= 2) s = -1;
     c += s; n++;
   }
-  if (f.profit_margins != null) {
-    const m = f.profit_margins;
+
+  // Free cash flow growth YoY
+  if (f.fcf_growth != null) {
+    const g = f.fcf_growth;
     let s = 0;
-    if (m >= 0.30) s = 2; else if (m >= 0.20) s = 1;
-    else if (m < 0) s = -2; else if (m < 0.10) s = -1;
+    if (g >= 0.20) s = 2;
+    else if (g >= 0.10) s = 1;
+    else if (g <= -0.20) s = -2;
+    else if (g < 0) s = -1;
     c += s; n++;
   }
-  if (f.pe_ratio != null && f.pe_ratio > 0) {
-    const p = f.pe_ratio;
-    let s = 0;
-    if (p < 10) s = 2; else if (p < 15) s = 1;
-    else if (p > 45) s = -2; else if (p > 30) s = -1;
-    c += s; n++;
-  }
-  if (f.debt_to_equity != null) {
-    const de = f.debt_to_equity > 5 ? f.debt_to_equity / 100 : f.debt_to_equity;
-    let s = 0;
-    if (de <= 0.1) s = 2; else if (de <= 0.3) s = 1;
-    else if (de > 2) s = -2; else if (de > 1) s = -1;
-    c += s; n++;
-  }
+
   if (n === 0) return null;
-  return c * 0.6;
+  // Sum is -12..+12 across 6 metrics; divide by 2 to land on -6..+6.
+  return c / 2;
 }
 
 async function runBatch(symbols: string[], auth: { crumb: string; cookie: string }, concurrency = 6): Promise<Fundamentals[]> {
@@ -247,8 +302,28 @@ Deno.serve(async (req) => {
     }
     const rows = await runBatch(symbols, auth, 6);
 
-    // Score each row.
+    // Pull sector average P/E from the DB so P/E scoring is relative.
+    // Averages the trailing P/E of every profitable ticker in each sector.
+    const { data: avgRows } = await supabase
+      .from("fundamentals")
+      .select("sector, pe_ratio");
+    const sectorSum = new Map<string, { sum: number; n: number }>();
+    for (const r of avgRows ?? []) {
+      const pe = (r as any).pe_ratio;
+      const sec = (r as any).sector;
+      if (!sec || typeof pe !== "number" || pe <= 0 || pe > 200) continue;
+      const agg = sectorSum.get(sec) ?? { sum: 0, n: 0 };
+      agg.sum += pe; agg.n++;
+      sectorSum.set(sec, agg);
+    }
+    const sectorAvg = new Map<string, number>();
+    for (const [sec, { sum, n }] of sectorSum) {
+      if (n >= 3) sectorAvg.set(sec, sum / n);
+    }
+
+    // Score each row using sector-relative P/E.
     for (const r of rows) {
+      r.sector_avg_pe = r.sector ? sectorAvg.get(r.sector) ?? null : null;
       r.fundamental_score = scoreFundamental(r);
     }
 
