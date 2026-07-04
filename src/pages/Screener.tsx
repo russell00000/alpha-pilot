@@ -395,14 +395,14 @@ const Screener = () => {
                 {loading ? (
                   [...Array(12)].map((_, i) => (
                     <tr key={i} className="border-b border-border/40 animate-pulse">
-                      {[...Array(12)].map((__, j) => (
+                      {[...Array(11)].map((__, j) => (
                         <td key={j} className="p-3"><div className="h-4 bg-muted rounded w-16" /></td>
                       ))}
                     </tr>
                   ))
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="p-12 text-center">
+                    <td colSpan={11} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-10 h-10 text-muted-foreground/50" />
                         <p className="text-muted-foreground">No securities match these filters.</p>
@@ -457,7 +457,7 @@ const Screener = () => {
                   })
                 )}
                 {refreshing && !loading && (
-                  <tr><td colSpan={12} className="p-2 text-center"><Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" /></td></tr>
+                  <tr><td colSpan={11} className="p-2 text-center"><Loader2 className="w-4 h-4 animate-spin inline text-muted-foreground" /></td></tr>
                 )}
               </tbody>
             </table>
