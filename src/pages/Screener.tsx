@@ -208,11 +208,15 @@ const Screener = () => {
     );
   };
 
-  const scoreCell = (v: number | null) => {
+  // Convert a component score (±6 range) to an expected % move.
+  // Rough heuristic: each point of score ≈ 5% expected upside/downside
+  // over the coming 12 months, capped implicitly by the score range.
+  const expectedPctCell = (v: number | null) => {
     if (v == null) return <span className="text-xs text-muted-foreground">—</span>;
-    const tone = v >= 2 ? "text-success" : v <= -2 ? "text-destructive" : "text-muted-foreground";
-    const sign = v > 0 ? "+" : "";
-    return <span className={cn("font-mono text-xs font-semibold", tone)}>{sign}{v.toFixed(1)}</span>;
+    const pct = v * 5;
+    const tone = pct > 0 ? "text-success" : pct < 0 ? "text-destructive" : "text-muted-foreground";
+    const sign = pct > 0 ? "+" : "";
+    return <span className={cn("font-mono text-xs font-semibold", tone)}>{sign}{pct.toFixed(1)}%</span>;
   };
 
   return (
@@ -382,8 +386,8 @@ const Screener = () => {
                   <th className="text-right p-3"><SortHeader label="Market Cap" k="market_cap" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="P/E" k="pe_ratio" className="ml-auto" /></th>
                   <th className="text-right p-3"><SortHeader label="Div %" k="dividend_yield" className="ml-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Tech" k="technical_score" className="mx-auto" /></th>
-                  <th className="text-center p-3"><SortHeader label="Fund" k="fundamental_score" className="mx-auto" /></th>
+                  <th className="text-center p-3"><SortHeader label="Tech Δ%" k="technical_score" className="mx-auto" /></th>
+                  <th className="text-center p-3"><SortHeader label="Fund Δ%" k="fundamental_score" className="mx-auto" /></th>
                   <th className="text-center p-3"><SortHeader label="Rating" k="combined_score" className="mx-auto" /></th>
                   <th className="text-right p-3 pr-4"><SortHeader label="Volume" k="volume" className="ml-auto" /></th>
                 </tr>
@@ -435,8 +439,8 @@ const Screener = () => {
                         <td className="p-3 text-right font-mono text-foreground">{formatCap(r.market_cap)}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.pe_ratio != null ? r.pe_ratio.toFixed(1) : "—"}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">{r.dividend_yield != null ? `${r.dividend_yield.toFixed(2)}%` : "—"}</td>
-                        <td className="p-3 text-center">{scoreCell(r.technical_score)}</td>
-                        <td className="p-3 text-center">{scoreCell(r.fundamental_score)}</td>
+                        <td className="p-3 text-center">{expectedPctCell(r.technical_score)}</td>
+                        <td className="p-3 text-center">{expectedPctCell(r.fundamental_score)}</td>
                         <td className="p-3 text-center">
                           {label === "—" ? (
                             <span className="text-xs text-muted-foreground">—</span>
