@@ -317,9 +317,9 @@ Deno.serve(async (req) => {
         let sma50Prev: number | null = null, sma200Prev: number | null = null;
         let atrValue: number | null = null;
 
-        // ETFs skip indicator computation to keep the sync fast; they still
-        // get price/market cap. Uncomment to include:
-        if (!isEtf.get(sym)) {
+        // Compute indicators for stocks AND ETFs — ETFs price like equities
+        // so RSI/MACD/SMA/ATR all apply, and it's the only score they get.
+        {
           const ohlc = await fetchDailyOHLC(sym, auth);
           const closes = ohlc?.closes ?? null;
           if (closes && closes.length >= 20) {

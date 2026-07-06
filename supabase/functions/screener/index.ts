@@ -69,17 +69,15 @@ Deno.serve(async (req) => {
 
     let query = supabase.from("screener_view").select("*", { count: "exact" });
 
-    // v2 exclusion rules:
-    //  - both fundamental and technical scores must be present
-    //  - stock only (ETFs/SPACs/funds are excluded from ratings)
-    //  - at least 4 quarters of earnings history (beat + miss streak >= 4
-    //    is a proxy — we track up to 4)
+    // v3 exclusion rules:
+    //  - must have a technical score (ETFs are scored on tech only; stocks
+    //    will also carry a fundamental score, but requiring both drops
+    //    every ETF from the results)
+    //  - price present
     //  - average daily volume >= 500,000
     query = query
-      .not("fundamental_score", "is", null)
       .not("technical_score", "is", null)
       .not("price", "is", null)
-      .eq("asset_type", "stock")
       .gte("avg_volume", 500000);
 
 
