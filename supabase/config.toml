@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.stock-forecast]
 verify_jwt = false
+
+[functions.stock-why-moved]
+verify_jwt = false

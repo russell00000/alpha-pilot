@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye, Newspaper } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,16 @@ const Stock = () => {
   const [insiderView, setInsiderView] = useState(false);
   const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [isLoadingForecast, setIsLoadingForecast] = useState(false);
+
+  // "Why did <sym> move today" — refetches when user navigates between symbols.
+  type WhyMoved = {
+    symbol: string;
+    changePct: number | null;
+    summary: string;
+    headlines: { title: string; url: string; source: string }[];
+  };
+  const [whyMoved, setWhyMoved] = useState<WhyMoved | null>(null);
+  const [isLoadingWhy, setIsLoadingWhy] = useState(false);
 
   // Fallback stock names
   const stockNames: Record<string, string> = {
@@ -443,6 +453,22 @@ const Stock = () => {
       .finally(() => {
         if (!cancelled) setIsLoadingForecast(false);
       });
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  // Fetch the daily "why did it move" explanation whenever the symbol changes.
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    setIsLoadingWhy(true);
+    setWhyMoved(null);
+    supabase.functions
+      .invoke("stock-why-moved", { body: { symbol } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data?.summary) setWhyMoved(data as WhyMoved);
+      })
+      .finally(() => { if (!cancelled) setIsLoadingWhy(false); });
     return () => { cancelled = true; };
   }, [symbol]);
 
@@ -1389,6 +1415,67 @@ const Stock = () => {
             ) : null}
           </div>
         )}
+
+        {/* Why moved today */}
+        <div className="glass-card p-6 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Newspaper className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">
+              Why {stockData.symbol} moved today
+            </h3>
+            {whyMoved?.changePct != null && (
+              <span className={cn(
+                "ml-auto text-sm font-mono font-semibold",
+                whyMoved.changePct >= 0 ? "text-success" : "text-destructive",
+              )}>
+                {whyMoved.changePct > 0 ? "+" : ""}{whyMoved.changePct.toFixed(2)}%
+              </span>
+            )}
+          </div>
+          {isLoadingWhy ? (
+            <div className="flex items-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-primary mr-2" />
+              <span className="text-sm text-muted-foreground">
+                Reading today's headlines for {stockData.symbol}…
+              </span>
+            </div>
+          ) : whyMoved ? (
+            <div className="space-y-3">
+              <p className="text-sm md:text-base text-foreground/90 leading-relaxed">
+                {whyMoved.summary}
+              </p>
+              {whyMoved.headlines.length > 0 && (
+                <div className="pt-2 border-t border-border/30">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                    Recent headlines
+                  </p>
+                  <ul className="space-y-1.5">
+                    {whyMoved.headlines.slice(0, 3).map((h, i) => (
+                      <li key={i}>
+                        <a
+                          href={h.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-start gap-1.5 group"
+                        >
+                          <ExternalLink className="w-3 h-3 mt-0.5 shrink-0 opacity-60 group-hover:opacity-100" />
+                          <span className="line-clamp-2">
+                            {h.title}
+                            <span className="text-muted-foreground/60"> — {h.source}</span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No move summary available right now.
+            </p>
+          )}
+        </div>
 
         {/* Our Recommendation */}
         <div className="glass-card p-6 mb-6">
