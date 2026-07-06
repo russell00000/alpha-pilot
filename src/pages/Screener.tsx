@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Filter, Search, TrendingUp, TrendingDown, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "@/components/Header";
@@ -96,6 +96,7 @@ const formatPrice = (n: number | null) =>
 const Screener = () => {
   const navigate = useNavigate();
   const [rows, setRows] = useState<ScreenerRow[]>([]);
+  const reqIdRef = useRef(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,6 +124,7 @@ const Screener = () => {
 
   const loadData = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true); else setLoading(true);
+    const myReq = ++reqIdRef.current;
     try {
       const minP = parseFloat(minPrice);
       const maxP = parseFloat(maxPrice);
@@ -150,15 +152,17 @@ const Screener = () => {
         pageSize,
       };
       const { data, error } = await supabase.functions.invoke("screener", { body });
+      if (myReq !== reqIdRef.current) return; // stale — a newer request already fired
       if (error) throw error;
       setRows((data?.rows ?? []) as ScreenerRow[]);
       setTotal(data?.total ?? 0);
       setLastUpdated(new Date());
     } catch (e) {
+      if (myReq !== reqIdRef.current) return;
       console.error("Screener load failed", e);
       setRows([]); setTotal(0);
     } finally {
-      setLoading(false); setRefreshing(false);
+      if (myReq === reqIdRef.current) { setLoading(false); setRefreshing(false); }
     }
   }, [query, sector, assetType, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, rating, sortKey, sortDir, page]);
 
