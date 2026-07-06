@@ -249,11 +249,16 @@ function scoreFundamental(f: Fundamentals): number | null {
   // Debt to equity (Yahoo returns as percentage, e.g. 79.5 for 0.795)
   if (f.debt_to_equity != null) {
     const de = f.debt_to_equity > 5 ? f.debt_to_equity / 100 : f.debt_to_equity;
+    const softenLeverage =
+      f.sector === "Financial Services" || f.sector === "Real Estate";
     let s = 0;
     if (de <= 0.3) s = 2;
     else if (de <= 0.6) s = 1;
     else if (de > 2.0) s = -2;
     else if (de > 1.0) s = -1;
+    // Financials and REITs run high leverage by design — cap the penalty
+    // at -1 so their business model isn't scored as a red flag.
+    if (softenLeverage && s < -1) s = -1;
     c += s; n++;
   }
 
@@ -278,9 +283,22 @@ function scoreFundamental(f: Fundamentals): number | null {
     c += s; n++;
   }
 
+  // Dividend yield — rewards income names (REITs/BDCs/mREITs/utilities/etc.)
+  // that get punished on growth/margin metrics. Very high yields flag
+  // likely-unsustainable payouts (return-of-capital traps).
+  if (f.dividend_yield != null && f.dividend_yield > 0) {
+    const y = f.dividend_yield; // percent, e.g. 4.5 for 4.5%
+    let s = 0;
+    if (y >= 4 && y <= 10) s = 2;
+    else if (y >= 2 && y < 4) s = 1;
+    else if (y > 10 && y <= 20) s = 1; // high but not obviously broken
+    else if (y > 20) s = -1;           // unsustainable / RoC trap
+    if (s !== 0) { c += s; n++; }
+  }
+
   if (n === 0) return null;
-  // Sum is -12..+12 across 6 metrics; divide by 2 to land on -6..+6.
-  return c / 2;
+  // Sum is now up to ±14 across 7 metrics; scale to the ±6 band.
+  return (c * 6) / 14;
 }
 
 async function runBatch(symbols: string[], auth: { crumb: string; cookie: string }, concurrency = 6): Promise<Fundamentals[]> {
