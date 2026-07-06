@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye, Newspaper } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,16 @@ const Stock = () => {
   const [insiderView, setInsiderView] = useState(false);
   const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [isLoadingForecast, setIsLoadingForecast] = useState(false);
+
+  // "Why did <sym> move today" — refetches when user navigates between symbols.
+  type WhyMoved = {
+    symbol: string;
+    changePct: number | null;
+    summary: string;
+    headlines: { title: string; url: string; source: string }[];
+  };
+  const [whyMoved, setWhyMoved] = useState<WhyMoved | null>(null);
+  const [isLoadingWhy, setIsLoadingWhy] = useState(false);
 
   // Fallback stock names
   const stockNames: Record<string, string> = {
@@ -443,6 +453,22 @@ const Stock = () => {
       .finally(() => {
         if (!cancelled) setIsLoadingForecast(false);
       });
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  // Fetch the daily "why did it move" explanation whenever the symbol changes.
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    setIsLoadingWhy(true);
+    setWhyMoved(null);
+    supabase.functions
+      .invoke("stock-why-moved", { body: { symbol } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data?.summary) setWhyMoved(data as WhyMoved);
+      })
+      .finally(() => { if (!cancelled) setIsLoadingWhy(false); });
     return () => { cancelled = true; };
   }, [symbol]);
 
