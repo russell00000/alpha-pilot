@@ -82,10 +82,6 @@ Deno.serve(async (req) => {
       .eq("asset_type", "stock")
       .gte("avg_volume", 500000);
 
-    // Freshness guard: fundamentals older than 14 days are likely stale
-    // (earnings/split events not reflected). Exclude from ratings.
-    const staleCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    query = query.gte("fundamentals_updated_at", staleCutoff);
 
     if (q) {
       const like = `%${q}%`;
