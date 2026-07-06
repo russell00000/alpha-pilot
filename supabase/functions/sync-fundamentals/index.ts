@@ -87,6 +87,12 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
     const ks = result.defaultKeyStatistics || {};
     const cf = result.cashflowStatementHistory?.cashflowStatements || [];
 
+    // Current price — used to sanity-check the reported trailing P/E against
+    // (price / trailingEps). Yahoo sometimes serves a stale/split-glitched
+    // P/E that disagrees with the live quote.
+    const currentPrice =
+      typeof fd?.currentPrice?.raw === "number" ? fd.currentPrice.raw : null;
+
     // EPS beat/miss streaks — walk from most recent quarter backwards.
     // Yahoo returns earningsHistory in chronological order (oldest → newest),
     // so reverse to iterate newest first.
@@ -138,8 +144,10 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
     if (fwdPe != null && (fwdPe <= 0 || fwdPe > 500)) fwdPe = null;
 
     let rev = typeof fd?.revenueGrowth?.raw === "number" ? fd.revenueGrowth.raw : null;
-    // Cap growth at ±200%. Anything outside is almost always a data glitch.
-    if (rev != null && (rev > 2 || rev < -1)) rev = null;
+    // Tighter band: -80% .. +150% catches almost every legit growth story
+    // and rejects the "tiny denominator" glitches (e.g. 500%+ growth from
+    // a comp that was near zero).
+    if (rev != null && (rev > 1.5 || rev < -0.8)) rev = null;
 
     let margin = typeof fd?.profitMargins?.raw === "number" ? fd.profitMargins.raw : null;
     // Net margin realistic ceiling: ~40% for non-financials, ~60% for
@@ -158,6 +166,16 @@ async function fetchOne(symbol: string, auth: { crumb: string; cookie: string })
     let eps = typeof ks?.trailingEps?.raw === "number" ? ks.trailingEps.raw : null;
     let divYield = typeof sd?.dividendYield?.raw === "number" ? sd.dividendYield.raw * 100 : null;
     if (divYield != null && (divYield < 0 || divYield > 30)) divYield = null;
+
+    // Cross-check trailingPE against (price / eps). If they disagree by
+    // more than 25%, trust the derived value or drop it entirely.
+    if (peRaw != null && currentPrice != null && eps != null && eps > 0) {
+      const derived = currentPrice / eps;
+      if (derived > 0 && derived < 500) {
+        const diff = Math.abs(peRaw - derived) / derived;
+        if (diff > 0.25) peRaw = derived; // prefer live-derived P/E
+      }
+    }
 
     return {
       symbol,

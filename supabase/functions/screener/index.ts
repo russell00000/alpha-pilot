@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
       .eq("asset_type", "stock")
       .gte("avg_volume", 500000);
 
+
     if (q) {
       const like = `%${q}%`;
       query = query.or(`symbol.ilike.${like},name.ilike.${like}`);

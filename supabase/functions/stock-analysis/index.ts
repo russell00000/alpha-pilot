@@ -328,6 +328,19 @@ serve(async (req) => {
       fetchPhilosophy(),
       fetchFundamentals(symbol),
     ]);
+
+    // Pull the screener rubric row so the AI narrative can reconcile with
+    // the quant score instead of contradicting it. Cheap query (index hit).
+    let screenerRow: any = null;
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: sv } = await sb
+        .from("screener_view")
+        .select("combined_score, fundamental_score, technical_score, rsi_14, macd_hist, sma_50, sma_200, revenue_growth, profit_margins, pe_ratio, forward_pe, eps_beat_streak, eps_miss_streak")
+        .eq("symbol", symbol.toUpperCase())
+        .maybeSingle();
+      screenerRow = sv ?? null;
+    } catch { /* non-fatal */ }
     console.log("Fetched philosophy:", philosophy ? "success" : "none");
     console.log("Fetched fundamentals:", fundamentals ? "success" : "none");
 
@@ -381,6 +394,11 @@ Volume: ${volume}
 
 ## FUNDAMENTALS (real data — ground every number you cite to this block)
 ${fundamentals ? JSON.stringify(fundamentals, null, 2) : "Fundamentals unavailable — clearly state that valuation work is based on limited public data and be conservative with specific numeric claims."}
+
+## QUANT MODEL VIEW (from the Vantage Screener rubric — this is the score the Screener will show)
+${screenerRow ? JSON.stringify(screenerRow, null, 2) : "Not available."}
+
+If your qualitative view meaningfully diverges from this quant score (e.g. you would call SELL but the score says +2), you MUST explicitly reconcile the difference in the "fundamentals" or "technicals" section, naming the specific metric (extension vs SMA200, margin band, RSI zone, etc.) that drives your disagreement.
 
 Provide your analysis in the following JSON format only, no other text:
 {

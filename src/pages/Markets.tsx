@@ -187,15 +187,19 @@ const Markets = () => {
       const uncached = allSymbols.filter(s => !priceCacheRef.current[s]);
       if (uncached.length === 0) return;
       
-      // Load visible prices quickly, then continue in controlled batches.
-      const batchSize = 10;
+      // Fire larger batches in parallel — market-data handles arrays cleanly
+      // and Yahoo v7 quote supports ~100 symbols per call. This cuts the
+      // tab-switch wait from ~3s to well under a second.
+      const batchSize = 40;
+      const batches: string[][] = [];
       for (let i = 0; i < uncached.length; i += batchSize) {
+        batches.push(uncached.slice(i, i + batchSize));
+      }
+      // Run at most 3 in parallel so we don't hammer the edge function.
+      const CONCURRENCY = 3;
+      for (let i = 0; i < batches.length; i += CONCURRENCY) {
         if (isCancelled) break;
-        const batch = uncached.slice(i, i + batchSize);
-        await batchFetchPrices(batch);
-        if (i + batchSize < uncached.length) {
-          await new Promise(resolve => setTimeout(resolve, 350));
-        }
+        await Promise.all(batches.slice(i, i + CONCURRENCY).map(batchFetchPrices));
       }
     };
     

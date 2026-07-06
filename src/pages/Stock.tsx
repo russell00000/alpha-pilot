@@ -163,7 +163,22 @@ const Stock = () => {
 
   const fetchHistoricalData = useCallback(async (range: string) => {
     if (!symbol) return;
-    
+
+    // 5-minute sessionStorage cache keyed by symbol+range. Historical candles
+    // barely move intraday and the fetch is by far the slowest part of this page.
+    const cacheKey = `hist:${symbol.toUpperCase()}:${range}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.t && Date.now() - parsed.t < 5 * 60 * 1000 && Array.isArray(parsed.data)) {
+          setHistoricalData(parsed.data);
+          setIsLoadingChart(false);
+          return;
+        }
+      }
+    } catch { /* ignore cache errors */ }
+
     setIsLoadingChart(true);
     try {
       const { data, error } = await supabase.functions.invoke("market-data", {
@@ -178,6 +193,9 @@ const Stock = () => {
 
       if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
         setHistoricalData(data.data);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), data: data.data }));
+        } catch { /* quota — ignore */ }
       } else {
         // Generate mock data if API returns empty results
         generateMockHistoricalData(range);

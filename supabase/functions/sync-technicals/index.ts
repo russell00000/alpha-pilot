@@ -99,6 +99,23 @@ function macd(values: number[]): { hist: number; prevHist: number } | null {
   return { hist, prevHist };
 }
 
+// 20-day ATR% — average true range as % of price. High readings mark
+// whipsaw names where directional tech signals are noisy.
+function atrPct(highs: number[], lows: number[], closes: number[], period = 20): number | null {
+  if (highs.length < period + 1 || lows.length < period + 1 || closes.length < period + 1) return null;
+  const trs: number[] = [];
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const h = highs[i], l = lows[i], pc = closes[i - 1];
+    if (h == null || l == null || pc == null) continue;
+    trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+  }
+  if (trs.length === 0) return null;
+  const atr = trs.reduce((a, b) => a + b, 0) / trs.length;
+  const last = closes[closes.length - 1];
+  if (!last || last <= 0) return null;
+  return (atr / last) * 100;
+}
+
 // ---------------- Scoring (matches Screener rubric) ----------------
 
 // v3 rubric: RSI ±2, MACD ±2 (magnitude aware), MA/cross ±2, volume ±1,
@@ -117,6 +134,7 @@ function technicalScore(input: {
   sma50: number | null; sma200: number | null;
   sma50Prev: number | null; sma200Prev: number | null;
   volume: number | null; avgVolume: number | null; changePct: number | null;
+  atrPct?: number | null;
 }): { score: number | null; volumeSub: number } {
   let c = 0, n = 0;
 
@@ -168,7 +186,8 @@ function technicalScore(input: {
   if (input.price != null && input.sma200 != null && input.sma200 > 0) {
     const ratio = input.price / input.sma200;
     let s = 0;
-    if (ratio >= 2.0) s = -2;         // >100% above 200-day = extremely stretched
+    if (ratio >= 2.5) s = -3;         // ≥150% above = blow-off top territory
+    else if (ratio >= 2.0) s = -2;    // >100% above 200-day = extremely stretched
     else if (ratio >= 1.5) s = -1;    // >50% above = stretched
     else if (ratio <= 0.5) s = 2;     // >50% below = deep-value opportunity
     else if (ratio <= 0.75) s = 1;    // >25% below
@@ -179,9 +198,15 @@ function technicalScore(input: {
   c += volSub; // volume can bump ±1 regardless of other n count
 
   if (n === 0) return { score: null, volumeSub: volSub };
-  // Max raw sum is ±9 (RSI 2 + MACD 2 + MA 2 + extension 2 + volume 1);
+  // Max raw sum is ±10 (RSI 2 + MACD 2 + MA 2 + extension 3 + volume 1);
   // scale to the ±6 band used by fundamentals.
-  return { score: (c * 6) / 9, volumeSub: volSub };
+  let scaled = (c * 6) / 10;
+  // Volatility cap: on very choppy names (ATR% > 8) tech signals are
+  // unreliable — cap magnitude at ±1 so they don't drive strong ratings.
+  if (input.atrPct != null && input.atrPct > 8) {
+    scaled = Math.max(-1, Math.min(1, scaled));
+  }
+  return { score: scaled, volumeSub: volSub };
 }
 
 // ---------------- Yahoo fetchers ----------------
@@ -217,6 +242,23 @@ async function fetchDailyCloses(symbol: string, auth: { crumb: string; cookie: s
     const closes = j?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
     const clean = (closes as (number | null)[]).filter((v): v is number => typeof v === "number" && !isNaN(v));
     return clean.length ? clean : null;
+  } catch { return null; }
+}
+
+// Full OHLC pull for ATR + price-sanity fallback.
+async function fetchDailyOHLC(symbol: string, auth: { crumb: string; cookie: string }): Promise<{ highs: number[]; lows: number[]; closes: number[] } | null> {
+  try {
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d&crumb=${encodeURIComponent(auth.crumb)}`;
+    const r = await fetch(url, { headers: { "User-Agent": YAHOO_UA, "Cookie": auth.cookie, "Accept": "application/json" } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const q = j?.chart?.result?.[0]?.indicators?.quote?.[0];
+    if (!q) return null;
+    const highs = (q.high ?? []).filter((v: any) => typeof v === "number" && !isNaN(v));
+    const lows = (q.low ?? []).filter((v: any) => typeof v === "number" && !isNaN(v));
+    const closes = (q.close ?? []).filter((v: any) => typeof v === "number" && !isNaN(v));
+    if (!closes.length) return null;
+    return { highs, lows, closes };
   } catch { return null; }
 }
 
@@ -273,11 +315,13 @@ Deno.serve(async (req) => {
         let macdRes: { hist: number; prevHist: number } | null = null;
         let sma50: number | null = null, sma200: number | null = null;
         let sma50Prev: number | null = null, sma200Prev: number | null = null;
+        let atrValue: number | null = null;
 
         // ETFs skip indicator computation to keep the sync fast; they still
         // get price/market cap. Uncomment to include:
         if (!isEtf.get(sym)) {
-          const closes = await fetchDailyCloses(sym, auth);
+          const ohlc = await fetchDailyOHLC(sym, auth);
+          const closes = ohlc?.closes ?? null;
           if (closes && closes.length >= 20) {
             rsiVal = rsi(closes, 14);
             macdRes = macd(closes);
@@ -286,6 +330,16 @@ Deno.serve(async (req) => {
             // Prior-day SMAs so we can detect golden/death cross transitions.
             sma50Prev = closes.length > 50 ? sma(closes.slice(0, -1), 50) : null;
             sma200Prev = closes.length > 200 ? sma(closes.slice(0, -1), 200) : null;
+            if (ohlc) atrValue = atrPct(ohlc.highs, ohlc.lows, ohlc.closes, 20);
+
+            // Price sanity: if the batch-quote price is >20% off the last
+            // daily close, prefer the chart close (catches the phantom
+            // $975 MU-style glitch).
+            const lastClose = closes[closes.length - 1];
+            if (q.price != null && lastClose && Math.abs(q.price - lastClose) / lastClose > 0.20) {
+              console.warn(`price mismatch ${sym}: quote=${q.price} lastClose=${lastClose} — using lastClose`);
+              q.price = lastClose;
+            }
           }
           await new Promise((r) => setTimeout(r, 25));
         }
@@ -295,6 +349,7 @@ Deno.serve(async (req) => {
           macdHist: macdRes?.hist ?? null, macdPrev: macdRes?.prevHist ?? null,
           sma50, sma200, sma50Prev, sma200Prev,
           volume: q.volume, avgVolume: q.avgVolume, changePct: q.changePct,
+          atrPct: atrValue,
         });
 
         outputs.push({
