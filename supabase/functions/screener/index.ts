@@ -8,6 +8,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory cache. Screener results are identical for all users given the
+// same filter payload, so caching the JSON response cuts DB load hard when
+// many people browse at once. Keyed by the normalized request body.
+type CacheEntry = { t: number; body: string };
+const RESPONSE_CACHE = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60 * 1000; // 60s — data refreshes on nightly cron anyway.
+const CACHE_MAX = 500;
+
+function cacheKey(o: Record<string, unknown>): string {
+  const keys = Object.keys(o).sort();
+  return JSON.stringify(keys.map((k) => [k, o[k]]));
+}
+
 type Rating = "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
 function scoreToRating(score: number | null): Rating | null {
   if (score == null) return null;
@@ -48,6 +61,20 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
     const body = req.method === "POST" ? await req.json() : {};
+
+    // Serve from cache when hot.
+    const key = cacheKey(body ?? {});
+    const hit = RESPONSE_CACHE.get(key);
+    if (hit && Date.now() - hit.t < CACHE_TTL_MS) {
+      return new Response(hit.body, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=30, s-maxage=60",
+          "X-Cache": "HIT",
+        },
+      });
+    }
 
     const q = (body.q ?? "").toString().trim();
     const sector = (body.sector ?? "").toString().trim();
@@ -114,10 +141,22 @@ Deno.serve(async (req) => {
         : scoreToRating(r.combined_score),
     }));
 
-    return new Response(
-      JSON.stringify({ success: true, rows, total: count ?? 0, page, pageSize }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    const payload = JSON.stringify({ success: true, rows, total: count ?? 0, page, pageSize });
+    // Trim cache if it grows too large (simple LRU-ish: drop oldest).
+    if (RESPONSE_CACHE.size >= CACHE_MAX) {
+      const oldestKey = RESPONSE_CACHE.keys().next().value;
+      if (oldestKey) RESPONSE_CACHE.delete(oldestKey);
+    }
+    RESPONSE_CACHE.set(key, { t: Date.now(), body: payload });
+
+    return new Response(payload, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=30, s-maxage=60",
+        "X-Cache": "MISS",
+      },
+    });
   } catch (err) {
     console.error("screener error", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
