@@ -21,6 +21,11 @@ const CATEGORIES = ["general", "forex", "crypto", "merger"] as const;
 const PER_SOURCE_CAP = 2; // never more than N articles from the same outlet
 const MAX_ARTICLES = 18;
 
+// In-memory cache: news is identical for every visitor, so cache the
+// finished payload for 5 minutes to keep Finnhub calls flat under load.
+let NEWS_CACHE: { t: number; body: string } | null = null;
+const NEWS_TTL_MS = 5 * 60 * 1000;
+
 function hostname(u: string): string {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
@@ -53,6 +58,18 @@ serve(async (req) => {
   }
 
   try {
+    if (NEWS_CACHE && Date.now() - NEWS_CACHE.t < NEWS_TTL_MS) {
+      return new Response(NEWS_CACHE.body, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=120, s-maxage=300",
+          "X-Cache": "HIT",
+        },
+        status: 200,
+      });
+    }
+
     const FINNHUB_API_KEY = Deno.env.get('FINNHUB_API_KEY');
     if (!FINNHUB_API_KEY) {
       throw new Error("News API not configured");
@@ -127,13 +144,17 @@ serve(async (req) => {
       };
     });
 
-    return new Response(
-      JSON.stringify({ data: articles }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    );
+    const payload = JSON.stringify({ data: articles });
+    NEWS_CACHE = { t: Date.now(), body: payload };
+    return new Response(payload, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=120, s-maxage=300',
+        'X-Cache': 'MISS',
+      },
+      status: 200,
+    });
 
   } catch (error) {
     console.error("Error fetching market news:", error);
