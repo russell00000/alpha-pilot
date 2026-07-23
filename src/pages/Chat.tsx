@@ -562,6 +562,19 @@ const Chat = () => {
           >
             <Plus className="w-4 h-4" /> New
           </Button>
+          <Button
+            variant={voiceOn ? "premium" : "ghost"}
+            size="sm"
+            onClick={toggleVoiceMode}
+            className="gap-1.5"
+            aria-label={voiceOn ? "Turn voice off" : "Turn voice on"}
+            title={voiceOn ? "Voice replies on" : "Voice replies off"}
+          >
+            {voiceOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span className="hidden sm:inline text-xs">
+              {voiceOn ? (isSpeaking ? "Speaking…" : "Voice on") : "Voice off"}
+            </span>
+          </Button>
         </div>
 
         {/* Messages Container */}
@@ -691,11 +704,38 @@ const Chat = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about a stock, strategy, or market trend…"
+                placeholder={
+                  isRecording
+                    ? "Listening… tap the mic to send"
+                    : isTranscribing
+                      ? "Transcribing…"
+                      : "Ask about a stock, strategy, or market trend…"
+                }
                 disabled={isLoading}
                 className="flex-1 min-h-[40px] max-h-[200px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none px-2 py-2"
                 rows={1}
               />
+              <Button
+                type="button"
+                onClick={toggleRecording}
+                disabled={isLoading || isTranscribing}
+                variant={isRecording ? "destructive" : "ghost"}
+                size="icon"
+                className={cn(
+                  "h-9 w-9 flex-shrink-0 rounded-lg",
+                  isRecording && "animate-pulse",
+                )}
+                aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                title={isRecording ? "Stop recording" : "Speak"}
+              >
+                {isTranscribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isRecording ? (
+                  <Square className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </Button>
               <Button
                 type="submit"
                 disabled={isLoading || !input.trim()}
@@ -709,7 +749,8 @@ const Chat = () => {
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5 px-1">
               <kbd className="px-1 py-0.5 rounded bg-secondary/60 border border-border/40 text-[10px]">Enter</kbd> to send ·{" "}
-              <kbd className="px-1 py-0.5 rounded bg-secondary/60 border border-border/40 text-[10px]">Shift+Enter</kbd> for newline
+              <kbd className="px-1 py-0.5 rounded bg-secondary/60 border border-border/40 text-[10px]">Shift+Enter</kbd> newline ·{" "}
+              <kbd className="px-1 py-0.5 rounded bg-secondary/60 border border-border/40 text-[10px]">Mic</kbd> to speak
             </p>
           </form>
         </div>
