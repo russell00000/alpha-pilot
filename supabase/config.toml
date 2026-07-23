@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.stock-why-moved]
 verify_jwt = false
+
+[functions.voice-transcribe]
+verify_jwt = false
+
+[functions.voice-speak]
+verify_jwt = false
