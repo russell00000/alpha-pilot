@@ -74,6 +74,17 @@ const Chat = () => {
   const abortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
 
+  // Voice conversation state
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenIndexRef = useRef<number>(-1);
+
   // Redirect unauthenticated users to /auth so persistence works.
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -321,6 +332,154 @@ const Chat = () => {
     } catch {
       /* ignore */
     }
+  };
+
+  // Strip markdown so TTS reads clean prose (no ** or bullets).
+  const stripMarkdown = (md: string) =>
+    md
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/[*_#>]+/g, " ")
+      .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const stopSpeaking = useCallback(() => {
+    const a = currentAudioRef.current;
+    if (a) {
+      a.pause();
+      a.src = "";
+      currentAudioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, []);
+
+  const speak = useCallback(async (text: string) => {
+    const clean = stripMarkdown(text);
+    if (!clean) return;
+    stopSpeaking();
+    try {
+      setIsSpeaking(true);
+      const { data, error } = await supabase.functions.invoke("voice-speak", {
+        body: { text: clean, voice: "onyx" },
+      });
+      if (error) throw error;
+      // Supabase invoke returns a Blob for non-JSON responses.
+      const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (currentAudioRef.current === audio) currentAudioRef.current = null;
+        setIsSpeaking(false);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        setIsSpeaking(false);
+      };
+      await audio.play();
+    } catch (err) {
+      console.error("TTS error:", err);
+      setIsSpeaking(false);
+    }
+  }, [stopSpeaking]);
+
+  // Auto-speak new assistant messages when voice mode is on.
+  useEffect(() => {
+    if (!voiceOn || isLoading || loadingThread) return;
+    const lastIdx = messages.length - 1;
+    if (lastIdx <= 0) return;
+    const last = messages[lastIdx];
+    if (last.role !== "assistant" || last.isError) return;
+    if (lastSpokenIndexRef.current >= lastIdx) return;
+    lastSpokenIndexRef.current = lastIdx;
+    speak(last.content);
+  }, [messages, voiceOn, isLoading, loadingThread, speak]);
+
+  // When switching threads, reset spoken tracker so we don't replay history.
+  useEffect(() => {
+    lastSpokenIndexRef.current = messages.length - 1;
+    stopSpeaking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
+
+  const toggleVoiceMode = () => {
+    setVoiceOn((v) => {
+      const next = !v;
+      if (!next) stopSpeaking();
+      // If turning on, don't replay past messages — mark them as already spoken.
+      if (next) lastSpokenIndexRef.current = messages.length - 1;
+      return next;
+    });
+  };
+
+  const startRecording = async () => {
+    if (isRecording || isLoading) return;
+    stopSpeaking();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      // Pick a mime type the browser actually supports.
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
+      const mimeType = candidates.find((m) => MediaRecorder.isTypeSupported(m)) || "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        audioStreamRef.current = null;
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        audioChunksRef.current = [];
+        if (blob.size < 1024) {
+          toast({ title: "Recording too short", description: "Please try again." });
+          return;
+        }
+        setIsTranscribing(true);
+        try {
+          const form = new FormData();
+          const ext = (recorder.mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
+          form.append("audio", blob, `recording.${ext}`);
+          const { data, error } = await supabase.functions.invoke("voice-transcribe", {
+            body: form,
+          });
+          if (error) throw error;
+          const text = (data as { text?: string })?.text?.trim();
+          if (text) sendMessage(text);
+          else toast({ title: "Couldn't hear that", description: "Please try again." });
+        } catch (err) {
+          console.error("Transcribe error:", err);
+          toast({ title: "Transcription failed", variant: "destructive" });
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Mic access error:", err);
+      toast({
+        title: "Microphone unavailable",
+        description: "Please allow microphone access to use voice chat.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) stopRecording();
+    else startRecording();
   };
 
   return (
