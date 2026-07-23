@@ -448,6 +448,97 @@ function formatVolume(volume: number): string {
   return volume.toString();
 }
 
+// Bulk stock/ETF quotes via Yahoo v7 quote endpoint (crumbed).
+// One HTTP call returns up to ~100 accurate real-time quotes. Falls back
+// to per-symbol chart fetches for anything the bulk call misses.
+async function fetchStocksBulkYahoo(symbols: string[]): Promise<MarketData[]> {
+  const out: MarketData[] = [];
+  if (symbols.length === 0) return out;
+
+  // Serve fresh cache hits first; only hit the network for the rest.
+  const need: string[] = [];
+  for (const s of symbols) {
+    const c = getCachedData(s);
+    if (c) out.push(c);
+    else need.push(s);
+  }
+  if (need.length === 0) return out;
+
+  const auth = await getYahooCrumb();
+  const returned = new Set<string>();
+
+  if (auth) {
+    const CHUNK = 75;
+    for (let i = 0; i < need.length; i += CHUNK) {
+      const chunk = need.slice(i, i + CHUNK);
+      try {
+        const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+          chunk.join(","),
+        )}&crumb=${encodeURIComponent(auth.crumb)}`;
+        const resp = await fetch(url, {
+          headers: {
+            "User-Agent": YAHOO_UA,
+            "Cookie": auth.cookie,
+            "Accept": "application/json",
+          },
+        });
+        if (!resp.ok) continue;
+        const json = await resp.json();
+        const quotes: any[] = json?.quoteResponse?.result || [];
+        for (const q of quotes) {
+          const symbol = String(q.symbol || "").toUpperCase();
+          if (!symbol) continue;
+          const price = typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null;
+          if (price == null) continue;
+          const prev = typeof q.regularMarketPreviousClose === "number"
+            ? q.regularMarketPreviousClose
+            : (typeof q.chartPreviousClose === "number" ? q.chartPreviousClose : null);
+          const change = typeof q.regularMarketChange === "number"
+            ? q.regularMarketChange
+            : (prev != null ? price - prev : 0);
+          const changePercent = typeof q.regularMarketChangePercent === "number"
+            ? q.regularMarketChangePercent
+            : (prev ? ((price - prev) / prev) * 100 : 0);
+          const known = assetDatabase[symbol];
+          const type: MarketData["type"] = known?.type
+            || (String(q.quoteType || "").toLowerCase() === "etf" ? "etf"
+              : String(q.quoteType || "").toLowerCase() === "mutualfund" ? "mutual_fund"
+              : "stock");
+          const md: MarketData = {
+            symbol,
+            name: known?.name || q.shortName || q.longName || symbol,
+            price: price.toFixed(price < 1 ? 4 : 2),
+            change,
+            changePercent,
+            volume: formatVolume(typeof q.regularMarketVolume === "number" ? q.regularMarketVolume : 0),
+            sparkline: generateSparkline(price, changePercent),
+            type,
+          };
+          setCacheData(symbol, md);
+          out.push(md);
+          returned.add(symbol);
+        }
+      } catch (e) {
+        console.error("bulk yahoo v7 chunk error", e);
+      }
+    }
+  }
+
+  // Fallback for any symbol the v7 endpoint didn't return (auth failure,
+  // unusual symbol, etc.) — use existing per-symbol chart path in parallel.
+  const missing = need.filter((s) => !returned.has(s));
+  if (missing.length > 0) {
+    const fallback = await Promise.all(
+      missing.map((s) =>
+        MUTUAL_FUND_SYMBOLS.has(s) ? fetchMutualFundQuote(s) : fetchStockQuoteYahoo(s),
+      ),
+    );
+    for (const r of fallback) if (r) out.push(r);
+  }
+
+  return out;
+}
+
 // Fetch multiple cryptos from CoinGecko with sparkline data
 async function fetchCryptoData(): Promise<MarketData[]> {
   try {
