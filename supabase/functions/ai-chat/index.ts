@@ -1241,9 +1241,26 @@ serve(async (req) => {
     const explicitDollar = (lastUserMsg.match(/\$([A-Za-z]{1,5})/g) || [])
       .map(s => s.slice(1).toUpperCase());
 
+    // When we already extracted a ticker directly from the message — either a
+    // $TICKER mention or a well-known company name via NAME_MAP ("google" →
+    // GOOGL, "microsoft" → MSFT) — trust that over Yahoo's fuzzy search, which
+    // otherwise returns oddities like "TIGER GOOGLE VALUE CHAIN" (0190Y0.KS)
+    // for "how is Google?". Yahoo results are only preferred when the user is
+    // explicitly correcting us or we have no direct match at all.
+    const hasDirectMatch = requestedTickers.length > 0 || explicitDollar.length > 0;
+    // Drop non-US listings (any symbol with an exchange suffix like .KS, .DE,
+    // .TO) when a direct US match exists — they're almost always Yahoo search
+    // noise for well-known American companies.
+    const filteredResolved = hasDirectMatch
+      ? resolvedSymbols.filter(s => !s.includes('.'))
+      : resolvedSymbols;
+    const filteredHighConfidence = hasDirectMatch
+      ? highConfidenceResolved.filter(s => !s.includes('.'))
+      : highConfidenceResolved;
+
     const candidateTickers = isCorrection
-      ? Array.from(new Set([...highConfidenceResolved, ...resolvedSymbols, ...explicitDollar, ...requestedTickers]))
-      : Array.from(new Set([...explicitDollar, ...highConfidenceResolved, ...resolvedSymbols, ...requestedTickers]));
+      ? Array.from(new Set([...filteredHighConfidence, ...filteredResolved, ...explicitDollar, ...requestedTickers]))
+      : Array.from(new Set([...explicitDollar, ...requestedTickers, ...filteredHighConfidence, ...filteredResolved]));
     // Try each candidate in order until one returns usable forecast stats so a
     // chart always renders when at least one ticker is recognizable.
     let valid: ForecastStats[] = [];
