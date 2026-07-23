@@ -19,7 +19,10 @@ interface MarketData {
 
 // In-memory cache with longer TTL to reduce API calls
 const cache: Map<string, { data: MarketData; timestamp: number }> = new Map();
-const CACHE_TTL = 600000; // 10 minutes cache for stocks (most price moves are tiny intraday)
+// Keep quotes fresh during market hours. Individual per-symbol Yahoo chart
+// fetches are cached for 45s; the bulk v7 quote path re-fetches on every
+// request (its own response is HTTP-cached at the edge for 30s).
+const CACHE_TTL = 45000;
 const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 
 // Rate limit tracking
@@ -443,6 +446,97 @@ function formatVolume(volume: number): string {
     return `${(volume / 1_000).toFixed(1)}K`;
   }
   return volume.toString();
+}
+
+// Bulk stock/ETF quotes via Yahoo v7 quote endpoint (crumbed).
+// One HTTP call returns up to ~100 accurate real-time quotes. Falls back
+// to per-symbol chart fetches for anything the bulk call misses.
+async function fetchStocksBulkYahoo(symbols: string[]): Promise<MarketData[]> {
+  const out: MarketData[] = [];
+  if (symbols.length === 0) return out;
+
+  // Serve fresh cache hits first; only hit the network for the rest.
+  const need: string[] = [];
+  for (const s of symbols) {
+    const c = getCachedData(s);
+    if (c) out.push(c);
+    else need.push(s);
+  }
+  if (need.length === 0) return out;
+
+  const auth = await getYahooCrumb();
+  const returned = new Set<string>();
+
+  if (auth) {
+    const CHUNK = 75;
+    for (let i = 0; i < need.length; i += CHUNK) {
+      const chunk = need.slice(i, i + CHUNK);
+      try {
+        const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+          chunk.join(","),
+        )}&crumb=${encodeURIComponent(auth.crumb)}`;
+        const resp = await fetch(url, {
+          headers: {
+            "User-Agent": YAHOO_UA,
+            "Cookie": auth.cookie,
+            "Accept": "application/json",
+          },
+        });
+        if (!resp.ok) continue;
+        const json = await resp.json();
+        const quotes: any[] = json?.quoteResponse?.result || [];
+        for (const q of quotes) {
+          const symbol = String(q.symbol || "").toUpperCase();
+          if (!symbol) continue;
+          const price = typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null;
+          if (price == null) continue;
+          const prev = typeof q.regularMarketPreviousClose === "number"
+            ? q.regularMarketPreviousClose
+            : (typeof q.chartPreviousClose === "number" ? q.chartPreviousClose : null);
+          const change = typeof q.regularMarketChange === "number"
+            ? q.regularMarketChange
+            : (prev != null ? price - prev : 0);
+          const changePercent = typeof q.regularMarketChangePercent === "number"
+            ? q.regularMarketChangePercent
+            : (prev ? ((price - prev) / prev) * 100 : 0);
+          const known = assetDatabase[symbol];
+          const type: MarketData["type"] = known?.type
+            || (String(q.quoteType || "").toLowerCase() === "etf" ? "etf"
+              : String(q.quoteType || "").toLowerCase() === "mutualfund" ? "mutual_fund"
+              : "stock");
+          const md: MarketData = {
+            symbol,
+            name: known?.name || q.shortName || q.longName || symbol,
+            price: price.toFixed(price < 1 ? 4 : 2),
+            change,
+            changePercent,
+            volume: formatVolume(typeof q.regularMarketVolume === "number" ? q.regularMarketVolume : 0),
+            sparkline: generateSparkline(price, changePercent),
+            type,
+          };
+          setCacheData(symbol, md);
+          out.push(md);
+          returned.add(symbol);
+        }
+      } catch (e) {
+        console.error("bulk yahoo v7 chunk error", e);
+      }
+    }
+  }
+
+  // Fallback for any symbol the v7 endpoint didn't return (auth failure,
+  // unusual symbol, etc.) — use existing per-symbol chart path in parallel.
+  const missing = need.filter((s) => !returned.has(s));
+  if (missing.length > 0) {
+    const fallback = await Promise.all(
+      missing.map((s) =>
+        MUTUAL_FUND_SYMBOLS.has(s) ? fetchMutualFundQuote(s) : fetchStockQuoteYahoo(s),
+      ),
+    );
+    for (const r of fallback) if (r) out.push(r);
+  }
+
+  return out;
 }
 
 // Fetch multiple cryptos from CoinGecko with sparkline data
@@ -1071,14 +1165,13 @@ serve(async (req) => {
       const results: MarketData[] = [];
       const cryptoSymbols: string[] = [];
       const stockSymbols: string[] = [];
-      const mutualFundSymbols: string[] = [];
-      
-      // Increased slice to 50 for better throughput
-      for (const sym of symbols.slice(0, 50)) {
-        const upperSym = sym.toUpperCase();
+
+      // Support up to 150 symbols per request now that we use bulk v7 quotes.
+      for (const sym of symbols.slice(0, 150)) {
+        const upperSym = String(sym).toUpperCase();
+        if (!upperSym) continue;
         if (CRYPTO_SYMBOLS.has(upperSym)) cryptoSymbols.push(upperSym);
-        else if (MUTUAL_FUND_SYMBOLS.has(upperSym)) mutualFundSymbols.push(upperSym);
-        else stockSymbols.push(upperSym);
+        else stockSymbols.push(upperSym); // stocks, ETFs, and mutual funds share Yahoo v7
       }
       
       const cryptoPromise = cryptoSymbols.length > 0 ? (async () => {
@@ -1098,19 +1191,15 @@ serve(async (req) => {
         })) : [];
       })() : Promise.resolve([]);
 
-      const [parallelQuotes, cryptoResults] = await Promise.all([
-        Promise.all([
-          ...mutualFundSymbols.map(sym => fetchMutualFundQuote(sym)),
-          ...stockSymbols.map(sym => fetchStockQuote(sym, FINNHUB_API_KEY)),
-        ]),
-        cryptoPromise
+      const [stockResults, cryptoResults] = await Promise.all([
+        fetchStocksBulkYahoo(stockSymbols),
+        cryptoPromise,
       ]);
 
-      results.push(...cryptoResults);
-      for (const q of parallelQuotes) if (q) results.push(q);
+      results.push(...cryptoResults, ...stockResults);
       
       return new Response(JSON.stringify({ data: results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120" },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=120" },
       });
     }
 
