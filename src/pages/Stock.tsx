@@ -1503,14 +1503,6 @@ const Stock = () => {
                 <div className="flex gap-2">
                   <span className={cn(
                     "text-xs px-2 py-1 rounded-full",
-                    stockAnalysis.confidence === "HIGH" && "bg-success/10 text-success",
-                    stockAnalysis.confidence === "MEDIUM" && "bg-warning/10 text-warning",
-                    stockAnalysis.confidence === "LOW" && "bg-muted text-muted-foreground"
-                  )}>
-                    {stockAnalysis.confidence} confidence
-                  </span>
-                  <span className={cn(
-                    "text-xs px-2 py-1 rounded-full",
                     stockAnalysis.riskLevel === "LOW" && "bg-success/10 text-success",
                     stockAnalysis.riskLevel === "MEDIUM" && "bg-warning/10 text-warning",
                     stockAnalysis.riskLevel === "HIGH" && "bg-destructive/10 text-destructive"
