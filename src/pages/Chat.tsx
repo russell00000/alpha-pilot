@@ -13,6 +13,11 @@ import {
   Plus,
   Trash2,
   MessageSquare,
+  Mic,
+  Square,
+  Volume2,
+  VolumeX,
+  Loader2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
