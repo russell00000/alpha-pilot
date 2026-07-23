@@ -43,8 +43,8 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
   const uid = useId().replace(/:/g, "");
   if (!data || data.length === 0) return null;
 
-  const width = 240;
-  const height = 60;
+  const width = 480;
+  const height = 120;
   const normalized = normalizeSeries(data);
   const pts = normalized.map((p, i) => ({
     x: normalized.length === 1 ? width / 2 : (i / (normalized.length - 1)) * width,
@@ -57,18 +57,28 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
   const lastPt = pts[pts.length - 1];
 
   // Horizontal reference gridlines for extra depth
-  const gridYs = [0.25, 0.5, 0.75].map((f) => height * f);
+  const gridYs = [0.2, 0.4, 0.6, 0.8].map((f) => height * f);
   // Baseline (starting value) as dashed guide
   const baselineY = pts[0].y;
 
   const gradId = `spark-grad-${uid}`;
   const glowId = `spark-glow-${uid}`;
+  const clipId = `spark-clip-${uid}`;
+
+  // Compute min/max points for extra detail markers
+  let minIdx = 0;
+  let maxIdx = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i] < data[minIdx]) minIdx = i;
+    if (data[i] > data[maxIdx]) maxIdx = i;
+  }
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="h-10 w-full overflow-visible"
       preserveAspectRatio="none"
+      shapeRendering="geometricPrecision"
       aria-hidden="true"
     >
       <defs>
@@ -78,7 +88,7 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
           <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
         </linearGradient>
         <filter id={glowId} x="-20%" y="-40%" width="140%" height="180%">
-          <feGaussianBlur stdDeviation="1.1" result="blur" />
+          <feGaussianBlur stdDeviation="1.6" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -95,7 +105,7 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
           y1={y}
           y2={y}
           stroke="hsl(var(--muted-foreground))"
-          strokeOpacity="0.08"
+          strokeOpacity="0.07"
           strokeWidth="0.5"
           vectorEffect="non-scaling-stroke"
         />
@@ -108,37 +118,87 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
         y1={baselineY}
         y2={baselineY}
         stroke={strokeColor}
-        strokeOpacity="0.25"
-        strokeDasharray="2 3"
-        strokeWidth="0.6"
+        strokeOpacity="0.28"
+        strokeDasharray="3 4"
+        strokeWidth="0.7"
         vectorEffect="non-scaling-stroke"
       />
 
       {/* area fill */}
       <path d={areaPath} fill={`url(#${gradId})`} />
 
-      {/* main line with soft glow */}
+      {/* soft glow underlay */}
       <path
         d={linePath}
         fill="none"
         stroke={strokeColor}
-        strokeWidth="1.5"
+        strokeOpacity="0.35"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
         filter={`url(#${glowId})`}
       />
 
+      {/* crisp main line */}
+      <path
+        d={linePath}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+
+      {/* per-point micro ticks for granular detail */}
+      {pts.length <= 260 &&
+        pts.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="0.7"
+            fill={strokeColor}
+            fillOpacity="0.55"
+          />
+        ))}
+
+      {/* min/max markers */}
+      {pts.length > 3 && (
+        <>
+          <circle
+            cx={pts[maxIdx].x}
+            cy={pts[maxIdx].y}
+            r="1.6"
+            fill="hsl(var(--background))"
+            stroke={strokeColor}
+            strokeWidth="0.9"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle
+            cx={pts[minIdx].x}
+            cy={pts[minIdx].y}
+            r="1.6"
+            fill="hsl(var(--background))"
+            stroke={strokeColor}
+            strokeOpacity="0.6"
+            strokeWidth="0.9"
+            vectorEffect="non-scaling-stroke"
+          />
+        </>
+      )}
+
       {/* end-point dot with pulse ring */}
-      <circle cx={lastPt.x} cy={lastPt.y} r="2.5" fill={strokeColor} />
+      <circle cx={lastPt.x} cy={lastPt.y} r="2.6" fill={strokeColor} />
       <circle
         cx={lastPt.x}
         cy={lastPt.y}
-        r="4.5"
+        r="5"
         fill="none"
         stroke={strokeColor}
-        strokeOpacity="0.4"
-        strokeWidth="0.8"
+        strokeOpacity="0.45"
+        strokeWidth="0.9"
         vectorEffect="non-scaling-stroke"
       />
     </svg>
