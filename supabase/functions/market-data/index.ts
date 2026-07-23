@@ -19,7 +19,10 @@ interface MarketData {
 
 // In-memory cache with longer TTL to reduce API calls
 const cache: Map<string, { data: MarketData; timestamp: number }> = new Map();
-const CACHE_TTL = 600000; // 10 minutes cache for stocks (most price moves are tiny intraday)
+// Keep quotes fresh during market hours. Individual per-symbol Yahoo chart
+// fetches are cached for 45s; the bulk v7 quote path re-fetches on every
+// request (its own response is HTTP-cached at the edge for 30s).
+const CACHE_TTL = 45000;
 const CRYPTO_CACHE_TTL = 60000; // 1 minute for crypto
 
 // Rate limit tracking
