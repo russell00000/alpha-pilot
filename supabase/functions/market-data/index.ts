@@ -1165,14 +1165,13 @@ serve(async (req) => {
       const results: MarketData[] = [];
       const cryptoSymbols: string[] = [];
       const stockSymbols: string[] = [];
-      const mutualFundSymbols: string[] = [];
-      
-      // Increased slice to 50 for better throughput
-      for (const sym of symbols.slice(0, 50)) {
-        const upperSym = sym.toUpperCase();
+
+      // Support up to 150 symbols per request now that we use bulk v7 quotes.
+      for (const sym of symbols.slice(0, 150)) {
+        const upperSym = String(sym).toUpperCase();
+        if (!upperSym) continue;
         if (CRYPTO_SYMBOLS.has(upperSym)) cryptoSymbols.push(upperSym);
-        else if (MUTUAL_FUND_SYMBOLS.has(upperSym)) mutualFundSymbols.push(upperSym);
-        else stockSymbols.push(upperSym);
+        else stockSymbols.push(upperSym); // stocks, ETFs, and mutual funds share Yahoo v7
       }
       
       const cryptoPromise = cryptoSymbols.length > 0 ? (async () => {
@@ -1192,19 +1191,15 @@ serve(async (req) => {
         })) : [];
       })() : Promise.resolve([]);
 
-      const [parallelQuotes, cryptoResults] = await Promise.all([
-        Promise.all([
-          ...mutualFundSymbols.map(sym => fetchMutualFundQuote(sym)),
-          ...stockSymbols.map(sym => fetchStockQuote(sym, FINNHUB_API_KEY)),
-        ]),
-        cryptoPromise
+      const [stockResults, cryptoResults] = await Promise.all([
+        fetchStocksBulkYahoo(stockSymbols),
+        cryptoPromise,
       ]);
 
-      results.push(...cryptoResults);
-      for (const q of parallelQuotes) if (q) results.push(q);
+      results.push(...cryptoResults, ...stockResults);
       
       return new Response(JSON.stringify({ data: results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=120" },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=120" },
       });
     }
 
