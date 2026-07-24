@@ -44,11 +44,11 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: '100vw auto',
-          backgroundPosition: 'center -190px',
+          backgroundSize: '110vw auto',
+          backgroundPosition: 'center -140px',
           filter: 'brightness(1.28) saturate(1.18) contrast(1.08)',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 76%, hsl(0 0% 0% / 0.65) 88%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 76%, hsl(0 0% 0% / 0.65) 88%, hsl(0 0% 0% / 0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 88%, hsl(0 0% 0% / 0.7) 96%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 88%, hsl(0 0% 0% / 0.7) 96%, hsl(0 0% 0% / 0) 100%)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
