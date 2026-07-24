@@ -41,17 +41,15 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none"
+        className="fixed inset-0 pointer-events-none bg-[length:auto_100svh] bg-[position:center_top] md:bg-[length:100vw_auto] md:bg-[position:center_top]"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: 'auto 135%',
-          backgroundPosition: 'center bottom',
           backgroundRepeat: 'no-repeat',
-          filter: 'brightness(1.18) saturate(1.18) contrast(1.05)',
+          filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
         }} 
       />
-      {/* Overlay: light enough at the top so the skyline sits behind the nav/hero */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/20 via-background/30 to-background/55" />
+      {/* Overlay: keeps the full city frame visible behind the nav/hero */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/35 via-background/25 to-background/55" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
@@ -59,45 +57,44 @@ const Index = () => {
       <Header />
       
       <main className="relative">
-        {/* Hero section - generous breathing room */}
-        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28 [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
-          <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-6 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
-            <span className="relative z-10 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-pulse" />
-              AI · Investing Copilot
+        {/* First screen: zoomed-out hero with actions fitting above the fold */}
+        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-12 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+          <div className="flex flex-1 flex-col items-center justify-center pb-8 md:pb-14">
+            <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
+              <span className="relative z-10 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.9)] animate-pulse" />
+                AI · Investing Copilot
+              </span>
             </span>
-          </span>
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tight max-w-5xl animate-fade-in leading-[1.02]" style={{ animationDelay: "50ms" }}>
-            Welcome to{" "}
-            <span className="luxe-shimmer-text">Vantage</span>
-          </h1>
-          <p className="text-lg md:text-xl text-foreground/70 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed" style={{ animationDelay: "100ms" }}>
-            Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <Link to="/portfolio">
-              <Button
-                size="lg"
-                className="luxe-sheen group gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-white text-black hover:bg-white hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_50px_rgba(255,255,255,0.28),0_10px_30px_-10px_rgba(255,255,255,0.4)]"
-              >
-                Get Started
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            <Link to="/markets">
-              <Button
-                variant="outline"
-                size="lg"
-                className="luxe-sheen px-8 py-6 text-sm font-medium rounded-full bg-white/5 backdrop-blur-md border-white/15 text-white hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
-              >
-                All Markets
-              </Button>
-            </Link>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight max-w-5xl animate-fade-in leading-[1.04]" style={{ animationDelay: "50ms" }}>
+              Welcome to{" "}
+              <span className="luxe-shimmer-text">Vantage</span>
+              <span className="block luxe-shimmer-text">Portfolio Solutions</span>
+            </h1>
+            <p className="text-sm md:text-lg text-foreground/75 mt-5 max-w-xl animate-fade-in font-light leading-relaxed" style={{ animationDelay: "100ms" }}>
+              Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
+              <Link to="/portfolio">
+                <Button
+                  size="lg"
+                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_50px_hsl(var(--primary)/0.18),0_10px_30px_-10px_hsl(var(--primary)/0.35)]"
+                >
+                  Get Started
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <Link to="/markets">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="luxe-sheen px-8 py-5 text-sm font-medium rounded-full bg-background/15 backdrop-blur-md border-border/60 text-foreground hover:bg-secondary/60 hover:text-foreground hover:border-border transition-all"
+                >
+                  All Markets
+                </Button>
+              </Link>
+            </div>
           </div>
-        </section>
-
-        {/* Quick Actions - floating chips, no wrapper */}
-        <section className="container px-4 md:px-6 mb-12">
           <QuickActions />
         </section>
 
