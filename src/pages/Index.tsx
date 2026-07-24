@@ -41,16 +41,18 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none bg-[length:100%_100%] bg-no-repeat bg-[position:center_top]"
+        className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 80%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 80%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
+          backgroundSize: '100vw auto',
+          backgroundPosition: 'center -190px',
+          filter: 'brightness(1.28) saturate(1.18) contrast(1.08)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 76%, hsl(0 0% 0% / 0.65) 88%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 76%, hsl(0 0% 0% / 0.65) 88%, hsl(0 0% 0% / 0) 100%)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/40 to-background" />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/5 via-background/25 to-background/85" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
