@@ -41,11 +41,9 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none"
+        className="fixed inset-0 pointer-events-none bg-[length:auto_100svh] bg-[position:center_top] md:bg-[length:100vw_auto] md:bg-[position:center_top]"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center top',
           backgroundRepeat: 'no-repeat',
           filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
         }} 
@@ -60,8 +58,8 @@ const Index = () => {
       
       <main className="relative">
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-10 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
-          <div className="flex flex-1 flex-col items-center justify-center">
+        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-12 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+          <div className="flex flex-1 flex-col items-center justify-center pb-8 md:pb-14">
             <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.9)] animate-pulse" />
