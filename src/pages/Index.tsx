@@ -46,7 +46,7 @@ const Index = () => {
           backgroundImage: `url(${cityBg})`,
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
-          filter: 'brightness(1.28) saturate(1.18) contrast(1.08)',
+          filter: 'brightness(1.12) saturate(1.12) contrast(1.06)',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
         }} 
@@ -69,10 +69,10 @@ const Index = () => {
                 AI · Investing Copilot
               </span>
             </span>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight max-w-5xl animate-fade-in leading-[1.04]" style={{ animationDelay: "50ms" }}>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight max-w-5xl leading-[1.04]">
               Welcome to{" "}
-              <span className="luxe-shimmer-text">Vantage</span>
-              <span className="block luxe-shimmer-text">Portfolio Solutions</span>
+              <span>Vantage</span>
+              <span className="block">Portfolio Solutions</span>
             </h1>
             <p className="text-sm md:text-lg text-foreground/75 mt-5 max-w-xl animate-fade-in font-light leading-relaxed" style={{ animationDelay: "100ms" }}>
               Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
