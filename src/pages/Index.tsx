@@ -45,13 +45,13 @@ const Index = () => {
         style={{ 
           backgroundImage: `url(${cityBg})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center bottom',
           backgroundRepeat: 'no-repeat',
-          filter: 'brightness(1.35) saturate(1.1)',
+          filter: 'brightness(1.05) saturate(1.15)',
         }} 
       />
-      {/* Subtle dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/20 via-background/10 to-background/60" />
+      {/* Overlay: darker at top for hero readability, clear at bottom to show skyline */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/80 via-background/40 to-background/10" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
