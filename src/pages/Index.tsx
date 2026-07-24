@@ -39,18 +39,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* City skyline background — cinematic, breathing */}
-      <div
-        className="fixed inset-0 pointer-events-none luxe-city-bg"
-        style={{ backgroundImage: `url(${financeBg})` }}
-        aria-hidden
+      {/* Finance background */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-100"
+        style={{ 
+          backgroundImage: `url(${financeBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }} 
       />
-      {/* Cinematic vignette + tint for readability without hiding the city */}
-      <div className="fixed inset-0 pointer-events-none luxe-city-vignette" aria-hidden />
-      {/* Chromatic color wash drifting across the skyline */}
-      <div className="fixed inset-0 pointer-events-none luxe-city-wash" aria-hidden />
-      {/* Scanning light beam sweeping the horizon */}
-      <div className="fixed inset-0 pointer-events-none luxe-city-scan" aria-hidden />
+      {/* Dark overlay for readability */}
+      <div className="fixed inset-0 pointer-events-none bg-background/75" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
