@@ -82,6 +82,23 @@
     font-family: var(--font-sans);
     font-feature-settings: "ss01" 1, "cv01" 1;
     letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+  }
+
+  /* Crisper images sitewide (logos, charts, backgrounds) */
+  img, svg, canvas, video {
+    image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* Sharper hairlines on hi-dpi screens */
+  @media (min-resolution: 2dppx) {
+    * {
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {
