@@ -51,29 +51,33 @@ const Index = () => {
       />
       {/* Dark overlay for readability */}
       <div className="fixed inset-0 pointer-events-none bg-background/75" />
-      
+      {/* Luxe ambient layers */}
+      <div className="luxe-aurora" aria-hidden />
+      <div className="luxe-grain" aria-hidden />
+
       <Header />
       
       <main className="relative">
         {/* Hero section - generous breathing room */}
         <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
-          <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-muted-foreground mb-6 animate-fade-in px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-            AI · Investing Copilot
-          </span>
-          <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight max-w-5xl animate-fade-in drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] leading-[1.02]" style={{ animationDelay: "50ms" }}>
-            Welcome to{" "}
-            <span className="bg-gradient-to-b from-white via-white to-zinc-500 bg-clip-text text-transparent">
-              Vantage
+          <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-6 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
+            <span className="relative z-10 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-pulse" />
+              AI · Investing Copilot
             </span>
+          </span>
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tight max-w-5xl animate-fade-in leading-[1.02]" style={{ animationDelay: "50ms" }}>
+            Welcome to{" "}
+            <span className="luxe-shimmer-text">Vantage</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/80 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ animationDelay: "100ms" }}>
+          <p className="text-lg md:text-xl text-foreground/70 mt-6 max-w-2xl animate-fade-in font-light leading-relaxed" style={{ animationDelay: "100ms" }}>
             Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "200ms" }}>
             <Link to="/portfolio">
               <Button
                 size="lg"
-                className="group gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-white text-black hover:bg-zinc-200 hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+                className="luxe-sheen group gap-2 px-8 py-6 text-sm font-semibold rounded-full bg-white text-black hover:bg-white hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_50px_rgba(255,255,255,0.28),0_10px_30px_-10px_rgba(255,255,255,0.4)]"
               >
                 Get Started
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -83,7 +87,7 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="lg"
-                className="px-8 py-6 text-sm font-medium rounded-full bg-white/5 backdrop-blur-md border-white/10 text-white hover:bg-white/10 hover:text-white transition-all"
+                className="luxe-sheen px-8 py-6 text-sm font-medium rounded-full bg-white/5 backdrop-blur-md border-white/15 text-white hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
               >
                 All Markets
               </Button>
@@ -99,7 +103,7 @@ const Index = () => {
         {/* Market Overview + AI Chat (resizable split on lg+) */}
         <section ref={rowRef} className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-12">
           <div
-            className="animate-fade-in rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40 w-full lg:w-auto lg:flex-1 min-w-0"
+            className="animate-fade-in rounded-3xl luxe-glass p-6 w-full lg:w-auto lg:flex-1 min-w-0"
             style={{ animationDelay: "100ms" }}
           >
             <MarketOverview />
@@ -129,7 +133,7 @@ const Index = () => {
 
         {/* News - full width */}
         <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <div className="rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/10 p-6 shadow-2xl shadow-black/40">
+          <div className="rounded-3xl luxe-glass p-6">
             <TrendingNews />
           </div>
         </section>
