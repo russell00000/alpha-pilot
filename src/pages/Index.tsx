@@ -44,14 +44,14 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: 'cover',
+          backgroundSize: 'auto 135%',
           backgroundPosition: 'center bottom',
           backgroundRepeat: 'no-repeat',
-          filter: 'brightness(1.05) saturate(1.15)',
+          filter: 'brightness(1.18) saturate(1.18) contrast(1.05)',
         }} 
       />
-      {/* Overlay: darker at top for hero readability, clear at bottom to show skyline */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/80 via-background/40 to-background/10" />
+      {/* Overlay: light enough at the top so the skyline sits behind the nav/hero */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/20 via-background/30 to-background/55" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
@@ -60,7 +60,7 @@ const Index = () => {
       
       <main className="relative">
         {/* Hero section - generous breathing room */}
-        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28">
+        <section className="container px-4 md:px-6 flex flex-col items-center justify-center text-center min-h-[75vh] py-28 [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
           <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-6 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
             <span className="relative z-10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-pulse" />
