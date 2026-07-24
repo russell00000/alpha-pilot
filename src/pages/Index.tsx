@@ -7,7 +7,7 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import financeBg from "@/assets/finance-bg.webp";
+import cityBg from "@/assets/city-bg.png.asset.json";
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
@@ -43,7 +43,7 @@ const Index = () => {
       <div 
         className="fixed inset-0 pointer-events-none opacity-100"
         style={{ 
-          backgroundImage: `url(${financeBg})`,
+          backgroundImage: `url(${cityBg.url})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
