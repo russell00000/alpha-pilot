@@ -44,15 +44,15 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: '110vw auto',
+          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
           filter: 'brightness(1.28) saturate(1.18) contrast(1.08)',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 88%, hsl(0 0% 0% / 0.7) 96%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 88%, hsl(0 0% 0% / 0.7) 96%, hsl(0 0% 0% / 0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/5 via-background/25 to-background/85" />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/18 to-background/82" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
