@@ -44,10 +44,10 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none"
         style={{ 
           backgroundImage: `url(${cityBg})`,
-          backgroundSize: 'max(100vw, 1180px) auto',
+          backgroundSize: 'cover',
           backgroundPosition: 'center top',
           backgroundRepeat: 'no-repeat',
-          filter: 'brightness(1.02) saturate(1.12) contrast(1.04)',
+          filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
@@ -60,7 +60,7 @@ const Index = () => {
       
       <main className="relative">
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-16 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-10 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
           <div className="flex flex-1 flex-col items-center justify-center">
             <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
