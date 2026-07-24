@@ -15,8 +15,8 @@ const MarketCard = ({ symbol, name, price, change, changePercent, sparkline }: M
   const isPositive = change >= 0;
 
   return (
-    <div className="group relative cursor-pointer p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl hover:bg-white/[0.05] hover:border-white/[0.15] hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] active:scale-[0.98] transition-all duration-300 ease-out overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+    <div className="luxe-sheen group relative cursor-pointer p-5 rounded-2xl luxe-glass hover:-translate-y-1 hover:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] active:scale-[0.98] transition-all duration-500 ease-out">
+      <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,0%),hsl(0_0%_100%/0.08),transparent_55%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
       <div className="relative flex items-start justify-between">
         <div className="min-w-0">
