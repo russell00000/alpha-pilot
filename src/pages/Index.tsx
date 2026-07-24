@@ -45,6 +45,8 @@ const Index = () => {
         style={{ 
           backgroundImage: `url(${cityBg})`,
           filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 45%, hsl(0 0% 0% / 0.6) 70%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 45%, hsl(0 0% 0% / 0.6) 70%, hsl(0 0% 0% / 0) 100%)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
