@@ -41,7 +41,7 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none bg-[length:auto_100svh] bg-[position:center_top] md:bg-[length:100vw_auto] md:bg-[position:center_top]"
+        className="fixed inset-0 pointer-events-none bg-cover bg-[position:center_top]"
         style={{ 
           backgroundImage: `url(${cityBg})`,
           backgroundRepeat: 'no-repeat',
