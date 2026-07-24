@@ -74,7 +74,7 @@ const Index = () => {
               <span>Vantage</span>
               <span className="block">Portfolio Solutions</span>
             </h1>
-            <p className="text-sm md:text-lg text-foreground/75 mt-5 max-w-xl animate-fade-in font-light leading-relaxed" style={{ animationDelay: "100ms" }}>
+            <p className="text-sm md:text-lg text-foreground mt-5 max-w-xl animate-fade-in font-normal leading-relaxed tracking-wide [text-shadow:0_1px_16px_hsl(var(--background)/0.95),0_0_28px_hsl(var(--primary)/0.18)]" style={{ animationDelay: "100ms" }}>
               Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
