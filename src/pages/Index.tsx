@@ -41,16 +41,17 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-100"
+        className="fixed inset-0 pointer-events-none"
         style={{ 
           backgroundImage: `url(${cityBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
+          filter: 'brightness(1.35) saturate(1.1)',
         }} 
       />
-      {/* Dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-background/40" />
+      {/* Subtle dark overlay for readability */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/20 via-background/10 to-background/60" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
