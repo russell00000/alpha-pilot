@@ -50,7 +50,7 @@ const Index = () => {
         }} 
       />
       {/* Dark overlay for readability */}
-      <div className="fixed inset-0 pointer-events-none bg-background/75" />
+      <div className="fixed inset-0 pointer-events-none bg-background/40" />
       {/* Luxe ambient layers */}
       <div className="luxe-aurora" aria-hidden />
       <div className="luxe-grain" aria-hidden />
