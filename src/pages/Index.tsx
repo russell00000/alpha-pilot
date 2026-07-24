@@ -41,12 +41,12 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Finance background */}
       <div 
-        className="fixed inset-0 pointer-events-none bg-[length:100%_auto] bg-no-repeat bg-[position:center_top]"
+        className="fixed inset-0 pointer-events-none bg-[length:100%_125%] bg-no-repeat bg-[position:center_top]"
         style={{ 
           backgroundImage: `url(${cityBg})`,
           filter: 'brightness(1.08) saturate(1.12) contrast(1.04)',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 45%, hsl(0 0% 0% / 0.6) 70%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 45%, hsl(0 0% 0% / 0.6) 70%, hsl(0 0% 0% / 0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 55%, hsl(0 0% 0% / 0.6) 80%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 55%, hsl(0 0% 0% / 0.6) 80%, hsl(0 0% 0% / 0) 100%)',
         }} 
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
