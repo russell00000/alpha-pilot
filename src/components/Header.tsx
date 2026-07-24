@@ -76,10 +76,12 @@ const Header = () => {
       <div className="container relative flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo - left */}
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200 group-hover:bg-primary/15">
-            <TrendingUp className="w-4 h-4 text-primary" />
+          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden">
+            <span aria-hidden className="luxe-conic-ring absolute -inset-1 opacity-70 blur-[2px] rounded-lg" />
+            <span aria-hidden className="absolute inset-[1.5px] rounded-[7px] bg-background" />
+            <TrendingUp className="relative w-4 h-4 text-foreground" />
           </div>
-          <span className="hidden sm:block text-base font-semibold text-foreground">Vantage</span>
+          <span className="hidden sm:block text-base font-semibold tracking-tight luxe-shimmer-text">Vantage</span>
         </Link>
 
         {/* Desktop Nav - absolutely centered */}
