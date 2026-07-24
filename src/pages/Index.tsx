@@ -46,7 +46,8 @@ const Index = () => {
           backgroundImage: `url(${cityBg})`,
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
-          filter: 'brightness(1.12) saturate(1.12) contrast(1.06)',
+          filter: 'brightness(1.14) saturate(1.16) contrast(1.12)',
+          imageRendering: 'crisp-edges',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
         }} 
