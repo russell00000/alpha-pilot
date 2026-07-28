@@ -45,7 +45,7 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none bg-no-repeat bg-cover"
         style={{
           backgroundImage: `url(${heroBg})`,
-          backgroundPosition: 'center top',
+          backgroundPosition: 'center 45%',
           filter: 'brightness(1.05) saturate(1.05) blur(0.5px)',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
@@ -82,8 +82,8 @@ const Index = () => {
       
       <main className="relative">
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 min-h-[calc(100svh-3.5rem)] flex flex-col justify-between pt-12 pb-8 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
-          <div className="flex flex-1 flex-col items-center justify-center pb-8 md:pb-14">
+        <section className="container px-4 md:px-6 h-[620px] md:h-[680px] flex flex-col justify-center pt-6 pb-6 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+          <div className="flex flex-col items-center justify-center">
             <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/90 animate-pulse" />
@@ -119,7 +119,9 @@ const Index = () => {
               </Link>
             </div>
           </div>
-          <QuickActions />
+          <div className="mt-10 md:mt-12">
+            <QuickActions />
+          </div>
         </section>
 
         {/* Market Overview + AI Chat (resizable split on lg+) */}
