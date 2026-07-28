@@ -101,6 +101,15 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-synthesis: none;
+    -webkit-text-size-adjust: 100%;
+    background-image: var(--gradient-page);
+    background-attachment: fixed;
+  }
+
+  /* Precise numeric rendering (SF Mono / JetBrains Mono) */
+  .font-mono, code, kbd, samp, pre {
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Crisper images sitewide (logos, charts, backgrounds) */
