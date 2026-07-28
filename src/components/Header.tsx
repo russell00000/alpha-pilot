@@ -23,6 +23,7 @@ const navItems = [
   { label: "Markets", href: "/markets", prefetch: () => import("@/pages/Markets") },
   { label: "Screener", href: "/screener", prefetch: () => import("@/pages/Screener") },
   { label: "Portfolio", href: "/portfolio", prefetch: () => import("@/pages/Portfolio") },
+  { label: "Analysis", href: "/analysis", prefetch: () => import("@/pages/PortfolioAnalysis") },
   { label: "Chat", href: "/chat", prefetch: () => import("@/pages/Chat") },
 ];
 

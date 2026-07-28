@@ -16,6 +16,7 @@ import Alerts from "./pages/Alerts";
 import Practice from "./pages/Practice";
 import PracticeRisk from "./pages/PracticeRisk";
 import Screener from "./pages/Screener";
+import PortfolioAnalysis from "./pages/PortfolioAnalysis";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/alerts" element={<ErrorBoundary><Alerts /></ErrorBoundary>} />
           <Route path="/practice" element={<ErrorBoundary><Practice /></ErrorBoundary>} />
           <Route path="/practice/risk" element={<ErrorBoundary><PracticeRisk /></ErrorBoundary>} />
+          <Route path="/analysis" element={<ErrorBoundary><PortfolioAnalysis /></ErrorBoundary>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
