@@ -7,7 +7,8 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import cityBg from "@/assets/finance-bg.jpg";
+import heroBgAsset from "@/assets/manhattan-hero.jpg.asset.json";
+const heroBg = heroBgAsset.url;
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
@@ -39,24 +40,43 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Finance background */}
-      <div 
-        className="fixed inset-0 pointer-events-none bg-no-repeat"
-        style={{ 
-          backgroundImage: `url(${cityBg})`,
-          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
-          backgroundPosition: 'center -140px',
-          filter: 'brightness(1.14) saturate(1.16) contrast(1.12)',
-          imageRendering: 'crisp-edges',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
-        }} 
+      {/* Manhattan skyline — institutional, restrained */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-no-repeat bg-cover"
+        style={{
+          backgroundImage: `url(${heroBg})`,
+          backgroundPosition: 'center top',
+          filter: 'brightness(0.85) saturate(0.9) blur(1.5px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
+        }}
       />
-      {/* Overlay: keeps the full city frame visible behind the nav/hero */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/18 to-background/82" />
-      {/* Luxe ambient layers */}
-      <div className="luxe-aurora" aria-hidden />
-      <div className="luxe-grain" aria-hidden />
+      {/* Single subtle chart overlay — SVG line, ~12% opacity */}
+      <svg
+        className="fixed inset-x-0 top-[42%] w-full h-[38vh] pointer-events-none opacity-[0.12] mix-blend-screen"
+        viewBox="0 0 1600 400"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="chartLine" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="hsl(200 20% 85%)" stopOpacity="0" />
+            <stop offset="20%" stopColor="hsl(200 20% 85%)" stopOpacity="1" />
+            <stop offset="80%" stopColor="hsl(200 20% 85%)" stopOpacity="1" />
+            <stop offset="100%" stopColor="hsl(200 20% 85%)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0,280 C120,260 220,300 340,240 C460,180 560,220 680,190 C800,160 900,210 1020,150 C1140,90 1240,140 1360,110 C1460,85 1540,120 1600,90"
+          fill="none"
+          stroke="url(#chartLine)"
+          strokeWidth="1.25"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      {/* Deep dark gradient overlay — luxury readability layer */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/70 via-background/55 to-background/95" />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_20%,transparent_0%,hsl(var(--background)/0.35)_70%)]" />
 
       <Header />
       
@@ -66,7 +86,7 @@ const Index = () => {
           <div className="flex flex-1 flex-col items-center justify-center pb-8 md:pb-14">
             <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.9)] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/90 animate-pulse" />
                 AI · Investing Copilot
               </span>
             </span>
@@ -82,7 +102,7 @@ const Index = () => {
               <Link to="/portfolio">
                 <Button
                   size="lg"
-                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_50px_hsl(var(--primary)/0.18),0_10px_30px_-10px_hsl(var(--primary)/0.35)]"
+                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_24px_-12px_hsl(0_0%_0%/0.6)]"
                 >
                   Get Started
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
