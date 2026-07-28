@@ -47,7 +47,10 @@ const Index = () => {
           backgroundImage: `url(${heroBg})`,
           backgroundPosition: 'center -190px',
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
-          filter: 'brightness(1.05) saturate(1.05) blur(0.5px)',
+          filter: 'brightness(1.08) saturate(1.12) contrast(1.08)',
+          imageRendering: 'crisp-edges',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
         }}
