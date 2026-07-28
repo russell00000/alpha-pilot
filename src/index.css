@@ -27,6 +27,14 @@
     --accent: 200 20% 75%;
     --accent-foreground: 220 15% 5%;
 
+    /* Brand gold accent — #C9A84C */
+    --gold: 43 55% 55%;
+    --gold-foreground: 220 15% 5%;
+    /* Muted teal for chart moving averages / geometric accents */
+    --teal: 178 40% 55%;
+    /* Inactive icon color #8A8AA0 */
+    --icon-inactive: 240 12% 59%;
+
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
@@ -49,9 +57,16 @@
     
     /* Refined shadows */
     --shadow-glow: 0 0 80px hsl(0 0% 100% / 0.05);
-    --shadow-card: 0 2px 16px hsl(0 0% 0% / 0.4);
-    --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.5);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3);
     --shadow-subtle: 0 1px 3px hsl(0 0% 0% / 0.2);
+    --shadow-gold-glow: 0 0 16px rgba(201, 168, 76, 0.2);
+    --shadow-signal-buy: 0 2px 8px hsl(var(--success) / 0.3);
+    --shadow-signal-sell: 0 2px 8px hsl(var(--destructive) / 0.3);
+    --shadow-signal-hold: 0 2px 8px hsl(var(--gold) / 0.3);
+
+    /* Barely-perceptible page depth gradient */
+    --gradient-page: linear-gradient(180deg, #0A0A0F 0%, #0F0F18 100%);
 
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
