@@ -7,8 +7,6 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroBgAsset from "@/assets/manhattan-hero.jpg.asset.json";
-const heroBg = heroBgAsset.url;
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
