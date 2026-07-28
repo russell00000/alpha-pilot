@@ -600,6 +600,69 @@
     .stream-cursor { animation: none; opacity: 1; }
   }
 
+  /* ============================================================
+     GRAPHICS — signal badges, glass, FAB, shadows
+     ============================================================ */
+
+  .signal-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wide;
+    letter-spacing: 0.06em;
+  }
+  .signal-badge-buy {
+    color: hsl(var(--success));
+    background: hsl(var(--success) / 0.1);
+    box-shadow: var(--shadow-signal-buy);
+    border: 1px solid hsl(var(--success) / 0.25);
+  }
+  .signal-badge-sell {
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.1);
+    box-shadow: var(--shadow-signal-sell);
+    border: 1px solid hsl(var(--destructive) / 0.25);
+  }
+  .signal-badge-hold {
+    color: hsl(var(--gold));
+    background: hsl(var(--gold) / 0.1);
+    box-shadow: var(--shadow-signal-hold);
+    border: 1px solid hsl(var(--gold) / 0.25);
+  }
+
+  /* Frosted glass search bar with gold underline */
+  .glass-search {
+    background: #111118;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 2px solid hsl(var(--gold));
+    border-radius: 12px;
+  }
+
+  /* Semi-transparent floating action button with gold glow */
+  .fab-gold {
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    box-shadow: var(--shadow-gold-glow);
+    color: hsl(var(--gold));
+  }
+  .fab-gold:hover {
+    box-shadow: 0 0 24px rgba(201, 168, 76, 0.35);
+  }
+
+  /* Frosted panel — standard 12px blur + 1px hairline border */
+  .glass-panel {
+    background: rgba(15, 15, 24, 0.55);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Icon states */
+  .icon-active { color: hsl(var(--gold)); }
+  .icon-inactive { color: hsl(var(--icon-inactive)); }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
