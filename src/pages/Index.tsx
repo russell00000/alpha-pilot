@@ -38,82 +38,89 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative" style={{ background: 'hsl(var(--background))' }}>
-      {/* Premium abstract financial background — institutional, visible */}
-      {/* Deep navy-to-black base gradient (absolute, sits above root bg) */}
+      {/* Institutional hero background — layered depth, no illustrations */}
+      {/* Base: midnight navy → deep slate → graphite → page bg */}
       <div
         className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
         style={{
           background:
-            'linear-gradient(180deg, hsl(220 55% 18%) 0%, hsl(220 45% 13%) 28%, hsl(220 32% 9%) 62%, hsl(var(--background)) 100%)',
+            'linear-gradient(180deg, #0B1020 0%, #0E1426 34%, #111827 66%, hsl(var(--background)) 100%)',
         }}
       />
-      {/* Broad institutional lighting — clearly visible amber + blue depth */}
-      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none overflow-hidden">
-        <div
-          className="absolute -top-[10%] left-[6%] w-[70vw] h-[70vw] rounded-full blur-[110px]"
-          style={{
-            background: 'radial-gradient(circle, hsl(38 85% 58% / 0.34), transparent 68%)',
-          }}
-        />
-        <div
-          className="absolute top-[10%] -right-[14%] w-[64vw] h-[64vw] rounded-full blur-[120px]"
-          style={{
-            background: 'radial-gradient(circle, hsl(210 78% 58% / 0.28), transparent 70%)',
-          }}
-        />
-        <div
-          className="absolute top-[36%] left-[24%] w-[46vw] h-[46vw] rounded-full blur-[110px]"
-          style={{
-            background: 'radial-gradient(circle, hsl(260 70% 55% / 0.18), transparent 70%)',
-          }}
-        />
-      </div>
-      {/* Warm radial lighting behind headline */}
+      {/* Soft radial key light centered behind the headline */}
       <div
         className="absolute inset-x-0 top-0 h-[900px] pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 58% 40% at 50% 22%, hsl(38 90% 60% / 0.28) 0%, transparent 72%)',
+            'radial-gradient(ellipse 55% 45% at 50% 26%, hsl(210 40% 70% / 0.10) 0%, transparent 70%)',
         }}
       />
-      {/* Faint grid pattern — clearly visible on dark screens */}
-      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none opacity-[0.22] bg-grid-pattern" />
-      {/* Thin market line — amber-tinted, placed through the hero */}
-      <svg
-        className="absolute inset-x-0 top-[120px] w-full h-[520px] pointer-events-none opacity-[0.38] mix-blend-screen"
-        viewBox="0 0 1600 400"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="chartLine" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="hsl(38 60% 70%)" stopOpacity="0" />
-            <stop offset="20%" stopColor="hsl(38 60% 70%)" stopOpacity="1" />
-            <stop offset="80%" stopColor="hsl(38 60% 70%)" stopOpacity="1" />
-            <stop offset="100%" stopColor="hsl(38 60% 70%)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0,280 C120,260 220,300 340,240 C460,180 560,220 680,190 C800,160 900,210 1020,150 C1140,90 1240,140 1360,110 C1460,85 1540,120 1600,90"
-          fill="none"
-          stroke="url(#chartLine)"
-          strokeWidth="1.75"
-          vectorEffect="non-scaling-stroke"
+      {/* Cool blue fill light — very restrained */}
+      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none overflow-hidden">
+        <div
+          className="absolute -top-[8%] left-[10%] w-[55vw] h-[55vw] rounded-full blur-[140px]"
+          style={{ background: 'radial-gradient(circle, hsl(215 60% 55% / 0.10), transparent 70%)' }}
         />
-      </svg>
+        <div
+          className="absolute top-[6%] -right-[10%] w-[50vw] h-[50vw] rounded-full blur-[150px]"
+          style={{ background: 'radial-gradient(circle, hsl(220 40% 40% / 0.14), transparent 72%)' }}
+        />
+        {/* muted gold whisper, low & centered — barely there */}
+        <div
+          className="absolute top-[28%] left-1/2 -translate-x-1/2 w-[40vw] h-[40vw] rounded-full blur-[160px]"
+          style={{ background: 'radial-gradient(circle, hsl(42 40% 60% / 0.06), transparent 70%)' }}
+        />
+      </div>
+      {/* Extremely faint financial grid (~4%) */}
+      <div
+        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'linear-gradient(hsl(0 0% 100% / 1) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100% / 1) 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
+          maskImage:
+            'radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 85%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 85%)',
+        }}
+      />
+      {/* Tiny glowing data points connected by thin lines — barely visible */}
       <svg
-        className="absolute inset-x-0 top-[60px] w-full h-[720px] pointer-events-none opacity-[0.18]"
-        viewBox="0 0 1600 560"
+        className="absolute inset-x-0 top-[80px] w-full h-[640px] pointer-events-none opacity-[0.18]"
+        viewBox="0 0 1600 640"
         preserveAspectRatio="none"
         aria-hidden
       >
-        <g fill="none" stroke="hsl(0 0% 100% / 0.42)" strokeWidth="1" vectorEffect="non-scaling-stroke">
-          <path d="M-40,360 C180,315 280,390 520,330 C760,270 820,210 1040,250 C1240,286 1340,210 1640,240" />
-          <path d="M-40,410 C220,355 330,430 560,370 C790,310 860,252 1080,292 C1260,326 1385,262 1640,292" opacity="0.55" />
-          <path d="M-40,462 C220,407 360,478 600,418 C820,362 900,305 1135,342 C1310,370 1420,318 1640,340" opacity="0.35" />
+        <g stroke="hsl(210 30% 80% / 0.35)" strokeWidth="0.6" fill="none" vectorEffect="non-scaling-stroke">
+          <path d="M120,180 L340,120 L560,240 L820,150 L1080,220 L1320,140 L1500,200" />
+          <path d="M80,420 L300,480 L520,380 L780,460 L1040,360 L1280,440 L1520,380" opacity="0.5" />
+        </g>
+        <g fill="hsl(210 40% 90%)">
+          {[
+            [120,180],[340,120],[560,240],[820,150],[1080,220],[1320,140],[1500,200],
+            [80,420],[300,480],[520,380],[780,460],[1040,360],[1280,440],[1520,380],
+          ].map(([x,y],i)=>(
+            <circle key={i} cx={x} cy={y} r="1.6" opacity="0.9" />
+          ))}
         </g>
       </svg>
-      {/* Bottom fade into page background so lower sections stay clean */}
+      {/* Edge vignette for boardroom depth */}
+      <div
+        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 90% 70% at 50% 40%, transparent 55%, hsl(220 40% 4% / 0.55) 100%)',
+        }}
+      />
+      {/* Soft glass reflection sweep near top */}
+      <div
+        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, hsl(0 0% 100% / 0.04) 0%, transparent 100%)',
+        }}
+      />
+      {/* Bottom fade into page background */}
       <div
         className="absolute inset-x-0 top-[800px] h-[400px] pointer-events-none"
         style={{
