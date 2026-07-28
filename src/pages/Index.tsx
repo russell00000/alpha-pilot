@@ -44,21 +44,21 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(180deg, hsl(222 35% 9%) 0%, hsl(220 20% 6%) 45%, hsl(var(--background)) 100%)',
+            'linear-gradient(180deg, hsl(220 40% 12%) 0%, hsl(220 28% 8%) 44%, hsl(var(--background)) 100%)',
         }}
       />
-      {/* Soft blurred shapes — amber + cool blue, add depth without decoration */}
+      {/* Broad institutional lighting — visible, but still restrained */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute -top-1/4 left-[12%] w-[55vw] h-[55vw] rounded-full blur-[130px]"
+          className="absolute -top-[18%] left-[8%] w-[64vw] h-[64vw] rounded-full blur-[105px]"
           style={{
-            background: 'radial-gradient(circle, hsl(38 75% 52% / 0.07), transparent 70%)',
+            background: 'radial-gradient(circle, hsl(38 80% 58% / 0.16), transparent 68%)',
           }}
         />
         <div
-          className="absolute top-[28%] -right-[18%] w-[48vw] h-[48vw] rounded-full blur-[130px]"
+          className="absolute top-[16%] -right-[12%] w-[58vw] h-[58vw] rounded-full blur-[115px]"
           style={{
-            background: 'radial-gradient(circle, hsl(210 65% 52% / 0.06), transparent 70%)',
+            background: 'radial-gradient(circle, hsl(205 70% 58% / 0.14), transparent 70%)',
           }}
         />
       </div>
@@ -67,14 +67,14 @@ const Index = () => {
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 55% 38% at 50% 26%, hsl(38 80% 55% / 0.08) 0%, transparent 70%)',
+            'radial-gradient(ellipse 55% 36% at 50% 24%, hsl(38 82% 58% / 0.16) 0%, transparent 72%)',
         }}
       />
-      {/* Faint grid pattern — ~5% opacity */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.05] bg-grid-pattern" />
-      {/* Thin market line — ~7% opacity, amber-tinted */}
+      {/* Faint grid pattern — visible on dark screens without feeling busy */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.12] bg-grid-pattern" />
+      {/* Thin market line — amber-tinted and placed through the hero */}
       <svg
-        className="fixed inset-x-0 top-[44%] w-full h-[34vh] pointer-events-none opacity-[0.07] mix-blend-screen"
+        className="fixed inset-x-0 top-[18%] w-full h-[40vh] pointer-events-none opacity-[0.18] mix-blend-screen"
         viewBox="0 0 1600 400"
         preserveAspectRatio="none"
         aria-hidden
@@ -95,12 +95,24 @@ const Index = () => {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
+      <svg
+        className="fixed inset-x-0 top-[8%] w-full h-[58vh] pointer-events-none opacity-[0.10]"
+        viewBox="0 0 1600 560"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <g fill="none" stroke="hsl(0 0% 100% / 0.42)" strokeWidth="1" vectorEffect="non-scaling-stroke">
+          <path d="M-40,360 C180,315 280,390 520,330 C760,270 820,210 1040,250 C1240,286 1340,210 1640,240" />
+          <path d="M-40,410 C220,355 330,430 560,370 C790,310 860,252 1080,292 C1260,326 1385,262 1640,292" opacity="0.55" />
+          <path d="M-40,462 C220,407 360,478 600,418 C820,362 900,305 1135,342 C1310,370 1420,318 1640,340" opacity="0.35" />
+        </g>
+      </svg>
       {/* Quiet vignette for readability — does not compete with text */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 80% 60% at 50% 35%, transparent 0%, hsl(var(--background) / 0.45) 80%)',
+            'radial-gradient(ellipse 82% 58% at 50% 30%, transparent 0%, hsl(var(--background) / 0.26) 82%)',
         }}
       />
 

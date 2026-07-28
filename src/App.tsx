@@ -43,6 +43,7 @@ const App = () => (
         <PageTransition>
         <Routes>
           <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
+          <Route path="/index" element={<ErrorBoundary><Index /></ErrorBoundary>} />
           <Route path="/markets" element={<ErrorBoundary><Markets /></ErrorBoundary>} />
           <Route path="/screener" element={<ErrorBoundary><Screener /></ErrorBoundary>} />
           <Route path="/portfolio" element={<ErrorBoundary><Portfolio /></ErrorBoundary>} />
