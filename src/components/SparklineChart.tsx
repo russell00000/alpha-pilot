@@ -3,6 +3,8 @@ import { useId } from "react";
 interface SparklineChartProps {
   data: number[];
   positive: boolean;
+  /** When true, the line draws itself in over 0.8s with a spring curve. */
+  animate?: boolean;
 }
 
 const normalizeSeries = (series: number[]) => {
@@ -39,7 +41,7 @@ const buildSmoothPath = (pts: { x: number; y: number }[]): string => {
   return d;
 };
 
-const SparklineChart = ({ data, positive }: SparklineChartProps) => {
+const SparklineChart = ({ data, positive, animate = false }: SparklineChartProps) => {
   const uid = useId().replace(/:/g, "");
   if (!data || data.length === 0) return null;
 
@@ -64,6 +66,20 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
   const gradId = `spark-grad-${uid}`;
   const glowId = `spark-glow-${uid}`;
   const clipId = `spark-clip-${uid}`;
+
+  // Rough path length estimate for the stroke-dash animation. Chords are a
+  // safe upper bound for the smoothed curve.
+  const pathLen = pts.reduce((acc, p, i) => {
+    if (i === 0) return 0;
+    const dx = p.x - pts[i - 1].x;
+    const dy = p.y - pts[i - 1].y;
+    return acc + Math.sqrt(dx * dx + dy * dy);
+  }, 0) || width;
+  const drawStyle = animate
+    ? ({ ["--dash-len" as any]: pathLen } as React.CSSProperties)
+    : undefined;
+  const lineClass = animate ? "animate-draw-line" : "";
+  const fillClass = animate ? "animate-fill-in" : "";
 
   // Compute min/max points for extra detail markers
   let minIdx = 0;
@@ -125,7 +141,7 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
       />
 
       {/* area fill */}
-      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={areaPath} fill={`url(#${gradId})`} className={fillClass} />
 
       {/* soft glow underlay */}
       <path
@@ -138,6 +154,8 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
         filter={`url(#${glowId})`}
+        className={lineClass}
+        style={drawStyle}
       />
 
       {/* crisp main line */}
@@ -149,6 +167,8 @@ const SparklineChart = ({ data, positive }: SparklineChartProps) => {
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
+        className={lineClass}
+        style={drawStyle}
       />
 
       {/* per-point micro ticks for granular detail */}
