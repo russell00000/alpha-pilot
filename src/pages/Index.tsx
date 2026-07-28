@@ -37,44 +37,50 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Premium abstract financial background — institutional, restrained */}
-      {/* Deep navy-to-black base gradient */}
+    <div className="min-h-screen relative" style={{ background: 'hsl(var(--background))' }}>
+      {/* Premium abstract financial background — institutional, visible */}
+      {/* Deep navy-to-black base gradient (absolute, sits above root bg) */}
       <div
-        className="fixed inset-0 pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
         style={{
           background:
-            'linear-gradient(180deg, hsl(220 40% 12%) 0%, hsl(220 28% 8%) 44%, hsl(var(--background)) 100%)',
+            'linear-gradient(180deg, hsl(220 55% 18%) 0%, hsl(220 45% 13%) 28%, hsl(220 32% 9%) 62%, hsl(var(--background)) 100%)',
         }}
       />
-      {/* Broad institutional lighting — visible, but still restrained */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {/* Broad institutional lighting — clearly visible amber + blue depth */}
+      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none overflow-hidden">
         <div
-          className="absolute -top-[18%] left-[8%] w-[64vw] h-[64vw] rounded-full blur-[105px]"
+          className="absolute -top-[10%] left-[6%] w-[70vw] h-[70vw] rounded-full blur-[110px]"
           style={{
-            background: 'radial-gradient(circle, hsl(38 80% 58% / 0.16), transparent 68%)',
+            background: 'radial-gradient(circle, hsl(38 85% 58% / 0.34), transparent 68%)',
           }}
         />
         <div
-          className="absolute top-[16%] -right-[12%] w-[58vw] h-[58vw] rounded-full blur-[115px]"
+          className="absolute top-[10%] -right-[14%] w-[64vw] h-[64vw] rounded-full blur-[120px]"
           style={{
-            background: 'radial-gradient(circle, hsl(205 70% 58% / 0.14), transparent 70%)',
+            background: 'radial-gradient(circle, hsl(210 78% 58% / 0.28), transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute top-[36%] left-[24%] w-[46vw] h-[46vw] rounded-full blur-[110px]"
+          style={{
+            background: 'radial-gradient(circle, hsl(260 70% 55% / 0.18), transparent 70%)',
           }}
         />
       </div>
-      {/* Subtle radial lighting behind headline — warm amber, sparing */}
+      {/* Warm radial lighting behind headline */}
       <div
-        className="fixed inset-0 pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[900px] pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 55% 36% at 50% 24%, hsl(38 82% 58% / 0.16) 0%, transparent 72%)',
+            'radial-gradient(ellipse 58% 40% at 50% 22%, hsl(38 90% 60% / 0.28) 0%, transparent 72%)',
         }}
       />
-      {/* Faint grid pattern — visible on dark screens without feeling busy */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.12] bg-grid-pattern" />
-      {/* Thin market line — amber-tinted and placed through the hero */}
+      {/* Faint grid pattern — clearly visible on dark screens */}
+      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none opacity-[0.22] bg-grid-pattern" />
+      {/* Thin market line — amber-tinted, placed through the hero */}
       <svg
-        className="fixed inset-x-0 top-[18%] w-full h-[40vh] pointer-events-none opacity-[0.18] mix-blend-screen"
+        className="absolute inset-x-0 top-[120px] w-full h-[520px] pointer-events-none opacity-[0.38] mix-blend-screen"
         viewBox="0 0 1600 400"
         preserveAspectRatio="none"
         aria-hidden
@@ -91,12 +97,12 @@ const Index = () => {
           d="M0,280 C120,260 220,300 340,240 C460,180 560,220 680,190 C800,160 900,210 1020,150 C1140,90 1240,140 1360,110 C1460,85 1540,120 1600,90"
           fill="none"
           stroke="url(#chartLine)"
-          strokeWidth="1.25"
+          strokeWidth="1.75"
           vectorEffect="non-scaling-stroke"
         />
       </svg>
       <svg
-        className="fixed inset-x-0 top-[8%] w-full h-[58vh] pointer-events-none opacity-[0.10]"
+        className="absolute inset-x-0 top-[60px] w-full h-[720px] pointer-events-none opacity-[0.18]"
         viewBox="0 0 1600 560"
         preserveAspectRatio="none"
         aria-hidden
@@ -107,12 +113,12 @@ const Index = () => {
           <path d="M-40,462 C220,407 360,478 600,418 C820,362 900,305 1135,342 C1310,370 1420,318 1640,340" opacity="0.35" />
         </g>
       </svg>
-      {/* Quiet vignette for readability — does not compete with text */}
+      {/* Bottom fade into page background so lower sections stay clean */}
       <div
-        className="fixed inset-0 pointer-events-none"
+        className="absolute inset-x-0 top-[800px] h-[400px] pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 82% 58% at 50% 30%, transparent 0%, hsl(var(--background) / 0.26) 82%)',
+            'linear-gradient(180deg, transparent 0%, hsl(var(--background)) 90%)',
         }}
       />
 
