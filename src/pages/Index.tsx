@@ -110,7 +110,7 @@ const Index = () => {
       
       <main className="relative">
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 h-[620px] md:h-[680px] flex flex-col justify-center pt-6 pb-6 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+        <section className="container px-4 md:px-6 h-[560px] md:h-[620px] flex flex-col justify-center pt-4 pb-4 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
           <div className="flex flex-col items-center justify-center">
             <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
@@ -126,7 +126,7 @@ const Index = () => {
             <p className="text-sm md:text-lg text-foreground mt-5 max-w-xl animate-fade-in font-normal leading-relaxed tracking-wide [text-shadow:0_1px_16px_hsl(var(--background)/0.95),0_0_28px_hsl(var(--primary)/0.18)]" style={{ animationDelay: "100ms" }}>
               Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-7 animate-fade-in" style={{ animationDelay: "200ms" }}>
               <Link to="/portfolio">
                 <Button
                   size="lg"
@@ -147,7 +147,7 @@ const Index = () => {
               </Link>
             </div>
           </div>
-          <div className="mt-10 md:mt-12">
+          <div className="mt-6 md:mt-8">
             <QuickActions />
           </div>
         </section>
