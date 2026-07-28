@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      brokerage_holdings: {
+        Row: {
+          asset_class: string | null
+          brokerage_id: string
+          cost_basis: number | null
+          currency: string | null
+          id: string
+          market_value: number | null
+          name: string | null
+          quantity: number
+          sector: string | null
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_class?: string | null
+          brokerage_id: string
+          cost_basis?: number | null
+          currency?: string | null
+          id?: string
+          market_value?: number | null
+          name?: string | null
+          quantity?: number
+          sector?: string | null
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_class?: string | null
+          brokerage_id?: string
+          cost_basis?: number | null
+          currency?: string | null
+          id?: string
+          market_value?: number | null
+          name?: string | null
+          quantity?: number
+          sector?: string | null
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brokerage_holdings_brokerage_id_fkey"
+            columns: ["brokerage_id"]
+            isOneToOne: false
+            referencedRelation: "linked_brokerages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -213,6 +266,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      linked_brokerages: {
+        Row: {
+          created_at: string
+          id: string
+          institution_id: string | null
+          institution_name: string
+          last_sync_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          institution_name: string
+          last_sync_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          institution_name?: string
+          last_sync_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plaid_items: {
+        Row: {
+          access_token: string
+          brokerage_id: string
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          brokerage_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          brokerage_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaid_items_brokerage_id_fkey"
+            columns: ["brokerage_id"]
+            isOneToOne: false
+            referencedRelation: "linked_brokerages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portfolio_recommendations: {
         Row: {
