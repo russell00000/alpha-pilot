@@ -40,34 +40,53 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Manhattan skyline — institutional, restrained */}
+      {/* Premium abstract financial background — institutional, restrained */}
+      {/* Deep navy-to-black base gradient */}
       <div
-        className="fixed inset-0 pointer-events-none bg-no-repeat"
+        className="fixed inset-0 pointer-events-none"
         style={{
-          backgroundImage: `url(${heroBg})`,
-          backgroundPosition: 'center -190px',
-          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
-          filter: 'brightness(1.08) saturate(1.12) contrast(1.08)',
-          imageRendering: 'crisp-edges',
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
+          background:
+            'linear-gradient(180deg, hsl(222 35% 9%) 0%, hsl(220 20% 6%) 45%, hsl(var(--background)) 100%)',
         }}
       />
-      {/* Single subtle chart overlay — SVG line, ~12% opacity */}
+      {/* Soft blurred shapes — amber + cool blue, add depth without decoration */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute -top-1/4 left-[12%] w-[55vw] h-[55vw] rounded-full blur-[130px]"
+          style={{
+            background: 'radial-gradient(circle, hsl(38 75% 52% / 0.07), transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute top-[28%] -right-[18%] w-[48vw] h-[48vw] rounded-full blur-[130px]"
+          style={{
+            background: 'radial-gradient(circle, hsl(210 65% 52% / 0.06), transparent 70%)',
+          }}
+        />
+      </div>
+      {/* Subtle radial lighting behind headline — warm amber, sparing */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 55% 38% at 50% 26%, hsl(38 80% 55% / 0.08) 0%, transparent 70%)',
+        }}
+      />
+      {/* Faint grid pattern — ~5% opacity */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.05] bg-grid-pattern" />
+      {/* Thin market line — ~7% opacity, amber-tinted */}
       <svg
-        className="fixed inset-x-0 top-[42%] w-full h-[38vh] pointer-events-none opacity-[0.12] mix-blend-screen"
+        className="fixed inset-x-0 top-[44%] w-full h-[34vh] pointer-events-none opacity-[0.07] mix-blend-screen"
         viewBox="0 0 1600 400"
         preserveAspectRatio="none"
         aria-hidden
       >
         <defs>
           <linearGradient id="chartLine" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="hsl(200 20% 85%)" stopOpacity="0" />
-            <stop offset="20%" stopColor="hsl(200 20% 85%)" stopOpacity="1" />
-            <stop offset="80%" stopColor="hsl(200 20% 85%)" stopOpacity="1" />
-            <stop offset="100%" stopColor="hsl(200 20% 85%)" stopOpacity="0" />
+            <stop offset="0%" stopColor="hsl(38 60% 70%)" stopOpacity="0" />
+            <stop offset="20%" stopColor="hsl(38 60% 70%)" stopOpacity="1" />
+            <stop offset="80%" stopColor="hsl(38 60% 70%)" stopOpacity="1" />
+            <stop offset="100%" stopColor="hsl(38 60% 70%)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
@@ -78,9 +97,14 @@ const Index = () => {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      {/* Deep dark gradient overlay — luxury readability layer */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/30 via-background/40 to-background/90" />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_25%,transparent_0%,hsl(var(--background)/0.25)_75%)]" />
+      {/* Quiet vignette for readability — does not compete with text */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 60% at 50% 35%, transparent 0%, hsl(var(--background) / 0.45) 80%)',
+        }}
+      />
 
       <Header />
       
