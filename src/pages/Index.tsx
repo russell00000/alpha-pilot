@@ -42,13 +42,14 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Manhattan skyline — institutional, restrained */}
       <div
-        className="fixed inset-0 pointer-events-none bg-no-repeat bg-cover"
+        className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{
           backgroundImage: `url(${heroBg})`,
-          backgroundPosition: 'center 45%',
+          backgroundPosition: 'center -190px',
+          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           filter: 'brightness(1.05) saturate(1.05) blur(0.5px)',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0) 100%)',
         }}
       />
       {/* Single subtle chart overlay — SVG line, ~12% opacity */}
