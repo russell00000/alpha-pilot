@@ -46,7 +46,7 @@ const Index = () => {
         style={{
           backgroundImage: `url(${heroBg})`,
           backgroundPosition: 'center top',
-          filter: 'brightness(0.85) saturate(0.9) blur(1.5px)',
+          filter: 'brightness(1.05) saturate(1.05) blur(0.5px)',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
         }}
@@ -75,8 +75,8 @@ const Index = () => {
         />
       </svg>
       {/* Deep dark gradient overlay — luxury readability layer */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/70 via-background/55 to-background/95" />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_20%,transparent_0%,hsl(var(--background)/0.35)_70%)]" />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/30 via-background/40 to-background/90" />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_25%,transparent_0%,hsl(var(--background)/0.25)_75%)]" />
 
       <Header />
       
