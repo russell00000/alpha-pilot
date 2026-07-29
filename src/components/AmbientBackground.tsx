@@ -103,7 +103,7 @@ const AmbientBackground = () => {
       }
 
       // lines
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = 0.5;
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i];
         for (let j = i + 1; j < nodes.length; j++) {
@@ -112,7 +112,7 @@ const AmbientBackground = () => {
           const dy = a.y - b.y;
           const d2 = dx * dx + dy * dy;
           if (d2 > linkDistSq) continue;
-          const alpha = (1 - d2 / linkDistSq) * 0.045; // <=4.5%
+          const alpha = (1 - d2 / linkDistSq) * 0.022; // <=2.2%
           const stroke = a.color === "gold" && b.color === "gold" ? GOLD : b.color === "teal" ? TEAL : GOLD;
           ctx.strokeStyle = stroke;
           ctx.globalAlpha = alpha;
@@ -125,7 +125,7 @@ const AmbientBackground = () => {
 
       // nodes
       for (const n of nodes) {
-        ctx.globalAlpha = n.color === "gold" ? 0.05 : 0.045;
+        ctx.globalAlpha = n.color === "gold" ? 0.025 : 0.022;
         ctx.fillStyle = n.color === "gold" ? GOLD : TEAL;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
