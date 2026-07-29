@@ -7,6 +7,7 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import cityBg from "@/assets/finance-bg.jpg";
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
