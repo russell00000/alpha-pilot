@@ -54,14 +54,7 @@ const Index = () => {
       />
       {/* Overlay: keeps the full city frame visible behind the nav/hero */}
       <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/18 to-background/82" />
-      {/* Soft radial key light centered behind the headline */}
-      <div
-        className="absolute inset-x-0 top-0 h-[900px] pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 55% 45% at 50% 26%, hsl(210 40% 70% / 0.10) 0%, transparent 70%)',
-        }}
-      />
+      <Header />
       {/* Cool blue fill light — very restrained */}
       <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none overflow-hidden">
         <div
