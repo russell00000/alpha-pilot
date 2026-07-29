@@ -20,6 +20,7 @@ import PortfolioAnalysis from "./pages/PortfolioAnalysis";
 import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ErrorBoundary from "./components/ErrorBoundary";
+import AmbientBackground from "./components/AmbientBackground";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +42,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ErrorBoundary>
+        <AmbientBackground />
         <PageTransition>
         <Routes>
           <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
