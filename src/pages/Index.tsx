@@ -38,16 +38,22 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'hsl(var(--background))' }}>
-      {/* Institutional hero background — layered depth, no illustrations */}
-      {/* Base: midnight navy → deep slate → graphite → page bg */}
+    <div className="min-h-screen bg-background relative">
+      {/* City skyline background */}
       <div
-        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
+        className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{
-          background:
-            'linear-gradient(180deg, #0B1020 0%, #0E1426 34%, #111827 66%, hsl(var(--background)) 100%)',
+          backgroundImage: `url(${cityBg})`,
+          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
+          backgroundPosition: 'center -140px',
+          filter: 'brightness(1.14) saturate(1.16) contrast(1.12)',
+          imageRendering: 'crisp-edges',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
         }}
       />
+      {/* Overlay: keeps the full city frame visible behind the nav/hero */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/18 to-background/82" />
       {/* Soft radial key light centered behind the headline */}
       <div
         className="absolute inset-x-0 top-0 h-[900px] pointer-events-none"
