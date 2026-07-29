@@ -7,6 +7,7 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import cityBg from "@/assets/finance-bg.jpg";
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
@@ -37,97 +38,22 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'hsl(var(--background))' }}>
-      {/* Institutional hero background — layered depth, no illustrations */}
-      {/* Base: midnight navy → deep slate → graphite → page bg */}
+    <div className="min-h-screen bg-background relative">
+      {/* City skyline background */}
       <div
-        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
+        className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{
-          background:
-            'linear-gradient(180deg, #0B1020 0%, #0E1426 34%, #111827 66%, hsl(var(--background)) 100%)',
+          backgroundImage: `url(${cityBg})`,
+          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
+          backgroundPosition: 'center -140px',
+          filter: 'brightness(1.14) saturate(1.16) contrast(1.12)',
+          imageRendering: 'crisp-edges',
+          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
+          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 1) 0%, hsl(0 0% 0% / 1) 90%, hsl(0 0% 0% / 0.65) 97%, hsl(0 0% 0% / 0) 100%)',
         }}
       />
-      {/* Soft radial key light centered behind the headline */}
-      <div
-        className="absolute inset-x-0 top-0 h-[900px] pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 55% 45% at 50% 26%, hsl(210 40% 70% / 0.10) 0%, transparent 70%)',
-        }}
-      />
-      {/* Cool blue fill light — very restrained */}
-      <div className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none overflow-hidden">
-        <div
-          className="absolute -top-[8%] left-[10%] w-[55vw] h-[55vw] rounded-full blur-[140px]"
-          style={{ background: 'radial-gradient(circle, hsl(215 60% 55% / 0.10), transparent 70%)' }}
-        />
-        <div
-          className="absolute top-[6%] -right-[10%] w-[50vw] h-[50vw] rounded-full blur-[150px]"
-          style={{ background: 'radial-gradient(circle, hsl(220 40% 40% / 0.14), transparent 72%)' }}
-        />
-        {/* muted gold whisper, low & centered — barely there */}
-        <div
-          className="absolute top-[28%] left-1/2 -translate-x-1/2 w-[40vw] h-[40vw] rounded-full blur-[160px]"
-          style={{ background: 'radial-gradient(circle, hsl(42 40% 60% / 0.06), transparent 70%)' }}
-        />
-      </div>
-      {/* Extremely faint financial grid (~4%) */}
-      <div
-        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none opacity-[0.04]"
-        style={{
-          backgroundImage:
-            'linear-gradient(hsl(0 0% 100% / 1) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100% / 1) 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-          maskImage:
-            'radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 85%)',
-          WebkitMaskImage:
-            'radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 85%)',
-        }}
-      />
-      {/* Tiny glowing data points connected by thin lines — barely visible */}
-      <svg
-        className="absolute inset-x-0 top-[80px] w-full h-[640px] pointer-events-none opacity-[0.18]"
-        viewBox="0 0 1600 640"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <g stroke="hsl(210 30% 80% / 0.35)" strokeWidth="0.6" fill="none" vectorEffect="non-scaling-stroke">
-          <path d="M120,180 L340,120 L560,240 L820,150 L1080,220 L1320,140 L1500,200" />
-          <path d="M80,420 L300,480 L520,380 L780,460 L1040,360 L1280,440 L1520,380" opacity="0.5" />
-        </g>
-        <g fill="hsl(210 40% 90%)">
-          {[
-            [120,180],[340,120],[560,240],[820,150],[1080,220],[1320,140],[1500,200],
-            [80,420],[300,480],[520,380],[780,460],[1040,360],[1280,440],[1520,380],
-          ].map(([x,y],i)=>(
-            <circle key={i} cx={x} cy={y} r="1.6" opacity="0.9" />
-          ))}
-        </g>
-      </svg>
-      {/* Edge vignette for boardroom depth */}
-      <div
-        className="absolute inset-x-0 top-0 h-[1100px] pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 90% 70% at 50% 40%, transparent 55%, hsl(220 40% 4% / 0.55) 100%)',
-        }}
-      />
-      {/* Soft glass reflection sweep near top */}
-      <div
-        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, hsl(0 0% 100% / 0.04) 0%, transparent 100%)',
-        }}
-      />
-      {/* Bottom fade into page background */}
-      <div
-        className="absolute inset-x-0 top-[800px] h-[400px] pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, transparent 0%, hsl(var(--background)) 90%)',
-        }}
-      />
+      {/* Overlay: keeps the full city frame visible behind the nav/hero */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/0 via-background/18 to-background/82" />
 
       <Header />
       
