@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import LandingIntro from "@/components/intro/LandingIntro";
 import OnboardingQuestionnaire from "@/components/intro/OnboardingQuestionnaire";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
@@ -15,6 +16,9 @@ type Phase = "intro" | "quiz" | "site";
  * the dashboard; every other route is untouched.
  */
 const Root = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const replay = searchParams.get("intro") === "1";
   const [phase, setPhase] = useState<Phase>(() => {
     try {
       return localStorage.getItem(DONE_KEY) ? "site" : "intro";
@@ -24,12 +28,29 @@ const Root = () => {
   });
   const [exiting, setExiting] = useState(false);
 
+  // Clicking the Vantage logo (/?intro=1) replays the landing animation + questions
+  useEffect(() => {
+    if (replay) {
+      setPhase("intro");
+      setExiting(false);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay]);
+
   const finish = useCallback(() => {
     try {
       localStorage.setItem(DONE_KEY, "1");
     } catch {}
     setPhase("site");
   }, []);
+
+  const goSignIn = useCallback(() => {
+    try {
+      localStorage.setItem(DONE_KEY, "1");
+    } catch {}
+    navigate("/auth");
+  }, [navigate]);
 
   const startQuiz = useCallback(() => {
     setExiting(true);
@@ -69,7 +90,7 @@ const Root = () => {
       }}
     >
       {phase === "intro" ? (
-        <LandingIntro onStart={startQuiz} onSkip={finish} />
+        <LandingIntro onStart={startQuiz} onSkip={finish} onSignIn={goSignIn} />
       ) : (
         <OnboardingQuestionnaire onComplete={handleComplete} />
       )}
