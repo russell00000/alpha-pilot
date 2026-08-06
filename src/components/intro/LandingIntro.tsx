@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import cityBg from "@/assets/finance-bg.jpg";
 
 const WORDS = ["Welcome", "to", "Vantage", "Portfolio", "Solutions"];
 
@@ -39,7 +40,17 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [phase, setPhase] = useState<Phase>(reduced ? "settled" : "drawing");
   const [visibleWords, setVisibleWords] = useState<number>(reduced ? WORDS.length : 0);
+  /** Words that already had their moment on the line and have faded away. */
+  const [fadedWords, setFadedWords] = useState<number>(0);
   const [tip, setTip] = useState({ x: 0, y: 0, angle: 0, show: !reduced });
+  const fadeTimers = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      fadeTimers.current.forEach((t) => clearTimeout(t));
+    },
+    []
+  );
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -103,7 +114,16 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
       // reveal a word once the line clears its vertex
       const cleared = segments.filter((s) => dist >= s.cum - 4).length;
-      setVisibleWords((v) => Math.max(v, Math.min(WORDS.length, cleared)));
+      setVisibleWords((v) => {
+        const next = Math.max(v, Math.min(WORDS.length, cleared));
+        // each newly revealed word softly dissolves shortly after it lands
+        for (let i = v; i < next; i++) {
+          fadeTimers.current.push(
+            window.setTimeout(() => setFadedWords((f) => Math.max(f, i + 1)), 1150)
+          );
+        }
+        return next;
+      });
 
       if (t < 1) raf = requestAnimationFrame(tick);
       else setTimeout(() => setPhase("assembling"), 260);
@@ -114,7 +134,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   useEffect(() => {
     if (phase !== "assembling") return;
-    const t = setTimeout(() => setPhase("settled"), 1000);
+    const t = setTimeout(() => setPhase("settled"), 1500);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -133,6 +153,18 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     return stage.h / 2;
   };
 
+  /** Non-overlapping scatter slots: words are packed left→right by their own
+   *  measured width, then lifted off the line on three staggered tiers. */
+  const slotFor = (i: number) => {
+    const widths = WORDS.map((_, k) => wordRefs.current[k]?.getBoundingClientRect().width ?? 0);
+    const gap = Math.max(28, stage.w * 0.035);
+    const sum = widths.reduce((a, b) => a + b, 0) + gap * (WORDS.length - 1);
+    const scale = sum > stage.w - 48 ? (stage.w - 48) / sum : 1;
+    let x = (stage.w - sum * scale) / 2;
+    for (let k = 0; k < i; k++) x += (widths[k] + gap) * scale;
+    return { cx: x + (widths[i] * scale) / 2, w: widths[i] };
+  };
+
   const offsetFor = (i: number) => {
     if (phase !== "drawing" || !stageRef.current || !stage.w) return { x: 0, y: 0 };
     const el = wordRefs.current[i];
@@ -142,14 +174,10 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     const cx = r.left - stageRect.left + r.width / 2;
     const cy = r.top - stageRect.top + r.height / 2;
 
-    // Evenly spread the words across the stage so they never stack, then lift
-    // each one clear of the line with an alternating rise.
-    const pad = Math.min(90, stage.w * 0.08);
-    const usable = stage.w - pad * 2;
-    let tx = pad + (usable * (i + 0.5)) / WORDS.length;
-    tx = Math.min(stage.w - r.width / 2 - 12, Math.max(r.width / 2 + 12, tx));
-    const lift = i % 2 === 0 ? 86 : 44;
-    const ty = Math.max(r.height / 2 + 70, lineYAt(tx) - lift);
+    const slot = slotFor(i);
+    const tx = Math.min(stage.w - r.width / 2 - 16, Math.max(r.width / 2 + 16, slot.cx));
+    const lift = [128, 62, 168, 86, 138][i % 5];
+    const ty = Math.max(r.height / 2 + 80, lineYAt(tx) - lift);
 
     return { x: tx - cx, y: ty - cy };
   };
@@ -158,6 +186,27 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   return (
     <div ref={stageRef} className="relative min-h-[100svh] w-full overflow-hidden">
+      {/* City skyline — drifts in only once the words come together */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          opacity: phase === "drawing" ? 0 : phase === "assembling" ? 0.06 : 0.16,
+          transition: "opacity 2.4s cubic-bezier(.22,1,.36,1)",
+        }}
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${cityBg})`,
+            filter: "grayscale(1) brightness(0.55) contrast(1.05)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+      </div>
+
       {/* Eyebrow + skip */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-8">
         <span className="flex-1" />
@@ -241,21 +290,23 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
             {WORDS.map((w, i) => {
               const off = offsetFor(i);
               const shown = i < visibleWords;
+              const faded = i < fadedWords;
+              const opacity = phase === "drawing" ? (shown && !faded ? 1 : 0) : 1;
               return (
                 <span
                   key={w}
                   ref={(el) => (wordRefs.current[i] = el)}
                   style={{
                     display: "inline-block",
-                    opacity: shown ? 1 : 0,
+                    opacity,
                     transform:
                       phase === "drawing"
                         ? `translate(${off.x}px, ${off.y + (shown ? 0 : 18)}px)`
                         : "translate(0px, 0px)",
                     transition:
                       phase === "drawing"
-                        ? "opacity .5s cubic-bezier(.22,1,.36,1), transform .5s cubic-bezier(.22,1,.36,1)"
-                        : "transform .9s cubic-bezier(.22,1,.36,1), opacity .6s ease",
+                        ? "opacity 1.1s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1)"
+                        : `transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1.1s ease ${i * 0.07}s`,
                   }}
                 >
                   {w}
