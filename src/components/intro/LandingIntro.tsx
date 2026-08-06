@@ -186,6 +186,27 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   return (
     <div ref={stageRef} className="relative min-h-[100svh] w-full overflow-hidden">
+      {/* City skyline — drifts in only once the words come together */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          opacity: phase === "drawing" ? 0 : phase === "assembling" ? 0.06 : 0.16,
+          transition: "opacity 2.4s cubic-bezier(.22,1,.36,1)",
+        }}
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${cityBg})`,
+            filter: "grayscale(1) brightness(0.55) contrast(1.05)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+      </div>
+
       {/* Eyebrow + skip */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-8">
         <span className="flex-1" />
