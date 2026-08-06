@@ -126,6 +126,11 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
 
   const advance = () => {
     if (!selected) return;
+    doAdvance();
+  };
+
+  const doAdvance = () => {
+    if (!selected) return;
     if (step === STEPS.length - 1) {
       const data: AssessmentData = {
         dateOfBirth: answers.dateOfBirth || "1998-01-01",
