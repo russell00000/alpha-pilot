@@ -1,9 +1,12 @@
 const Lumea = () => (
-  <div className="fixed inset-0 bg-[#05060a]">
+  <div
+    className="fixed left-0 top-0 bg-[#05060a] overflow-hidden"
+    style={{ width: "100vw", height: "100vh", zIndex: 30 }}
+  >
     <iframe
       src="/lumea/index.html"
       title="Lumea — Design Studio"
-      className="w-full h-full border-0 block"
+      style={{ width: "100%", height: "100%", border: 0, display: "block" }}
       allow="fullscreen"
     />
   </div>
