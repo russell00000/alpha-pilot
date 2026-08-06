@@ -52,6 +52,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPolylineElement>(null);
+  const glowRef = useRef<SVGPolylineElement>(null);
   const camRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const [stage, setStage] = useState({ w: 0, h: 0 });
@@ -114,7 +115,9 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
       const eased = easeInOut(t);
       const dist = eased * total;
 
-      if (pathRef.current) pathRef.current.style.strokeDashoffset = String(total - dist);
+      const off = String(total - dist);
+      if (pathRef.current) pathRef.current.style.strokeDashoffset = off;
+      if (glowRef.current) glowRef.current.style.strokeDashoffset = off;
 
       // position + rotation of the tip
       let idx = segments.findIndex((s) => dist <= s.cum);
@@ -376,9 +379,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
             strokeLinejoin="round"
             strokeLinecap="round"
             style={{ strokeDasharray: total || 1, strokeDashoffset: reduced ? 0 : total || 1 }}
-            ref={(el) => {
-              if (el && pathRef.current) el.style.strokeDashoffset = pathRef.current.style.strokeDashoffset;
-            }}
+            ref={glowRef}
           />
           <polyline
             ref={pathRef}
