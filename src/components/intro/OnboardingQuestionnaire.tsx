@@ -5,70 +5,110 @@ import { cn } from "@/lib/utils";
 
 type Option = { value: string; label: string; desc?: string };
 
+/* All option copy below is drawn from the Vantage investing philosophy:
+   age-banded allocation rules, risk beta/volatility bands, the asset-class
+   hierarchy, and the 1:3 risk-to-reward standard. */
 const RISK: Option[] = [
-  { value: "conservative", label: "Conservative", desc: "Prefer stability over growth. Minimize losses even if it means lower returns." },
-  { value: "moderate", label: "Moderate", desc: "Balance between growth and stability. Accept some volatility for better returns." },
-  { value: "aggressive", label: "Aggressive", desc: "Prioritize growth. Comfortable with significant fluctuations for higher potential returns." },
-  { value: "very_aggressive", label: "Very Aggressive", desc: "Maximize growth. Accept high volatility for maximum potential returns." },
+  { value: "conservative", label: "Conservative", desc: "Beta under 1.0 · volatility 2–5%. Capital preservation first — bond ETFs lead, minimal drawdown." },
+  { value: "moderate", label: "Moderate", desc: "Beta around 1.0 · volatility ~10%. Balanced growth and preservation across stocks, ETFs and bonds." },
+  { value: "aggressive", label: "Aggressive", desc: "Beta 1.2–1.5 · volatility ~15%. Growth-weighted equities, risk justified by 1:3 reward potential." },
+  { value: "very_aggressive", label: "Very Aggressive", desc: "Beta 1.5–1.8 · volatility ~20%. Maximum upside capture, diversified across sectors to spread risk." },
 ];
 
 const GOALS: Option[] = [
-  { value: "retirement", label: "Retirement", desc: "Build wealth for a comfortable retirement." },
-  { value: "wealth_building", label: "Wealth Building", desc: "Grow your money over time through investments." },
-  { value: "income", label: "Generate Income", desc: "Create a steady stream of passive income." },
-  { value: "short_term", label: "Short-term Savings", desc: "Save for a major purchase or expense coming up soon." },
-  { value: "education", label: "Education", desc: "Save for college or educational expenses." },
-  { value: "emergency_fund", label: "Emergency Fund", desc: "Build a safety net for unexpected expenses." },
+  { value: "wealth_building", label: "Growth Maximization", desc: "Intelligently capture upside — established companies in growing addressable markets." },
+  { value: "retirement", label: "Retirement", desc: "Long-horizon compounding that shifts from equities to bond ballast as you age." },
+  { value: "income", label: "Income Generation", desc: "Bond ETFs and dividend-durable equities producing steady cash flow with low risk." },
+  { value: "short_term", label: "Capital Preservation", desc: "Protect the downside first — low-beta exposure with a liquidity buffer." },
+  { value: "education", label: "Education Funding", desc: "Dated goal — growth early, de-risked into ETFs and bonds as the date nears." },
+  { value: "emergency_fund", label: "Liquidity Buffer", desc: "Cash and short-duration holdings — minimum 5% cash held at all times." },
 ];
 
 const TIMELINE: Option[] = [
-  { value: "less_than_1_year", label: "Less than 1 year", desc: "Need access to funds very soon." },
-  { value: "1_to_3_years", label: "1–3 years", desc: "Short-term goals like a down payment." },
-  { value: "3_to_5_years", label: "3–5 years", desc: "Medium-term goals with some flexibility." },
-  { value: "5_to_10_years", label: "5–10 years", desc: "Long-term goals with time to grow." },
-  { value: "more_than_10_years", label: "More than 10 years", desc: "Very long-term, like retirement or legacy." },
+  { value: "less_than_1_year", label: "Under 1 year", desc: "Preservation only — cash and short-duration bond ETFs, no equity risk." },
+  { value: "1_to_3_years", label: "1–3 years", desc: "Bond-led with a small ETF sleeve. Volatility must stay contained." },
+  { value: "3_to_5_years", label: "3–5 years", desc: "ETF core for diversified exposure with selective single-name stocks." },
+  { value: "5_to_10_years", label: "5–10 years", desc: "Equity-weighted — time to let undervalued, high-conviction names compound." },
+  { value: "more_than_10_years", label: "10+ years", desc: "Maximum runway. Highest stock weighting the age band allows." },
 ];
 
 const EXPERIENCE: Option[] = [
-  { value: "none", label: "No Experience", desc: "I've never invested before." },
-  { value: "beginner", label: "Beginner", desc: "I have basic knowledge and maybe a savings account." },
-  { value: "intermediate", label: "Intermediate", desc: "I've invested in stocks, bonds, or mutual funds." },
-  { value: "advanced", label: "Advanced", desc: "I actively manage investments and understand complex strategies." },
+  { value: "none", label: "New Investor", desc: "We lead with ETFs for diversified exposure and explain every signal in plain language." },
+  { value: "beginner", label: "Beginner", desc: "Recognizable, well-established companies plus an ETF core. Rationale on every position." },
+  { value: "intermediate", label: "Intermediate", desc: "Comfortable with fundamentals and RSI / MACD / moving-average signals." },
+  { value: "advanced", label: "Advanced", desc: "Full composite scoring — technical (40%) and fundamental (60%) with target prices." },
 ];
 
 const INCOME: Option[] = [
-  { value: "very_stable", label: "Very Stable", desc: "Secure job with consistent income, good emergency fund." },
-  { value: "stable", label: "Stable", desc: "Steady income with some savings as backup." },
-  { value: "somewhat_unstable", label: "Somewhat Unstable", desc: "Variable income or contract work, building savings." },
-  { value: "unstable", label: "Unstable", desc: "Irregular income, limited financial cushion." },
+  { value: "very_stable", label: "Very Stable", desc: "Secure income and funded reserves — risk budget can be deployed fully." },
+  { value: "stable", label: "Stable", desc: "Steady income with savings backup. Standard 5% cash allocation." },
+  { value: "somewhat_unstable", label: "Somewhat Variable", desc: "Contract or variable income — we widen the cash and liquidity buffer." },
+  { value: "unstable", label: "Unstable", desc: "Limited cushion. Preservation is prioritized over upside capture." },
 ];
 
 const AMOUNTS: Option[] = [
-  { value: "1000", label: "$1,000", desc: "Starting small and steady." },
-  { value: "5000", label: "$5,000", desc: "A meaningful first position." },
-  { value: "25000", label: "$25,000", desc: "Building a real portfolio." },
-  { value: "100000", label: "$100,000+", desc: "Deploying serious capital." },
+  { value: "1000", label: "$1,000", desc: "ETF-weighted start — diversification before concentration." },
+  { value: "5000", label: "$5,000", desc: "Enough to hold an ETF core plus a few high-conviction names." },
+  { value: "25000", label: "$25,000", desc: "Full allocation across stocks, ETFs, bonds, alternatives and cash." },
+  { value: "100000", label: "$100,000+", desc: "Sector-diversified build with alternatives capped at 10%." },
 ];
 
 const AGE: Option[] = [
-  { value: "2002-01-01", label: "20s & younger", desc: "Maximum runway — growth-weighted equity tilt." },
-  { value: "1991-01-01", label: "30s", desc: "Peak accumulation with a first bond sleeve." },
-  { value: "1981-01-01", label: "40s", desc: "Balanced growth with rising ballast." },
-  { value: "1971-01-01", label: "50s", desc: "Growth moderated by income and stability." },
-  { value: "1964-01-01", label: "60 – 64", desc: "Pre-retirement — ETF core, capital durability." },
-  { value: "1956-01-01", label: "65+", desc: "Income first — bond-led preservation." },
+  { value: "2002-01-01", label: "20s & younger", desc: "Stocks 70% · ETFs 25% · Alternatives & cash 5%." },
+  { value: "1991-01-01", label: "30s", desc: "Stocks 65% · ETFs 25% · Bonds 5% · Alternatives & cash 5%." },
+  { value: "1981-01-01", label: "40s", desc: "Stocks 50% · ETFs 30% · Bonds 15% · Alternatives & cash 5%." },
+  { value: "1971-01-01", label: "50s", desc: "Stocks 40% · ETFs 30% · Bonds 20% · Alternatives & cash 5%." },
+  { value: "1964-01-01", label: "60 – 64", desc: "Stocks 25% · ETFs 45% · Bonds 25% · Alternatives & cash 5%." },
+  { value: "1956-01-01", label: "65+", desc: "Bonds 60% · Stocks 15% · ETFs 15% · Alternatives & cash 5%." },
 ];
 
 type StepDef = { key: keyof AssessmentData | "ageBand"; question: string; options: Option[] };
 
-const STEPS: StepDef[] = [
-  { key: "dateOfBirth", question: "What's your age range?", options: AGE },
-  { key: "investmentAmount", question: "How much are you looking to invest?", options: AMOUNTS },
-  { key: "riskTolerance", question: "What's your risk tolerance?", options: RISK },
-  { key: "investmentGoal", question: "What's your primary investment goal?", options: GOALS },
-  { key: "investmentTimeline", question: "What's your investment timeline?", options: TIMELINE },
-  { key: "investmentExperience", question: "What's your investment experience?", options: EXPERIENCE },
-  { key: "incomeStability", question: "How stable is your income?", options: INCOME },
+type StepMeta = StepDef & { note: string };
+
+const STEPS: StepMeta[] = [
+  {
+    key: "dateOfBirth",
+    question: "What's your age range?",
+    note: "Age sets your baseline allocation across stocks, ETFs, bonds, alternatives and cash.",
+    options: AGE,
+  },
+  {
+    key: "investmentAmount",
+    question: "How much are you looking to invest?",
+    note: "Position sizing follows capital — diversification comes before concentration.",
+    options: AMOUNTS,
+  },
+  {
+    key: "riskTolerance",
+    question: "What's your risk tolerance?",
+    note: "Risk is measured by beta and volatility, and every unit must earn a 1:3 reward.",
+    options: RISK,
+  },
+  {
+    key: "investmentGoal",
+    question: "What's your primary objective?",
+    note: "Two priorities, in order: capital preservation, then growth maximization.",
+    options: GOALS,
+  },
+  {
+    key: "investmentTimeline",
+    question: "What's your investment timeline?",
+    note: "Shorter horizons shift weight from stocks toward ETFs and bond ETFs.",
+    options: TIMELINE,
+  },
+  {
+    key: "investmentExperience",
+    question: "What's your investment experience?",
+    note: "Sets how much of the technical and fundamental scoring we surface to you.",
+    options: EXPERIENCE,
+  },
+  {
+    key: "incomeStability",
+    question: "How stable is your income?",
+    note: "Income stability determines your liquidity buffer — minimum 5% cash at all times.",
+    options: INCOME,
+  },
 ];
 
 const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: AssessmentData) => void }) => {
@@ -138,6 +178,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
         </div>
 
         <h2 className="font-display text-3xl md:text-5xl max-w-3xl leading-[1.08]">{current.question}</h2>
+        <p className="mt-3 max-w-2xl text-sm font-light leading-relaxed text-foreground/45">{current.note}</p>
 
         <div
           key={step}
@@ -155,6 +196,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                   "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-[4px] p-5 pt-7 text-left md:p-6 md:pt-8"
                 )}
               >
+                <span aria-hidden className="glass-tile-glint" />
                 <span
                   className={cn(
                     "font-mono text-[11px] tracking-[0.16em] transition-colors duration-300",
