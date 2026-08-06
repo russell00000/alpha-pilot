@@ -76,7 +76,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/25 backdrop-blur-md">
       <div className="container relative flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo - left */}
-        <Link to="/" className="flex items-center gap-2.5 group">
+        <Link to="/?intro=1" className="flex items-center gap-2.5 group" aria-label="Replay Vantage intro">
           <div className="relative flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden">
             <span aria-hidden className="luxe-conic-ring absolute -inset-1 opacity-70 blur-[2px] rounded-lg" />
             <span aria-hidden className="absolute inset-[1.5px] rounded-[7px] bg-background" />
