@@ -182,6 +182,33 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         aria-hidden
         style={{ opacity: phase === "settled" ? 0 : 1, transition: "opacity 0.9s cubic-bezier(.22,1,.36,1)" }}
       >
+        {/* Faint chart backdrop the arrow travels over */}
+        <g opacity={0.16}>
+          {Array.from({ length: 7 }).map((_, i) => {
+            const y = ((i + 1) / 8) * stage.h;
+            return (
+              <line key={`h${i}`} x1={0} x2={stage.w} y1={y} y2={y} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.35} />
+            );
+          })}
+          {Array.from({ length: 11 }).map((_, i) => {
+            const x = ((i + 1) / 12) * stage.w;
+            return (
+              <line key={`v${i}`} x1={x} x2={x} y1={0} y2={stage.h} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.22} />
+            );
+          })}
+          {GHOST_LINES.map((pts, i) => (
+            <polyline
+              key={`g${i}`}
+              points={pts.map(([x, y]) => `${(x / 100) * stage.w},${(y / 100) * stage.h}`).join(" ")}
+              fill="none"
+              stroke="#f5f5f2"
+              strokeWidth={1.25}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              opacity={0.5 - i * 0.12}
+            />
+          ))}
+        </g>
         <polyline
           ref={pathRef}
           points={px.map(([x, y]) => `${x},${y}`).join(" ")}
