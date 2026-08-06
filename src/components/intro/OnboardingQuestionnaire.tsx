@@ -408,7 +408,8 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 )}
                 <span
                   className={cn(
-                    "absolute right-4 top-4 z-[2] flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#dff0ff] to-[#8ec9f5] text-[#04070f] shadow-[0_0_18px_rgba(140,208,255,.45),inset_0_1px_0_rgba(255,255,255,.6)] transition-opacity duration-300",
+                    "absolute right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#dff0ff] to-[#8ec9f5] text-[#04070f] shadow-[0_0_18px_rgba(140,208,255,.45),inset_0_1px_0_rgba(255,255,255,.6)] transition-opacity duration-300",
+                    opt.viz ? "bottom-4" : "top-4",
                     isSel ? "animate-check-settle opacity-100" : "scale-75 opacity-0"
                   )}
                 >
