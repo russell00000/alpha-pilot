@@ -592,7 +592,9 @@
     inset: -12% -6%;
     pointer-events: none;
     z-index: 0;
-    overflow: hidden;
+    /* soft vignette so the lighting never reads as a rectangle */
+    -webkit-mask-image: radial-gradient(78% 68% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 62%, transparent 100%);
+    mask-image: radial-gradient(78% 68% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 62%, transparent 100%);
   }
   .glass-env::before {
     content: "";
