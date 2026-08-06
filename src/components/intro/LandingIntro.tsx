@@ -6,15 +6,28 @@ const WORDS = ["Welcome", "to", "Vantage", "Portfolio", "Solutions"];
 
 /** Rising zig-zag: 6 points, net upward. Percentages of the stage. */
 const POINTS: Array<[number, number]> = [
-  [4, 82],
-  [22, 54],
-  [39, 66],
-  [57, 34],
-  [74, 46],
-  [96, 14],
+  [3, 86],
+  [22, 62],
+  [40, 72],
+  [58, 42],
+  [76, 52],
+  [97, 12],
 ];
 
-const DRAW_MS = 2500;
+/** Faint background "market" lines the arrow travels over. */
+const GHOST_LINES: Array<Array<[number, number]>> = [
+  [
+    [0, 92], [12, 80], [24, 86], [36, 70], [48, 76], [60, 58], [72, 64], [84, 44], [100, 34],
+  ],
+  [
+    [0, 70], [14, 66], [28, 74], [42, 56], [56, 62], [70, 40], [82, 48], [100, 22],
+  ],
+  [
+    [0, 50], [16, 46], [30, 54], [46, 38], [62, 44], [78, 26], [92, 32], [100, 24],
+  ],
+];
+
+const DRAW_MS = 5200;
 
 type Phase = "drawing" | "assembling" | "settled";
 
