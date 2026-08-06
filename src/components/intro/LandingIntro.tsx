@@ -120,16 +120,38 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   // FLIP offsets: while scattered, each word is pushed from its final
   // headline slot out to its zig-zag vertex, then glides home.
+  /** y on the main polyline at a given x (used to seat words on the line). */
+  const lineYAt = (x: number) => {
+    for (let i = 1; i < px.length; i++) {
+      if (x <= px[i][0] || i === px.length - 1) {
+        const [ax, ay] = px[i - 1];
+        const [bx, by] = px[i];
+        const t = bx === ax ? 1 : Math.min(1, Math.max(0, (x - ax) / (bx - ax)));
+        return ay + (by - ay) * t;
+      }
+    }
+    return stage.h / 2;
+  };
+
   const offsetFor = (i: number) => {
-    if (phase !== "drawing" || !stageRef.current) return { x: 0, y: 0 };
+    if (phase !== "drawing" || !stageRef.current || !stage.w) return { x: 0, y: 0 };
     const el = wordRefs.current[i];
     if (!el) return { x: 0, y: 0 };
     const stageRect = stageRef.current.getBoundingClientRect();
     const r = el.getBoundingClientRect();
     const cx = r.left - stageRect.left + r.width / 2;
     const cy = r.top - stageRect.top + r.height / 2;
-    const target = px[i + 1] ?? px[px.length - 1];
-    return { x: target[0] - cx, y: target[1] - 54 - cy };
+
+    // Evenly spread the words across the stage so they never stack, then lift
+    // each one clear of the line with an alternating rise.
+    const pad = Math.min(90, stage.w * 0.08);
+    const usable = stage.w - pad * 2;
+    let tx = pad + (usable * (i + 0.5)) / WORDS.length;
+    tx = Math.min(stage.w - r.width / 2 - 12, Math.max(r.width / 2 + 12, tx));
+    const lift = i % 2 === 0 ? 86 : 44;
+    const ty = Math.max(r.height / 2 + 70, lineYAt(tx) - lift);
+
+    return { x: tx - cx, y: ty - cy };
   };
 
   const showTail = phase === "settled";
