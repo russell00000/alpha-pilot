@@ -24,8 +24,8 @@ type Node = {
   r: number;
 };
 
-const GOLD = "#B15F2C";
-const TEAL = "#CF8047";
+const GOLD = "#F5F5F2";
+const TEAL = "#BFBFBA";
 const CYCLE_MS = 14000; // 12–16s
 
 const grainDataUri =
@@ -112,7 +112,7 @@ const AmbientBackground = () => {
           const dy = a.y - b.y;
           const d2 = dx * dx + dy * dy;
           if (d2 > linkDistSq) continue;
-          const alpha = (1 - d2 / linkDistSq) * 0.022; // <=2.2%
+          const alpha = (1 - d2 / linkDistSq) * 0.05; // <=2.2%
           const stroke = a.color === "gold" && b.color === "gold" ? GOLD : b.color === "teal" ? TEAL : GOLD;
           ctx.strokeStyle = stroke;
           ctx.globalAlpha = alpha;
@@ -125,7 +125,7 @@ const AmbientBackground = () => {
 
       // nodes
       for (const n of nodes) {
-        ctx.globalAlpha = n.color === "gold" ? 0.025 : 0.022;
+        ctx.globalAlpha = n.color === "gold" ? 0.06 : 0.05;
         ctx.fillStyle = n.color === "gold" ? GOLD : TEAL;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
@@ -155,7 +155,7 @@ const AmbientBackground = () => {
     <div
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0"
-      style={{ backgroundColor: "#FFFFFF" }}
+      style={{ backgroundColor: "#101013" }}
     >
       <canvas
         ref={canvasRef}
@@ -169,7 +169,7 @@ const AmbientBackground = () => {
           backgroundImage: grainDataUri,
           backgroundSize: "240px 240px",
           opacity: 0.015,
-          mixBlendMode: "overlay",
+          mixBlendMode: "soft-light",
         }}
       />
     </div>
