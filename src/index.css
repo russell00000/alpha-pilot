@@ -634,35 +634,35 @@
     border: 1px solid hsl(var(--gold) / 0.25);
   }
 
-  /* Frosted glass search bar with gold underline */
+  /* Frosted glass search bar with accent underline */
   .glass-search {
-    background: #111118;
+    background: hsl(0 0% 100% / 0.7);
     backdrop-filter: blur(12px) saturate(140%);
     -webkit-backdrop-filter: blur(12px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid hsl(var(--border));
     border-bottom: 2px solid hsl(var(--gold));
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
-  /* Semi-transparent floating action button with gold glow */
+  /* Ink floating action button with accent glow */
   .fab-gold {
-    background: rgba(10, 10, 15, 0.7);
+    background: hsl(var(--primary));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid hsl(0 0% 4%);
     box-shadow: var(--shadow-gold-glow);
-    color: hsl(var(--gold));
+    color: hsl(var(--accent-from));
   }
   .fab-gold:hover {
-    box-shadow: 0 0 24px rgba(201, 168, 76, 0.35);
+    box-shadow: 0 0 24px hsl(var(--gold) / 0.35);
   }
 
   /* Frosted panel — standard 12px blur + 1px hairline border */
   .glass-panel {
-    background: rgba(15, 15, 24, 0.55);
+    background: hsl(0 0% 100% / 0.72);
     backdrop-filter: blur(12px) saturate(140%);
     -webkit-backdrop-filter: blur(12px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid hsl(var(--border));
     box-shadow: var(--shadow-card);
   }
 
@@ -682,8 +682,8 @@
   /* Subtle background patterns */
   .bg-grid-pattern {
     background-image: 
-      linear-gradient(hsl(var(--border) / 0.15) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border) / 0.15) 1px, transparent 1px);
+      linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px);
     background-size: 80px 80px;
   }
 
