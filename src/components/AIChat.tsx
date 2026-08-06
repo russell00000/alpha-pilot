@@ -94,7 +94,7 @@ const AIChat = ({ onResetSize }: AIChatProps) => {
     <div ref={containerRef} className="group/chat relative rounded-3xl border border-foreground/10 bg-foreground/[0.03] backdrop-blur-2xl shadow-2xl shadow-black/40 flex flex-col resize-y overflow-hidden h-[640px] min-h-[420px] max-h-[1200px]">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-foreground/[0.08]">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white to-zinc-500 flex items-center justify-center shadow-lg shadow-white/10">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-black/10">
           <Sparkles className="w-4 h-4 text-black" strokeWidth={2.5} />
         </div>
         <div className="flex-1">
@@ -182,7 +182,7 @@ const AIChat = ({ onResetSize }: AIChatProps) => {
             type="submit"
             size="sm"
             disabled={isLoading || !input.trim()}
-            className="absolute right-1.5 h-8 w-8 p-0 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-white/10 disabled:bg-muted disabled:text-foreground/40 disabled:shadow-none"
+            className="absolute right-1.5 h-8 w-8 p-0 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-black/10 disabled:bg-muted disabled:text-foreground/40 disabled:shadow-none"
           >
             <Send className="w-3.5 h-3.5" strokeWidth={2.5} />
           </Button>

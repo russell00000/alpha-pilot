@@ -147,7 +147,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
       <div className="p-5 border-b border-foreground/10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-1.5 py-0.5 bg-white text-black text-[9px] font-bold tracking-[0.2em] uppercase">
+            <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold tracking-[0.2em] uppercase">
               Equity
             </span>
             <span className="text-muted-foreground/80 text-[10px] tracking-[0.18em] uppercase font-medium">
