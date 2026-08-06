@@ -51,10 +51,12 @@ const AMOUNTS: Option[] = [
 ];
 
 const AGE: Option[] = [
-  { value: "1998-01-01", label: "18 – 27", desc: "Long runway, high compounding upside." },
-  { value: "1988-01-01", label: "28 – 37", desc: "Peak accumulation years." },
-  { value: "1978-01-01", label: "38 – 47", desc: "Balancing growth with protection." },
-  { value: "1965-01-01", label: "48+", desc: "Prioritizing durability of capital." },
+  { value: "2002-01-01", label: "20s & younger", desc: "Maximum runway — growth-weighted equity tilt." },
+  { value: "1991-01-01", label: "30s", desc: "Peak accumulation with a first bond sleeve." },
+  { value: "1981-01-01", label: "40s", desc: "Balanced growth with rising ballast." },
+  { value: "1971-01-01", label: "50s", desc: "Growth moderated by income and stability." },
+  { value: "1964-01-01", label: "60 – 64", desc: "Pre-retirement — ETF core, capital durability." },
+  { value: "1956-01-01", label: "65+", desc: "Income first — bond-led preservation." },
 ];
 
 type StepDef = { key: keyof AssessmentData | "ageBand"; question: string; options: Option[] };
@@ -148,12 +150,9 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 key={opt.value}
                 onClick={() => setAnswers((a) => ({ ...a, [current.key as string]: opt.value }))}
                 style={{ ["--stagger" as string]: i }}
+                data-selected={isSel}
                 className={cn(
-                  "animate-panel-in group relative flex flex-col items-start gap-2 rounded-3xl p-5 text-left",
-                  "border backdrop-blur-xl transition-colors duration-300 md:p-6",
-                  isSel
-                    ? "border-transparent bg-foreground/[0.14] ring-1 ring-foreground"
-                    : "border-white/10 bg-white/[0.06] md:hover:bg-white/[0.12]"
+                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-3xl p-5 text-left md:p-6"
                 )}
               >
                 <span
