@@ -290,21 +290,23 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
             {WORDS.map((w, i) => {
               const off = offsetFor(i);
               const shown = i < visibleWords;
+              const faded = i < fadedWords;
+              const opacity = phase === "drawing" ? (shown && !faded ? 1 : 0) : 1;
               return (
                 <span
                   key={w}
                   ref={(el) => (wordRefs.current[i] = el)}
                   style={{
                     display: "inline-block",
-                    opacity: shown ? 1 : 0,
+                    opacity,
                     transform:
                       phase === "drawing"
                         ? `translate(${off.x}px, ${off.y + (shown ? 0 : 18)}px)`
                         : "translate(0px, 0px)",
                     transition:
                       phase === "drawing"
-                        ? "opacity .5s cubic-bezier(.22,1,.36,1), transform .5s cubic-bezier(.22,1,.36,1)"
-                        : "transform .9s cubic-bezier(.22,1,.36,1), opacity .6s ease",
+                        ? "opacity 1.1s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1)"
+                        : `transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1.1s ease ${i * 0.07}s`,
                   }}
                 >
                   {w}
