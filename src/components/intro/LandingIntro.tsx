@@ -6,15 +6,28 @@ const WORDS = ["Welcome", "to", "Vantage", "Portfolio", "Solutions"];
 
 /** Rising zig-zag: 6 points, net upward. Percentages of the stage. */
 const POINTS: Array<[number, number]> = [
-  [4, 82],
-  [22, 54],
-  [39, 66],
-  [57, 34],
-  [74, 46],
-  [96, 14],
+  [3, 86],
+  [22, 62],
+  [40, 72],
+  [58, 42],
+  [76, 52],
+  [97, 12],
 ];
 
-const DRAW_MS = 2500;
+/** Faint background "market" lines the arrow travels over. */
+const GHOST_LINES: Array<Array<[number, number]>> = [
+  [
+    [0, 92], [12, 80], [24, 86], [36, 70], [48, 76], [60, 58], [72, 64], [84, 44], [100, 34],
+  ],
+  [
+    [0, 70], [14, 66], [28, 74], [42, 56], [56, 62], [70, 40], [82, 48], [100, 22],
+  ],
+  [
+    [0, 50], [16, 46], [30, 54], [46, 38], [62, 44], [78, 26], [92, 32], [100, 24],
+  ],
+];
+
+const DRAW_MS = 5200;
 
 type Phase = "drawing" | "assembling" | "settled";
 
@@ -107,16 +120,38 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   // FLIP offsets: while scattered, each word is pushed from its final
   // headline slot out to its zig-zag vertex, then glides home.
+  /** y on the main polyline at a given x (used to seat words on the line). */
+  const lineYAt = (x: number) => {
+    for (let i = 1; i < px.length; i++) {
+      if (x <= px[i][0] || i === px.length - 1) {
+        const [ax, ay] = px[i - 1];
+        const [bx, by] = px[i];
+        const t = bx === ax ? 1 : Math.min(1, Math.max(0, (x - ax) / (bx - ax)));
+        return ay + (by - ay) * t;
+      }
+    }
+    return stage.h / 2;
+  };
+
   const offsetFor = (i: number) => {
-    if (phase !== "drawing" || !stageRef.current) return { x: 0, y: 0 };
+    if (phase !== "drawing" || !stageRef.current || !stage.w) return { x: 0, y: 0 };
     const el = wordRefs.current[i];
     if (!el) return { x: 0, y: 0 };
     const stageRect = stageRef.current.getBoundingClientRect();
     const r = el.getBoundingClientRect();
     const cx = r.left - stageRect.left + r.width / 2;
     const cy = r.top - stageRect.top + r.height / 2;
-    const target = px[i + 1] ?? px[px.length - 1];
-    return { x: target[0] - cx, y: target[1] - 54 - cy };
+
+    // Evenly spread the words across the stage so they never stack, then lift
+    // each one clear of the line with an alternating rise.
+    const pad = Math.min(90, stage.w * 0.08);
+    const usable = stage.w - pad * 2;
+    let tx = pad + (usable * (i + 0.5)) / WORDS.length;
+    tx = Math.min(stage.w - r.width / 2 - 12, Math.max(r.width / 2 + 12, tx));
+    const lift = i % 2 === 0 ? 86 : 44;
+    const ty = Math.max(r.height / 2 + 70, lineYAt(tx) - lift);
+
+    return { x: tx - cx, y: ty - cy };
   };
 
   const showTail = phase === "settled";
@@ -147,6 +182,33 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         aria-hidden
         style={{ opacity: phase === "settled" ? 0 : 1, transition: "opacity 0.9s cubic-bezier(.22,1,.36,1)" }}
       >
+        {/* Faint chart backdrop the arrow travels over */}
+        <g opacity={0.16}>
+          {Array.from({ length: 7 }).map((_, i) => {
+            const y = ((i + 1) / 8) * stage.h;
+            return (
+              <line key={`h${i}`} x1={0} x2={stage.w} y1={y} y2={y} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.35} />
+            );
+          })}
+          {Array.from({ length: 11 }).map((_, i) => {
+            const x = ((i + 1) / 12) * stage.w;
+            return (
+              <line key={`v${i}`} x1={x} x2={x} y1={0} y2={stage.h} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.22} />
+            );
+          })}
+          {GHOST_LINES.map((pts, i) => (
+            <polyline
+              key={`g${i}`}
+              points={pts.map(([x, y]) => `${(x / 100) * stage.w},${(y / 100) * stage.h}`).join(" ")}
+              fill="none"
+              stroke="#f5f5f2"
+              strokeWidth={1.25}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              opacity={0.5 - i * 0.12}
+            />
+          ))}
+        </g>
         <polyline
           ref={pathRef}
           points={px.map(([x, y]) => `${x},${y}`).join(" ")}
