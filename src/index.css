@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,84 +6,92 @@
 
 @layer base {
   :root {
-    --background: 220 15% 5%;
-    --foreground: 0 0% 98%;
+    /* Lumora palette — near-white surfaces, ink cards, burnt-orange accent */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
 
-    --card: 220 15% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
 
-    --popover: 220 15% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
 
-    --primary: 220 15% 90%;
-    --primary-foreground: 220 15% 5%;
+    /* ink #0a0a0a */
+    --primary: 0 0% 4%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 12%;
-    --secondary-foreground: 0 0% 85%;
+    /* surface #f1f0ee */
+    --secondary: 40 9% 94%;
+    --secondary-foreground: 0 0% 7%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 220 5% 55%;
+    --muted: 40 9% 94%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 200 20% 75%;
-    --accent-foreground: 220 15% 5%;
+    /* burnt orange #b15f2c */
+    --accent: 24 60% 43%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Brand gold accent — #C9A84C */
-    --gold: 43 55% 55%;
-    --gold-foreground: 220 15% 5%;
-    /* Muted teal for chart moving averages / geometric accents */
-    --teal: 178 40% 55%;
-    /* Inactive icon color #8A8AA0 */
-    --icon-inactive: 240 12% 59%;
+    /* Brand accent (legacy token name) — Lumora burnt orange */
+    --gold: 24 60% 43%;
+    --gold-foreground: 0 0% 100%;
+    --accent-from: 26 60% 55%;
+    --accent-to: 26 66% 35%;
+    /* Secondary accent tone */
+    --teal: 26 60% 55%;
+    /* Inactive icon color */
+    --icon-inactive: 0 0% 71%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 152 82% 39%;
-    --success-foreground: 220 15% 5%;
+    --success: 152 62% 32%;
+    --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 15% 5%;
+    --warning: 32 85% 45%;
+    --warning-foreground: 0 0% 100%;
 
-    --border: 220 10% 18%;
-    --input: 220 10% 18%;
-    --ring: 220 15% 80%;
+    /* line #e6e5e2 */
+    --border: 40 8% 89%;
+    --input: 40 8% 89%;
+    --ring: 24 60% 43%;
 
     /* Premium gradient tokens */
-   --gradient-primary: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 20% 92%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(220 15% 10%) 0%, hsl(220 15% 7%) 100%);
-    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(0 0% 100% / 0.06) 0%, transparent 50%);
-    --gradient-glow: radial-gradient(circle at 50% 50%, hsl(0 0% 100% / 0.08) 0%, transparent 60%);
-    --gradient-subtle: linear-gradient(180deg, hsl(220 15% 10%) 0%, hsl(220 15% 5%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(0 0% 7%) 0%, hsl(24 60% 43%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent-from)) 0%, hsl(var(--accent-to)) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 9% 97%) 100%);
+    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(24 60% 43% / 0.08) 0%, transparent 55%);
+    --gradient-glow: radial-gradient(circle at 50% 50%, hsl(24 60% 43% / 0.10) 0%, transparent 60%);
+    --gradient-subtle: linear-gradient(180deg, hsl(40 9% 97%) 0%, hsl(0 0% 100%) 100%);
     
     /* Refined shadows */
-    --shadow-glow: 0 0 80px hsl(0 0% 100% / 0.05);
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3);
-    --shadow-subtle: 0 1px 3px hsl(0 0% 0% / 0.2);
-    --shadow-gold-glow: 0 0 16px rgba(201, 168, 76, 0.2);
+    --shadow-glow: 0 0 80px hsl(24 60% 43% / 0.10);
+    --shadow-card: 0 10px 30px -18px hsl(0 0% 0% / 0.18);
+    --shadow-elevated: 0 4px 16px -6px hsl(0 0% 0% / 0.14);
+    --shadow-subtle: 0 1px 3px hsl(0 0% 0% / 0.06);
+    --shadow-gold-glow: 0 0 16px hsl(24 60% 43% / 0.18);
     --shadow-signal-buy: 0 2px 8px hsl(var(--success) / 0.3);
     --shadow-signal-sell: 0 2px 8px hsl(var(--destructive) / 0.3);
     --shadow-signal-hold: 0 2px 8px hsl(var(--gold) / 0.3);
 
-    /* Barely-perceptible page depth gradient */
-    --gradient-page: linear-gradient(180deg, #0A0A0F 0%, #0F0F18 100%);
+    /* Barely-perceptible page depth gradient (near-white) */
+    --gradient-page: linear-gradient(180deg, #ffffff 0%, #faf9f7 100%);
 
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Onest', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    --sidebar-background: 220 15% 6%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 220 15% 90%;
-    --sidebar-primary-foreground: 220 15% 5%;
-    --sidebar-accent: 220 10% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 220 10% 18%;
-    --sidebar-ring: 220 15% 80%;
+    --sidebar-background: 40 9% 97%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 0 0% 4%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 9% 94%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 40 8% 89%;
+    --sidebar-ring: 24 60% 43%;
   }
 
   .dark {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
   }
 }
 
