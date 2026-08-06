@@ -695,6 +695,7 @@
     .animate-panel-in,
     .animate-panel-out,
     .glass-tile,
+    .glass-tile > .glass-tile-glint,
     .animate-reveal-line,
     .reveal-line,
     .animate-card-in,
