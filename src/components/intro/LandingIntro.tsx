@@ -30,12 +30,29 @@ const GHOST_LINES: Array<Array<[number, number]>> = [
 
 const DRAW_MS = 5200;
 
+/** Deterministic candlestick field behind the line (x%, base y%, body, wick). */
+const CANDLES = Array.from({ length: 34 }).map((_, i) => {
+  const s = Math.sin(i * 12.9898) * 43758.5453;
+  const r1 = s - Math.floor(s);
+  const s2 = Math.sin(i * 78.233) * 12765.723;
+  const r2 = s2 - Math.floor(s2);
+  const drift = 82 - i * 1.55;
+  return {
+    x: 1 + i * 2.95,
+    y: drift + (r1 - 0.5) * 12,
+    body: 3 + r2 * 9,
+    wick: 7 + r1 * 13,
+    up: r2 > 0.42,
+  };
+});
+
 type Phase = "drawing" | "assembling" | "settled";
 
 const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) => {
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPolylineElement>(null);
+  const camRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [phase, setPhase] = useState<Phase>(reduced ? "settled" : "drawing");
