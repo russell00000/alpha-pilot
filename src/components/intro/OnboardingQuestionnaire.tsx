@@ -5,6 +5,10 @@ import { cn } from "@/lib/utils";
 
 type Option = { value: string; label: string; desc?: string };
 
+/* microscopic film grain — keeps the glass surface from reading digitally flat */
+const GRAIN_URL =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>\")";
+
 /* All option copy below is drawn from the Vantage investing philosophy:
    age-banded allocation rules, risk beta/volatility bands, the asset-class
    hierarchy, and the 1:3 risk-to-reward standard. */
