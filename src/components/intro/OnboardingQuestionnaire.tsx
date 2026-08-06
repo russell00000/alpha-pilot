@@ -2,8 +2,17 @@ import { useCallback, useMemo, useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
+import AgeBandGraphic, { type VizVariant, type Slice } from "@/components/intro/AgeBandGraphic";
 
-type Option = { value: string; label: string; desc?: string };
+type Option = {
+  value: string;
+  label: string;
+  desc?: string;
+  /** age bands only — miniature portfolio dashboard preview */
+  viz?: VizVariant;
+  slices?: Slice[];
+  tag?: string;
+};
 
 /* microscopic film grain — keeps the glass surface from reading digitally flat */
 const GRAIN_URL =
@@ -58,12 +67,83 @@ const AMOUNTS: Option[] = [
 ];
 
 const AGE: Option[] = [
-  { value: "2002-01-01", label: "20s & younger", desc: "Stocks 70% · ETFs 25% · Alternatives & cash 5%." },
-  { value: "1991-01-01", label: "30s", desc: "Stocks 65% · ETFs 25% · Bonds 5% · Alternatives & cash 5%." },
-  { value: "1981-01-01", label: "40s", desc: "Stocks 50% · ETFs 30% · Bonds 15% · Alternatives & cash 5%." },
-  { value: "1971-01-01", label: "50s", desc: "Stocks 40% · ETFs 30% · Bonds 20% · Alternatives & cash 5%." },
-  { value: "1964-01-01", label: "60 – 64", desc: "Stocks 25% · ETFs 45% · Bonds 25% · Alternatives & cash 5%." },
-  { value: "1956-01-01", label: "65+", desc: "Bonds 60% · Stocks 15% · ETFs 15% · Alternatives & cash 5%." },
+  {
+    value: "2002-01-01",
+    label: "20s & younger",
+    tag: "Aggressive Growth",
+    desc: "Maximum runway — equity-weighted for compounding.",
+    viz: "growth",
+    slices: [
+      { label: "Stocks", pct: 70 },
+      { label: "ETFs", pct: 25 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
+  {
+    value: "1991-01-01",
+    label: "30s",
+    tag: "Balanced Growth",
+    desc: "Growth-led with the first sleeve of bond ballast.",
+    viz: "donut",
+    slices: [
+      { label: "Stocks", pct: 65 },
+      { label: "ETFs", pct: 25 },
+      { label: "Bonds", pct: 5 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
+  {
+    value: "1981-01-01",
+    label: "40s",
+    tag: "Diversification",
+    desc: "Broader sector spread, growth moderated.",
+    viz: "bars",
+    slices: [
+      { label: "Stocks", pct: 50 },
+      { label: "ETFs", pct: 30 },
+      { label: "Bonds", pct: 15 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
+  {
+    value: "1971-01-01",
+    label: "50s",
+    tag: "Transition Phase",
+    desc: "Income allocation rising as equity weight steps down.",
+    viz: "area",
+    slices: [
+      { label: "Stocks", pct: 40 },
+      { label: "ETFs", pct: 30 },
+      { label: "Bonds", pct: 20 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
+  {
+    value: "1964-01-01",
+    label: "60 – 64",
+    tag: "Preservation",
+    desc: "Low-volatility core with a larger fixed-income segment.",
+    viz: "stable",
+    slices: [
+      { label: "ETFs", pct: 45 },
+      { label: "Bonds", pct: 25 },
+      { label: "Stocks", pct: 25 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
+  {
+    value: "1956-01-01",
+    label: "65+",
+    tag: "Retirement Income",
+    desc: "Bond-led stability with a modest equity sleeve.",
+    viz: "shield",
+    slices: [
+      { label: "Bonds", pct: 60 },
+      { label: "Stocks", pct: 15 },
+      { label: "ETFs", pct: 15 },
+      { label: "Alts & cash", pct: 5 },
+    ],
+  },
 ];
 
 type StepDef = { key: keyof AssessmentData | "ageBand"; question: string; options: Option[] };
