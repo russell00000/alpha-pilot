@@ -105,14 +105,14 @@ canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block;}
   <div id="overlay">
     <nav id="nav">
       <div class="panel brand serif">Lumea.</div>
-      <div class="panel links"><a href="#">Studio</a><a href="#">Showcase</a><a href="#">Journal</a><a href="#">Contact</a></div>
-      <a class="panel hello" href="#">Say hello!</a>
+      <div class="panel links"><a href="/index" target="_top">Studio</a><a href="/markets" target="_top">Showcase</a><a href="/screener" target="_top">Journal</a><a href="/chat" target="_top">Contact</a></div>
+      <a class="panel hello" href="/index" target="_top">Say hello!</a>
       <button id="burger" class="panel" aria-label="Menu"><span></span><span></span></button>
     </nav>
     <h1 id="headline" class="serif"></h1>
     <div id="intro">
       <p id="introText"></p>
-      <button id="pitch">
+      <button id="pitch" onclick="window.top.location.href='/index'">
         <span>Pitch your idea</span>
         <svg width="22.5" height="7.36396" viewBox="0 0 22.5 7.36396" fill="currentColor" aria-hidden="true"><path d="M22.3536 4.03553C22.5488 3.84027 22.5488 3.52369 22.3536 3.32843L19.1716 0.146447C18.9763 -0.0488155 18.6597 -0.0488155 18.4645 0.146447C18.2692 0.341709 18.2692 0.658291 18.4645 0.853554L21.2929 3.68198L18.4645 6.51041C18.2692 6.70567 18.2692 7.02225 18.4645 7.21751C18.6597 7.41278 18.9763 7.41278 19.1716 7.21751L22.3536 4.03553ZM0 3.68198V4.18198H22V3.68198V3.18198H0V3.68198Z"/></svg>
       </button>
@@ -124,8 +124,8 @@ canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block;}
   </div>
   <div id="menu">
     <button class="close" aria-label="Close">&times;</button>
-    <a href="#">Studio</a><a href="#">Showcase</a><a href="#">Journal</a><a href="#">Contact</a>
-    <a href="#" class="pill">Say hello!</a>
+    <a href="/index" target="_top">Studio</a><a href="/markets" target="_top">Showcase</a><a href="/screener" target="_top">Journal</a><a href="/chat" target="_top">Contact</a>
+    <a href="/index" target="_top" class="pill">Say hello!</a>
   </div>
   <div id="cursor"></div>
   <div id="pre">
