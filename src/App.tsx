@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Root from "./pages/Root";
 import Markets from "./pages/Markets";
 import Portfolio from "./pages/Portfolio";
 import Chat from "./pages/Chat";
@@ -45,7 +46,7 @@ const App = () => (
         <AmbientBackground />
         <PageTransition>
         <Routes>
-          <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
+          <Route path="/" element={<ErrorBoundary><Root /></ErrorBoundary>} />
           <Route path="/index" element={<ErrorBoundary><Index /></ErrorBoundary>} />
           <Route path="/markets" element={<ErrorBoundary><Markets /></ErrorBoundary>} />
           <Route path="/screener" element={<ErrorBoundary><Screener /></ErrorBoundary>} />
