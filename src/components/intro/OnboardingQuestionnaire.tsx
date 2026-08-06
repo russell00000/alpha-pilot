@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
