@@ -48,7 +48,15 @@ const CANDLES = Array.from({ length: 34 }).map((_, i) => {
 
 type Phase = "drawing" | "assembling" | "settled";
 
-const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) => {
+const LandingIntro = ({
+  onStart,
+  onSkip,
+  onSignIn,
+}: {
+  onStart: () => void;
+  onSkip: () => void;
+  onSignIn?: () => void;
+}) => {
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPolylineElement>(null);
@@ -513,12 +521,24 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
             Institutional-grade market intelligence, AI research, and portfolio analytics — built for the way you
             actually invest.
           </p>
-          <button onClick={onStart} className="pill-primary tap-scale text-sm" disabled={!showTail}>
-            Get Started
-            <span className="pill-badge">
-              <ArrowRight className="h-3.5 w-3.5" />
-            </span>
-          </button>
+          <div className="flex flex-col items-center gap-3">
+            <button onClick={onStart} className="pill-primary tap-scale text-sm" disabled={!showTail}>
+              Get Started
+              <span className="pill-badge">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </button>
+            {onSignIn && (
+              <button
+                onClick={onSignIn}
+                disabled={!showTail}
+                className="text-xs text-foreground/50 hover:text-foreground transition-colors duration-300"
+              >
+                Already have an account?{" "}
+                <span className="underline underline-offset-4 decoration-foreground/30">Sign in</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
