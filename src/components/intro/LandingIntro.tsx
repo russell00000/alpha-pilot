@@ -174,20 +174,20 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          opacity: phase === "drawing" ? 0 : phase === "assembling" ? 0.06 : 0.16,
-          transition: "opacity 2.4s cubic-bezier(.22,1,.36,1)",
+          opacity: phase === "drawing" ? 0 : phase === "assembling" ? 0.35 : 0.75,
+          transition: "opacity 2.8s cubic-bezier(.22,1,.36,1)",
         }}
       >
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${cityBg})`,
-            filter: "grayscale(1) brightness(0.55) contrast(1.05)",
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 28%, #000 72%, rgba(0,0,0,0) 100%)",
+            filter: "grayscale(1) brightness(0.85) contrast(1.1)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 18%, #000 82%, rgba(0,0,0,0) 100%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0) 0%, #000 18%, #000 82%, rgba(0,0,0,0) 100%)",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/55 via-background/25 to-background/95" />
       </div>
 
       {/* Eyebrow + skip */}
