@@ -152,19 +152,34 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 style={{ ["--stagger" as string]: i }}
                 data-selected={isSel}
                 className={cn(
-                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-3xl p-5 text-left md:p-6"
+                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-[4px] p-5 pt-7 text-left md:p-6 md:pt-8"
                 )}
               >
                 <span
                   className={cn(
-                    "absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300",
-                    isSel ? "bg-foreground text-background scale-100 opacity-100" : "scale-75 opacity-0"
+                    "font-mono text-[11px] tracking-[0.16em] transition-colors duration-300",
+                    isSel ? "text-[#7fd8ff]" : "text-foreground/30"
+                  )}
+                  style={isSel ? { textShadow: "0 0 16px rgba(127,216,255,.5)" } : undefined}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className={cn(
+                    "absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-[#7fd8ff] text-[#02040a] shadow-[0_0_16px_rgba(127,216,255,.55)] transition-all duration-300",
+                    isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
                   )}
                 >
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
-                <span className="font-display text-lg md:text-xl pr-8 text-foreground">{opt.label}</span>
-                {opt.desc && <span className="text-sm leading-relaxed text-foreground/50">{opt.desc}</span>}
+                <span className="pr-8 text-base font-light uppercase tracking-[0.12em] text-[#eef4ff] md:text-lg">
+                  {opt.label}
+                </span>
+                {opt.desc && (
+                  <span className="text-sm font-light leading-relaxed tracking-[0.02em] text-foreground/45">
+                    {opt.desc}
+                  </span>
+                )}
               </button>
             );
           })}
