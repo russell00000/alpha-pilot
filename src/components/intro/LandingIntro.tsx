@@ -106,6 +106,8 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     let raf = 0;
     const start = performance.now();
     const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    // smoothed camera state — lags the arrow so corners feel like a turn
+    const cam = { x: 0, y: 0, r: 0, s: 1.16 };
 
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / DRAW_MS);
@@ -129,6 +131,24 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         show: t < 1,
       });
 
+      // ---- camera: pan toward the arrow tip and bank into each corner ----
+      const tipX = a[0] + (b[0] - a[0]) * local;
+      const tipY = a[1] + (b[1] - a[1]) * local;
+      const targetX = (stage.w / 2 - tipX) * 0.34;
+      const targetY = (stage.h / 2 - tipY) * 0.26;
+      const targetR = -seg.angle * 0.16;
+      const targetS = 1.14 + Math.min(0.12, Math.abs(seg.angle) / 520) + (1 - Math.abs(0.5 - t) * 2) * 0.03;
+      const k = 0.045; // critically damped-ish follow
+      cam.x += (targetX - cam.x) * k;
+      cam.y += (targetY - cam.y) * k;
+      cam.r += (targetR - cam.r) * k;
+      cam.s += (targetS - cam.s) * k;
+      if (camRef.current) {
+        camRef.current.style.transform = `translate3d(${cam.x.toFixed(2)}px, ${cam.y.toFixed(
+          2
+        )}px, 0) rotate(${cam.r.toFixed(3)}deg) scale(${cam.s.toFixed(4)})`;
+      }
+
       // reveal a word once the line clears its vertex
       const cleared = segments.filter((s) => dist >= s.cum - 4).length;
       setVisibleWords((v) => {
@@ -147,7 +167,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [reduced, total, segments, px, phase]);
+  }, [reduced, total, segments, px, phase, stage.w, stage.h]);
 
   useEffect(() => {
     if (phase !== "assembling") return;
