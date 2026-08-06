@@ -24,8 +24,8 @@ type Node = {
   r: number;
 };
 
-const GOLD = "#C9A84C";
-const TEAL = "#4FC3F7";
+const GOLD = "#B15F2C";
+const TEAL = "#CF8047";
 const CYCLE_MS = 14000; // 12–16s
 
 const grainDataUri =
@@ -155,7 +155,7 @@ const AmbientBackground = () => {
     <div
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0"
-      style={{ backgroundColor: "#0A0A0F" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
       <canvas
         ref={canvasRef}
