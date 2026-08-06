@@ -39,22 +39,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* City skyline background — faded into the near-white page */}
+      {/* City skyline background — a whisper of Manhattan behind the charcoal */}
       <div
         className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{
           backgroundImage: `url(${cityBg})`,
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
-          filter: 'brightness(1.18) saturate(0.35) contrast(0.88)',
-          opacity: 0.22,
+          filter: 'grayscale(1) brightness(0.55) contrast(1.05)',
+          opacity: 0.14,
           imageRendering: 'crisp-edges',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
         }}
       />
       {/* Overlay: fades the skyline softly into the background */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/60 via-background/70 to-background/95" />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/50 via-background/70 to-background/95" />
 
       <Header />
       
@@ -62,38 +62,38 @@ const Index = () => {
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
         <section className="container px-4 md:px-6 h-[560px] md:h-[620px] flex flex-col justify-center pt-4 pb-4 text-center">
           <div className="flex flex-col items-center justify-center">
-            <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/70 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
+            <span className="relative text-[10px] uppercase tracking-[0.3em] font-medium text-foreground/70 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
                 AI · Investing Copilot
               </span>
             </span>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight max-w-5xl leading-[1.04]">
-              Welcome to{" "}
-              <span>Vantage</span>
-              <span className="block">Portfolio Solutions</span>
+            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl max-w-5xl leading-[1.04]">
+              <span className="reveal-clip">
+                <span className="reveal-line" style={{ ["--stagger" as string]: 0 }}>
+                  Welcome to Vantage
+                </span>
+              </span>
+              <span className="reveal-clip">
+                <span className="reveal-line" style={{ ["--stagger" as string]: 1 }}>
+                  Portfolio Solutions
+                </span>
+              </span>
             </h1>
-            <p className="text-sm md:text-lg text-muted-foreground mt-5 max-w-xl animate-fade-in font-normal leading-relaxed tracking-wide" style={{ animationDelay: "100ms" }}>
+            <p className="text-sm md:text-lg text-foreground/55 mt-5 max-w-xl animate-rise-in font-normal leading-relaxed" style={{ ["--stagger" as string]: 2 }}>
               Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-7 animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-7 animate-rise-in" style={{ ["--stagger" as string]: 3 }}>
               <Link to="/portfolio">
-                <Button
-                  size="lg"
-                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_28px_-14px_hsl(0_0%_0%/0.45)]"
-                >
+                <button className="pill-primary tap-scale text-sm">
                   Get Started
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                  <span className="pill-badge">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </button>
               </Link>
               <Link to="/markets">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="luxe-sheen px-8 py-5 text-sm font-medium rounded-full bg-background/60 backdrop-blur-md border-border text-foreground hover:bg-secondary hover:text-foreground hover:border-foreground/20 transition-all"
-                >
-                  All Markets
-                </Button>
+                <button className="pill-secondary tap-scale text-sm">All Markets</button>
               </Link>
             </div>
           </div>
