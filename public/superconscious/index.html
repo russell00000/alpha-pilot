@@ -327,6 +327,7 @@ header.site nav a,header.site nav button{display:flex;align-items:center;justify
 <script type="module">
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 const BASE = "https://api.getlayers.ai/storage/v1/object/public/public/assets/ai-studio-0b8d365222";
 const A = {
@@ -926,7 +927,10 @@ tBg.renderOrder=-1; tBg.frustumCulled=false; tScene.add(tBg);
   pmrem.dispose(); tex.dispose();
 })();
 let starGroup=null, spin=0;
-new GLTFLoader().load(A.model, gltf=>{
+const draco=new DRACOLoader();
+draco.setDecoderPath("https://unpkg.com/three@0.185.0/examples/jsm/libs/draco/");
+const gltfLoader=new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
+gltfLoader.load(A.model, gltf=>{
   const g=gltf.scene;
   g.traverse(o=>{ if(o.isMesh){ o.material=new THREE.MeshPhysicalMaterial({color:0xeef2f8,metalness:1.0,roughness:0.025,envMapIntensity:1.35,clearcoat:1.0,clearcoatRoughness:0.03}); }});
   const box=new THREE.Box3().setFromObject(g);
