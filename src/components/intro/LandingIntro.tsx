@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import cityBg from "@/assets/finance-bg.jpg";
 
 const WORDS = ["Welcome", "to", "Vantage", "Portfolio", "Solutions"];
 
@@ -39,7 +40,17 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [phase, setPhase] = useState<Phase>(reduced ? "settled" : "drawing");
   const [visibleWords, setVisibleWords] = useState<number>(reduced ? WORDS.length : 0);
+  /** Words that already had their moment on the line and have faded away. */
+  const [fadedWords, setFadedWords] = useState<number>(0);
   const [tip, setTip] = useState({ x: 0, y: 0, angle: 0, show: !reduced });
+  const fadeTimers = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      fadeTimers.current.forEach((t) => clearTimeout(t));
+    },
+    []
+  );
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -103,7 +114,16 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
       // reveal a word once the line clears its vertex
       const cleared = segments.filter((s) => dist >= s.cum - 4).length;
-      setVisibleWords((v) => Math.max(v, Math.min(WORDS.length, cleared)));
+      setVisibleWords((v) => {
+        const next = Math.max(v, Math.min(WORDS.length, cleared));
+        // each newly revealed word softly dissolves shortly after it lands
+        for (let i = v; i < next; i++) {
+          fadeTimers.current.push(
+            window.setTimeout(() => setFadedWords((f) => Math.max(f, i + 1)), 1150)
+          );
+        }
+        return next;
+      });
 
       if (t < 1) raf = requestAnimationFrame(tick);
       else setTimeout(() => setPhase("assembling"), 260);
