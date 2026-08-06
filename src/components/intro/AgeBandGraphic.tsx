@@ -26,22 +26,25 @@ const SERIES: Record<VizVariant, number[]> = {
 const W = 92;
 const H = 40;
 
-const toPath = (vals: number[]) => {
+const toPoints = (vals: number[]) => {
   const min = Math.min(...vals);
   const max = Math.max(...vals);
   const span = max - min || 1;
-  return vals
-    .map((v, i) => {
-      const x = (i / (vals.length - 1)) * W;
-      const y = H - 3 - ((v - min) / span) * (H - 8);
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  return vals.map((v, i) => ({
+    x: (i / (vals.length - 1)) * W,
+    y: H - 3 - ((v - min) / span) * (H - 8),
+  }));
 };
+
+const toPath = (vals: number[]) =>
+  toPoints(vals)
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
 
 const Sparkline = ({ variant, fill }: { variant: VizVariant; fill?: boolean }) => {
   const vals = SERIES[variant];
   const d = toPath(vals);
+  const last = toPoints(vals)[vals.length - 1];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible" aria-hidden>
       {/* faint axis lines */}
@@ -66,7 +69,7 @@ const Sparkline = ({ variant, fill }: { variant: VizVariant; fill?: boolean }) =
         className="viz-draw"
         style={{ ["--viz-len" as string]: 240 }}
       />
-      <circle cx={W} cy={toPath(vals).split("L").pop()?.split(",")[1]} r="1.5" fill={ACCENT} className="viz-tick" />
+      <circle cx={last.x} cy={last.y} r="1.5" fill={ACCENT} className="viz-tick" />
     </svg>
   );
 };
