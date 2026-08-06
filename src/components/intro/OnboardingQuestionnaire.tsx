@@ -157,9 +157,29 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
     }, 340);
   };
 
+  /* cursor drives the reflection origin and a 1–2° tilt toward the pointer */
+  const trackPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    el.style.setProperty("--mx", `${(px * 100).toFixed(2)}%`);
+    el.style.setProperty("--my", `${(py * 100).toFixed(2)}%`);
+    el.style.setProperty("--tilt-y", `${((px - 0.5) * 3.2).toFixed(2)}deg`);
+    el.style.setProperty("--tilt-x", `${((0.5 - py) * -2.4).toFixed(2)}deg`);
+  }, []);
+
+  const resetPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    el.style.setProperty("--mx", "50%");
+    el.style.setProperty("--my", "30%");
+    el.style.setProperty("--tilt-y", "0deg");
+    el.style.setProperty("--tilt-x", "0deg");
+  }, []);
+
   return (
     <div className="relative flex min-h-[100svh] w-full flex-col items-center justify-center px-5 py-16 md:px-8">
-      <div className="w-full max-w-5xl">
+      <div className="relative w-full max-w-5xl">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[10px] font-medium uppercase tracking-[0.34em] text-foreground/45">
             Step {step + 1} of {STEPS.length}
@@ -177,54 +197,68 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
           </div>
         </div>
 
-        <h2 className="font-display text-3xl md:text-5xl max-w-3xl leading-[1.08]">{current.question}</h2>
-        <p className="mt-3 max-w-2xl text-sm font-light leading-relaxed text-foreground/45">{current.note}</p>
+        <h2 className="font-display text-3xl md:text-5xl max-w-3xl leading-[1.08] tracking-[-0.015em]">
+          {current.question}
+        </h2>
+        <p className="mt-3 max-w-2xl text-[13px] font-light leading-relaxed tracking-[0.02em] text-foreground/40">
+          {current.note}
+        </p>
 
-        <div
-          key={step}
-          className={cn("mt-10 grid grid-cols-1 gap-4", grid, leaving && "animate-panel-out")}
-        >
+        <div className="relative mt-10">
+          <span aria-hidden className="glass-env" />
+          <div
+            key={step}
+            className={cn("relative grid grid-cols-1 gap-4", grid, leaving && "animate-panel-out")}
+          >
           {current.options.map((opt, i) => {
             const isSel = selected === opt.value;
             return (
               <button
                 key={opt.value}
                 onClick={() => setAnswers((a) => ({ ...a, [current.key as string]: opt.value }))}
+                onPointerMove={trackPointer}
+                onPointerLeave={resetPointer}
                 style={{ ["--stagger" as string]: i }}
                 data-selected={isSel}
                 className={cn(
-                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-[4px] p-5 pt-7 text-left md:p-6 md:pt-8"
+                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-[6px] p-5 pt-7 text-left md:p-6 md:pt-8"
                 )}
               >
                 <span aria-hidden className="glass-tile-glint" />
+                <span aria-hidden className="glass-sheen" />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-[1] opacity-[0.018] [background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>\")]"
+                />
                 <span
                   className={cn(
-                    "font-mono text-[11px] tracking-[0.16em] transition-colors duration-300",
-                    isSel ? "text-[#7fd8ff]" : "text-foreground/30"
+                    "relative z-[2] font-mono text-[10px] tracking-[0.32em] transition-colors duration-300",
+                    isSel ? "text-[#a8dcff]" : "text-foreground/25"
                   )}
-                  style={isSel ? { textShadow: "0 0 16px rgba(127,216,255,.5)" } : undefined}
+                  style={isSel ? { textShadow: "0 0 18px rgba(140,208,255,.45)" } : undefined}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
                   className={cn(
-                    "absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-[#7fd8ff] text-[#02040a] shadow-[0_0_16px_rgba(127,216,255,.55)] transition-all duration-300",
-                    isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
+                    "absolute right-4 top-4 z-[2] flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#dff0ff] to-[#8ec9f5] text-[#04070f] shadow-[0_0_18px_rgba(140,208,255,.45),inset_0_1px_0_rgba(255,255,255,.6)] transition-opacity duration-300",
+                    isSel ? "animate-check-settle opacity-100" : "scale-75 opacity-0"
                   )}
                 >
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
-                <span className="pr-8 text-base font-light uppercase tracking-[0.12em] text-[#eef4ff] md:text-lg">
+                <span className="relative z-[2] pr-8 text-base font-normal uppercase tracking-[0.1em] text-[#f2f7ff] [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] md:text-[17px]">
                   {opt.label}
                 </span>
                 {opt.desc && (
-                  <span className="text-sm font-light leading-relaxed tracking-[0.02em] text-foreground/45">
+                  <span className="relative z-[2] text-[13px] font-light leading-relaxed tracking-[0.015em] text-foreground/35">
                     {opt.desc}
                   </span>
                 )}
               </button>
             );
           })}
+          </div>
         </div>
 
         <div className="mt-10 flex items-center justify-between">
