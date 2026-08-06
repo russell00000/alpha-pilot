@@ -138,33 +138,9 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     return () => clearTimeout(t);
   }, [phase]);
 
-  // FLIP offsets: while scattered, each word is pushed from its final
-  // headline slot out to its zig-zag vertex, then glides home.
-  /** y on the main polyline at a given x (used to seat words on the line). */
-  const lineYAt = (x: number) => {
-    for (let i = 1; i < px.length; i++) {
-      if (x <= px[i][0] || i === px.length - 1) {
-        const [ax, ay] = px[i - 1];
-        const [bx, by] = px[i];
-        const t = bx === ax ? 1 : Math.min(1, Math.max(0, (x - ax) / (bx - ax)));
-        return ay + (by - ay) * t;
-      }
-    }
-    return stage.h / 2;
-  };
-
-  /** Non-overlapping scatter slots: words are packed left→right by their own
-   *  measured width, then lifted off the line on three staggered tiers. */
-  const slotFor = (i: number) => {
-    const widths = WORDS.map((_, k) => wordRefs.current[k]?.getBoundingClientRect().width ?? 0);
-    const gap = Math.max(28, stage.w * 0.035);
-    const sum = widths.reduce((a, b) => a + b, 0) + gap * (WORDS.length - 1);
-    const scale = sum > stage.w - 48 ? (stage.w - 48) / sum : 1;
-    let x = (stage.w - sum * scale) / 2;
-    for (let k = 0; k < i; k++) x += (widths[k] + gap) * scale;
-    return { cx: x + (widths[i] * scale) / 2, w: widths[i] };
-  };
-
+  /** Each scattered word gets its OWN horizontal band, so overlap is
+   *  mathematically impossible no matter how wide the word is. The x position
+   *  tracks the zig-zag vertex it belongs to (clamped inside the stage). */
   const offsetFor = (i: number) => {
     if (phase !== "drawing" || !stageRef.current || !stage.w) return { x: 0, y: 0 };
     const el = wordRefs.current[i];
@@ -174,10 +150,17 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     const cx = r.left - stageRect.left + r.width / 2;
     const cy = r.top - stageRect.top + r.height / 2;
 
-    const slot = slotFor(i);
-    const tx = Math.min(stage.w - r.width / 2 - 16, Math.max(r.width / 2 + 16, slot.cx));
-    const lift = [128, 62, 168, 86, 138][i % 5];
-    const ty = Math.max(r.height / 2 + 80, lineYAt(tx) - lift);
+    // dedicated row per word (top → bottom), generous band height
+    const rows = WORDS.length;
+    const topPad = Math.max(84, stage.h * 0.13);
+    const botPad = Math.max(96, stage.h * 0.16);
+    const band = (stage.h - topPad - botPad) / (rows - 1);
+    const ty = topPad + band * i;
+
+    // ride near the matching vertex horizontally, clamped to the viewport
+    const vertex = px[Math.min(i + 1, px.length - 1)]?.[0] ?? stage.w / 2;
+    const half = r.width / 2 + 20;
+    const tx = Math.min(stage.w - half, Math.max(half, vertex));
 
     return { x: tx - cx, y: ty - cy };
   };
