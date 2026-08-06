@@ -122,7 +122,7 @@ const Index = () => {
             aria-orientation="vertical"
             aria-label="Resize panels"
           >
-            <div className="h-20 w-1 rounded-full bg-white/10 group-hover/handle:bg-white/30 transition-colors" />
+            <div className="h-20 w-1 rounded-full bg-foreground/10 group-hover/handle:bg-foreground/30 transition-colors" />
           </div>
 
           <div
