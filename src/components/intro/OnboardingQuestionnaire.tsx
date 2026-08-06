@@ -228,7 +228,8 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 <span aria-hidden className="glass-sheen" />
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 z-[1] opacity-[0.018] [background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>\")]"
+                  className="pointer-events-none absolute inset-0 z-[1]"
+                  style={{ opacity: 0.018, backgroundImage: GRAIN_URL, backgroundSize: "120px 120px" }}
                 />
                 <span
                   className={cn(
