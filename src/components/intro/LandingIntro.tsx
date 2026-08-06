@@ -444,20 +444,43 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
       {/* Headline — words start at the vertices, then glide into one line */}
       <div className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
-        <h1 className="font-display text-[2.4rem] leading-[1.05] sm:text-6xl md:text-7xl max-w-4xl">
-          <span className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 md:gap-x-4">
+        <h1 className="font-display text-[2.6rem] leading-[0.92] sm:text-[4.4rem] md:text-[5.6rem] max-w-5xl">
+          <span className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-0 md:gap-x-5">
             {WORDS.map((w, i) => {
               const off = offsetFor(i);
               const shown = i < visibleWords;
               const faded = i < fadedWords;
               const opacity = phase === "drawing" ? (shown && !faded ? 1 : 0) : 1;
+              const eyebrow = i < 2;
               return (
+                <>
                 <span
                   key={w}
                   ref={(el) => (wordRefs.current[i] = el)}
+                  className={
+                    eyebrow
+                      ? "text-[0.85rem] md:text-[1.05rem] font-medium uppercase tracking-[0.46em] text-foreground/55"
+                      : "font-black uppercase tracking-[-0.045em]"
+                  }
                   style={{
                     display: "inline-block",
                     opacity,
+                    ...(i === 3
+                      ? {
+                          color: "transparent",
+                          WebkitTextStroke: "1.4px hsl(var(--foreground) / 0.85)",
+                        }
+                      : {}),
+                    ...(i === 2 || i === 4
+                      ? {
+                          backgroundImage:
+                            "linear-gradient(180deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.72) 100%)",
+                          WebkitBackgroundClip: "text",
+                          backgroundClip: "text",
+                          color: "transparent",
+                          filter: "drop-shadow(0 6px 26px hsl(var(--foreground) / 0.18))",
+                        }
+                      : {}),
                     transform:
                       phase === "drawing"
                         ? `translate(${off.x}px, ${off.y + (shown ? 0 : 18)}px)`
@@ -470,6 +493,10 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
                 >
                   {w}
                 </span>
+                {i === 1 && phase !== "drawing" && (
+                  <span key="brk" aria-hidden className="h-0 basis-full" />
+                )}
+                </>
               );
             })}
           </span>
