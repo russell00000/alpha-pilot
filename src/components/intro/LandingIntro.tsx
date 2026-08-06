@@ -30,12 +30,30 @@ const GHOST_LINES: Array<Array<[number, number]>> = [
 
 const DRAW_MS = 5200;
 
+/** Deterministic candlestick field behind the line (x%, base y%, body, wick). */
+const CANDLES = Array.from({ length: 34 }).map((_, i) => {
+  const s = Math.sin(i * 12.9898) * 43758.5453;
+  const r1 = s - Math.floor(s);
+  const s2 = Math.sin(i * 78.233) * 12765.723;
+  const r2 = s2 - Math.floor(s2);
+  const drift = 82 - i * 1.55;
+  return {
+    x: 1 + i * 2.95,
+    y: drift + (r1 - 0.5) * 12,
+    body: 3 + r2 * 9,
+    wick: 7 + r1 * 13,
+    up: r2 > 0.42,
+  };
+});
+
 type Phase = "drawing" | "assembling" | "settled";
 
 const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) => {
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPolylineElement>(null);
+  const glowRef = useRef<SVGPolylineElement>(null);
+  const camRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [phase, setPhase] = useState<Phase>(reduced ? "settled" : "drawing");
@@ -89,13 +107,17 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     let raf = 0;
     const start = performance.now();
     const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    // smoothed camera state — lags the arrow so corners feel like a turn
+    const cam = { x: 0, y: 0, r: 0, s: 1.16 };
 
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / DRAW_MS);
       const eased = easeInOut(t);
       const dist = eased * total;
 
-      if (pathRef.current) pathRef.current.style.strokeDashoffset = String(total - dist);
+      const off = String(total - dist);
+      if (pathRef.current) pathRef.current.style.strokeDashoffset = off;
+      if (glowRef.current) glowRef.current.style.strokeDashoffset = off;
 
       // position + rotation of the tip
       let idx = segments.findIndex((s) => dist <= s.cum);
@@ -111,6 +133,24 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         angle: seg.angle,
         show: t < 1,
       });
+
+      // ---- camera: pan toward the arrow tip and bank into each corner ----
+      const tipX = a[0] + (b[0] - a[0]) * local;
+      const tipY = a[1] + (b[1] - a[1]) * local;
+      const targetX = (stage.w / 2 - tipX) * 0.34;
+      const targetY = (stage.h / 2 - tipY) * 0.26;
+      const targetR = -seg.angle * 0.16;
+      const targetS = 1.14 + Math.min(0.12, Math.abs(seg.angle) / 520) + (1 - Math.abs(0.5 - t) * 2) * 0.03;
+      const k = 0.045; // critically damped-ish follow
+      cam.x += (targetX - cam.x) * k;
+      cam.y += (targetY - cam.y) * k;
+      cam.r += (targetR - cam.r) * k;
+      cam.s += (targetS - cam.s) * k;
+      if (camRef.current) {
+        camRef.current.style.transform = `translate3d(${cam.x.toFixed(2)}px, ${cam.y.toFixed(
+          2
+        )}px, 0) rotate(${cam.r.toFixed(3)}deg) scale(${cam.s.toFixed(4)})`;
+      }
 
       // reveal a word once the line clears its vertex
       const cleared = segments.filter((s) => dist >= s.cum - 4).length;
@@ -130,7 +170,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [reduced, total, segments, px, phase]);
+  }, [reduced, total, segments, px, phase, stage.w, stage.h]);
 
   useEffect(() => {
     if (phase !== "assembling") return;
@@ -206,65 +246,201 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
         </span>
       </div>
 
-      {/* The market line */}
-      <svg
-        className="absolute inset-0 h-full w-full"
-        width={stage.w}
-        height={stage.h}
+      {/* Camera rig — pans and banks as the arrow turns each corner */}
+      <div
+        ref={camRef}
         aria-hidden
-        style={{ opacity: phase === "settled" ? 0 : 1, transition: "opacity 0.9s cubic-bezier(.22,1,.36,1)" }}
+        className="pointer-events-none absolute -inset-[20%] will-change-transform"
+        style={{
+          transformOrigin: "50% 50%",
+          opacity: phase === "settled" ? 0 : 1,
+          transition: "opacity 1s cubic-bezier(.22,1,.36,1)",
+        }}
       >
-        {/* Faint chart backdrop the arrow travels over */}
-        <g opacity={0.16}>
-          {Array.from({ length: 7 }).map((_, i) => {
-            const y = ((i + 1) / 8) * stage.h;
-            return (
-              <line key={`h${i}`} x1={0} x2={stage.w} y1={y} y2={y} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.35} />
-            );
-          })}
-          {Array.from({ length: 11 }).map((_, i) => {
-            const x = ((i + 1) / 12) * stage.w;
-            return (
-              <line key={`v${i}`} x1={x} x2={x} y1={0} y2={stage.h} stroke="#f5f5f2" strokeWidth={0.5} opacity={0.22} />
-            );
-          })}
+        <svg
+          className="h-full w-full"
+          viewBox={`${-0.2 * stage.w} ${-0.2 * stage.h} ${1.4 * stage.w} ${1.4 * stage.h}`}
+          aria-hidden
+        >
+          <defs>
+            <linearGradient id="vpsArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f5f5f2" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#f5f5f2" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="vpsFade" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#f5f5f2" stopOpacity="0.05" />
+              <stop offset="45%" stopColor="#f5f5f2" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#f5f5f2" stopOpacity="0.06" />
+            </linearGradient>
+          </defs>
+
+          {/* fine + coarse grid */}
+          <g opacity={0.5}>
+            {Array.from({ length: 29 }).map((_, i) => {
+              const y = -0.2 * stage.h + (i / 28) * 1.4 * stage.h;
+              const major = i % 4 === 0;
+              return (
+                <line
+                  key={`h${i}`}
+                  x1={-0.2 * stage.w}
+                  x2={1.2 * stage.w}
+                  y1={y}
+                  y2={y}
+                  stroke="#f5f5f2"
+                  strokeWidth={major ? 0.6 : 0.4}
+                  opacity={major ? 0.11 : 0.05}
+                />
+              );
+            })}
+            {Array.from({ length: 33 }).map((_, i) => {
+              const x = -0.2 * stage.w + (i / 32) * 1.4 * stage.w;
+              const major = i % 4 === 0;
+              return (
+                <line
+                  key={`v${i}`}
+                  x1={x}
+                  x2={x}
+                  y1={-0.2 * stage.h}
+                  y2={1.2 * stage.h}
+                  stroke="#f5f5f2"
+                  strokeWidth={major ? 0.6 : 0.4}
+                  opacity={major ? 0.09 : 0.04}
+                />
+              );
+            })}
+          </g>
+
+          {/* candlestick field */}
+          <g opacity={0.2}>
+            {CANDLES.map((c, i) => {
+              const x = (c.x / 100) * stage.w;
+              const y = (c.y / 100) * stage.h;
+              const w = Math.max(3, stage.w * 0.008);
+              const bh = (c.body / 100) * stage.h * 0.5;
+              const wh = (c.wick / 100) * stage.h * 0.5;
+              return (
+                <g key={`c${i}`}>
+                  <line x1={x} x2={x} y1={y - wh} y2={y + wh} stroke="#f5f5f2" strokeWidth={0.7} opacity={0.5} />
+                  <rect
+                    x={x - w / 2}
+                    y={y - bh / 2}
+                    width={w}
+                    height={bh}
+                    fill={c.up ? "#f5f5f2" : "none"}
+                    fillOpacity={c.up ? 0.35 : 0}
+                    stroke="#f5f5f2"
+                    strokeOpacity={0.5}
+                    strokeWidth={0.7}
+                  />
+                </g>
+              );
+            })}
+          </g>
+
+          {/* ghost market lines, dashed for depth */}
           {GHOST_LINES.map((pts, i) => (
             <polyline
               key={`g${i}`}
               points={pts.map(([x, y]) => `${(x / 100) * stage.w},${(y / 100) * stage.h}`).join(" ")}
               fill="none"
-              stroke="#f5f5f2"
-              strokeWidth={1.25}
+              stroke="url(#vpsFade)"
+              strokeWidth={1 + i * 0.25}
+              strokeDasharray={i === 1 ? "6 7" : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
-              opacity={0.5 - i * 0.12}
+              opacity={0.7 - i * 0.16}
             />
           ))}
-        </g>
-        <polyline
-          ref={pathRef}
-          points={px.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill="none"
-          stroke="#f5f5f2"
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          style={{
-            strokeDasharray: total || 1,
-            strokeDashoffset: reduced ? 0 : total || 1,
-            filter: "drop-shadow(0 0 10px rgba(245,245,242,.45))",
-          }}
-        />
-        {tip.show && (
-          <g transform={`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`}>
-            <polygon
-              points="10,0 -6,6 -6,-6"
-              fill="#f5f5f2"
-              style={{ filter: "drop-shadow(0 0 8px rgba(245,245,242,.6))" }}
-            />
-          </g>
-        )}
-      </svg>
+
+          {/* soft area under the hero line */}
+          <polygon
+            points={`${px.map(([x, y]) => `${x},${y}`).join(" ")} ${px[px.length - 1]?.[0] ?? 0},${1.2 * stage.h} ${
+              px[0]?.[0] ?? 0
+            },${1.2 * stage.h}`}
+            fill="url(#vpsArea)"
+            style={{
+              opacity: phase === "drawing" ? 0.75 : 0.4,
+              transition: "opacity 1.2s ease",
+            }}
+          />
+
+          {/* vertices */}
+          {px.map(([x, y], i) => (
+            <circle key={`p${i}`} cx={x} cy={y} r={2.2} fill="#f5f5f2" opacity={0.35} />
+          ))}
+
+          {/* the hero line: wide glow underlay + crisp stroke */}
+          <polyline
+            points={px.map(([x, y]) => `${x},${y}`).join(" ")}
+            fill="none"
+            stroke="#f5f5f2"
+            strokeWidth="9"
+            strokeOpacity={0.09}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            style={{ strokeDasharray: total || 1, strokeDashoffset: reduced ? 0 : total || 1 }}
+            ref={glowRef}
+          />
+          <polyline
+            ref={pathRef}
+            points={px.map(([x, y]) => `${x},${y}`).join(" ")}
+            fill="none"
+            stroke="#f5f5f2"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            style={{
+              strokeDasharray: total || 1,
+              strokeDashoffset: reduced ? 0 : total || 1,
+              filter: "drop-shadow(0 0 12px rgba(245,245,242,.5))",
+            }}
+          />
+
+          {tip.show && (
+            <g>
+              {/* crosshair rails at the tip */}
+              <line
+                x1={-0.2 * stage.w}
+                x2={1.2 * stage.w}
+                y1={tip.y}
+                y2={tip.y}
+                stroke="#f5f5f2"
+                strokeWidth={0.6}
+                strokeDasharray="3 8"
+                opacity={0.16}
+              />
+              <line
+                x1={tip.x}
+                x2={tip.x}
+                y1={-0.2 * stage.h}
+                y2={1.2 * stage.h}
+                stroke="#f5f5f2"
+                strokeWidth={0.6}
+                strokeDasharray="3 8"
+                opacity={0.12}
+              />
+              <circle cx={tip.x} cy={tip.y} r={16} fill="#f5f5f2" opacity={0.06} />
+              <g transform={`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`}>
+                <polygon
+                  points="12,0 -7,7 -7,-7"
+                  fill="#f5f5f2"
+                  style={{ filter: "drop-shadow(0 0 10px rgba(245,245,242,.7))" }}
+                />
+              </g>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* vignette to keep the moving graphics from touching the edges */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 50% 45%, rgba(0,0,0,0) 42%, rgba(10,10,15,0.72) 78%, rgba(10,10,15,0.96) 100%)",
+        }}
+      />
 
       {/* Headline — words start at the vertices, then glide into one line */}
       <div className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
