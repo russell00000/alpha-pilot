@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import cityBg from "@/assets/finance-bg.jpg";
@@ -453,9 +453,8 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
               const opacity = phase === "drawing" ? (shown && !faded ? 1 : 0) : 1;
               const eyebrow = i < 2;
               return (
-                <>
+                <Fragment key={w}>
                 <span
-                  key={w}
                   ref={(el) => (wordRefs.current[i] = el)}
                   className={
                     eyebrow
@@ -494,9 +493,9 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
                   {w}
                 </span>
                 {i === 1 && phase !== "drawing" && (
-                  <span key="brk" aria-hidden className="h-0 basis-full" />
+                  <span aria-hidden className="h-0 basis-full" />
                 )}
-                </>
+                </Fragment>
               );
             })}
           </span>
