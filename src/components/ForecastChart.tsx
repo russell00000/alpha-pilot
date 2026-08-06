@@ -212,7 +212,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
       </div>
 
       {/* Chart */}
-      <div className="relative bg-black/40 px-2 pt-6 pb-2">
+      <div className="relative bg-background/40 px-2 pt-6 pb-2">
         <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
