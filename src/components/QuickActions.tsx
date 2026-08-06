@@ -40,7 +40,7 @@ const QuickActions = () => {
           onClick={() => handleAction(action)}
           className="luxe-sheen flex items-center gap-2.5 pl-2 pr-5 py-2 rounded-full luxe-glass hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.6)] active:scale-[0.97] transition-all duration-500 ease-out whitespace-nowrap group"
         >
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.08] group-hover:bg-white/[0.16] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-colors duration-300">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-foreground/[0.08] group-hover:bg-foreground/[0.16] shadow-[inset_0_1px_0_hsl(0_0%_100%_/_0.6)] transition-colors duration-300">
             <action.icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
           </span>
           <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors duration-200">

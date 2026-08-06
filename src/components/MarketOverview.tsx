@@ -134,7 +134,7 @@ const MarketOverview = () => {
         <div className="text-center py-12 text-muted-foreground text-sm">Unable to load market data</div>
       )}
 
-      <div className="flex items-center gap-2 mt-5 px-3 py-1.5 bg-white/[0.03] border border-white/[0.06] rounded-full w-fit">
+      <div className="flex items-center gap-2 mt-5 px-3 py-1.5 bg-foreground/[0.03] border border-foreground/[0.06] rounded-full w-fit">
         <span className="relative flex h-1.5 w-1.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success"></span>

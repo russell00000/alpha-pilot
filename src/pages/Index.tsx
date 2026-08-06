@@ -39,32 +39,32 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* City skyline background */}
+      {/* City skyline background — faded into the near-white page */}
       <div
         className="fixed inset-0 pointer-events-none bg-no-repeat"
         style={{
           backgroundImage: `url(${cityBg})`,
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
-          filter: 'brightness(0.78) saturate(0.82) contrast(0.92)',
-          opacity: 0.62,
+          filter: 'brightness(1.18) saturate(0.35) contrast(0.88)',
+          opacity: 0.22,
           imageRendering: 'crisp-edges',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
         }}
       />
       {/* Overlay: fades the skyline softly into the background */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/45 via-background/55 to-background/92" />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/60 via-background/70 to-background/95" />
 
       <Header />
       
       <main className="relative">
         {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 h-[560px] md:h-[620px] flex flex-col justify-center pt-4 pb-4 text-center [text-shadow:0_2px_18px_hsl(var(--background)/0.9)]">
+        <section className="container px-4 md:px-6 h-[560px] md:h-[620px] flex flex-col justify-center pt-4 pb-4 text-center">
           <div className="flex flex-col items-center justify-center">
-            <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/80 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
+            <span className="relative text-[10px] uppercase tracking-[0.3em] font-bold text-foreground/70 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary/90 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
                 AI · Investing Copilot
               </span>
             </span>
@@ -73,14 +73,14 @@ const Index = () => {
               <span>Vantage</span>
               <span className="block">Portfolio Solutions</span>
             </h1>
-            <p className="text-sm md:text-lg text-foreground mt-5 max-w-xl animate-fade-in font-normal leading-relaxed tracking-wide [text-shadow:0_1px_16px_hsl(var(--background)/0.95),0_0_28px_hsl(var(--primary)/0.18)]" style={{ animationDelay: "100ms" }}>
+            <p className="text-sm md:text-lg text-muted-foreground mt-5 max-w-xl animate-fade-in font-normal leading-relaxed tracking-wide" style={{ animationDelay: "100ms" }}>
               Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 mt-7 animate-fade-in" style={{ animationDelay: "200ms" }}>
               <Link to="/portfolio">
                 <Button
                   size="lg"
-                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_24px_-12px_hsl(0_0%_0%/0.6)]"
+                  className="luxe-sheen group gap-2 px-8 py-5 text-sm font-semibold rounded-full bg-primary text-primary-foreground hover:bg-primary hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_28px_-14px_hsl(0_0%_0%/0.45)]"
                 >
                   Get Started
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -90,7 +90,7 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="luxe-sheen px-8 py-5 text-sm font-medium rounded-full bg-background/15 backdrop-blur-md border-border/60 text-foreground hover:bg-secondary/60 hover:text-foreground hover:border-border transition-all"
+                  className="luxe-sheen px-8 py-5 text-sm font-medium rounded-full bg-background/60 backdrop-blur-md border-border text-foreground hover:bg-secondary hover:text-foreground hover:border-foreground/20 transition-all"
                 >
                   All Markets
                 </Button>
@@ -122,7 +122,7 @@ const Index = () => {
             aria-orientation="vertical"
             aria-label="Resize panels"
           >
-            <div className="h-20 w-1 rounded-full bg-white/10 group-hover/handle:bg-white/30 transition-colors" />
+            <div className="h-20 w-1 rounded-full bg-foreground/10 group-hover/handle:bg-foreground/30 transition-colors" />
           </div>
 
           <div

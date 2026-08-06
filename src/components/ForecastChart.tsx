@@ -108,8 +108,8 @@ const confidenceColor = (c: string) =>
   c === "High"
     ? "text-success border-success/40 bg-success/10"
     : c === "Medium"
-      ? "text-foreground border-white/25 bg-white/[0.06]"
-      : "text-muted-foreground border-white/15 bg-white/[0.03]";
+      ? "text-foreground border-foreground/25 bg-foreground/[0.06]"
+      : "text-muted-foreground border-foreground/15 bg-foreground/[0.03]";
 
 export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   const data = buildChartSeries(forecast);
@@ -129,7 +129,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   }
   if (allVals.length === 0) {
     return (
-      <div className="mt-3 border border-white/15 bg-black/40 backdrop-blur-sm p-6 text-center">
+      <div className="mt-3 border border-foreground/15 bg-secondary/60 backdrop-blur-sm p-6 text-center">
         <p className="text-sm text-muted-foreground">
           Forecast chart unavailable for {forecast.symbol} right now.
         </p>
@@ -142,12 +142,12 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
   const symGrad = forecast.symbol.replace(/[^A-Za-z0-9]/g, "");
 
   return (
-    <div className="mt-3 border border-white/15 bg-[#0b0b0c]/85 backdrop-blur-xl overflow-hidden shadow-[8px_8px_0_0_rgba(0,0,0,0.45)]">
+    <div className="mt-3 border border-foreground/15 bg-card/95 backdrop-blur-xl overflow-hidden shadow-[8px_8px_0_0_hsl(0 0% 0% / 0.12)]">
       {/* Header */}
-      <div className="p-5 border-b border-white/10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+      <div className="p-5 border-b border-foreground/10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-1.5 py-0.5 bg-white text-black text-[9px] font-bold tracking-[0.2em] uppercase">
+            <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] font-bold tracking-[0.2em] uppercase">
               Equity
             </span>
             <span className="text-muted-foreground/80 text-[10px] tracking-[0.18em] uppercase font-medium">
@@ -166,7 +166,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
                 Spot Price
               </span>
             </div>
-            <div className="h-10 w-px bg-white/15" />
+            <div className="h-10 w-px bg-foreground/15" />
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2 flex-wrap">
                 {ind.recommendationLabel && (
@@ -358,7 +358,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-muted-foreground px-5 py-3 border-t border-white/10">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-muted-foreground px-5 py-3 border-t border-foreground/10">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-[2px] bg-foreground" /> Actual
         </span>
@@ -373,7 +373,7 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
       </div>
 
       {/* Key indicators — bordered grid */}
-      <div className="grid grid-cols-4 border-t border-white/15">
+      <div className="grid grid-cols-4 border-t border-foreground/15">
         <IndicatorCell label="1Y" value={fmtPct(ind.return1Y)} tone={signedTone(ind.return1Y)} />
         <IndicatorCell label="3Y CAGR" value={fmtPct(ind.cagr3Y)} tone={signedTone(ind.cagr3Y)} />
         <IndicatorCell label="Vol" value={fmtPct(ind.annualVol)} />
@@ -385,14 +385,14 @@ export function ForecastChart({ forecast }: { forecast: ForecastData }) {
       </div>
 
       {/* Trend + analyst signals */}
-      <div className="flex flex-wrap gap-1.5 text-[9px] uppercase tracking-wider px-5 py-3 border-t border-white/10">
+      <div className="flex flex-wrap gap-1.5 text-[9px] uppercase tracking-wider px-5 py-3 border-t border-foreground/10">
         {ind.trend && (
-          <span className="px-2 py-1 bg-white/[0.04] border border-white/[0.12] text-muted-foreground tracking-[0.15em]">
+          <span className="px-2 py-1 bg-foreground/[0.04] border border-foreground/[0.12] text-muted-foreground tracking-[0.15em]">
             {ind.trend}
           </span>
         )}
         {ind.numAnalysts ? (
-          <span className="px-2 py-1 bg-white/[0.04] border border-white/[0.12] text-muted-foreground tracking-[0.15em]">
+          <span className="px-2 py-1 bg-foreground/[0.04] border border-foreground/[0.12] text-muted-foreground tracking-[0.15em]">
             {ind.numAnalysts} analysts
           </span>
         ) : null}
@@ -425,7 +425,7 @@ function IndicatorCell({
   bottom?: boolean;
 }) {
   return (
-    <div className={`px-4 py-3 ${last ? "" : "border-r border-white/10"} ${bottom ? "border-t border-white/10" : ""}`}>
+    <div className={`px-4 py-3 ${last ? "" : "border-r border-foreground/10"} ${bottom ? "border-t border-foreground/10" : ""}`}>
       <p className="text-muted-foreground/70 font-bold uppercase tracking-[0.18em] text-[9px] mb-1">
         {label}
       </p>
@@ -473,7 +473,7 @@ function TargetBlock({
 
 function ratingColor(label: string) {
   if (label === "Strong Buy" || label === "Buy") return "text-success border-success/30 bg-success/10";
-  if (label === "Hold") return "text-foreground border-white/20 bg-white/[0.06]";
+  if (label === "Hold") return "text-foreground border-foreground/20 bg-foreground/[0.06]";
   return "text-destructive border-destructive/30 bg-destructive/10";
 }
 

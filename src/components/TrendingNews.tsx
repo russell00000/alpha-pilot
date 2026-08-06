@@ -128,9 +128,9 @@ const TrendingNews = () => {
             <div
               key={`${item.url}-${index}`}
               onClick={() => handleNewsClick(item.url)}
-              className="flex gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.15] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
+              className="flex gap-4 p-5 rounded-2xl bg-foreground/[0.02] border border-foreground/[0.06] hover:bg-foreground/[0.04] hover:border-foreground/[0.15] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_hsl(0_0%_0%_/_0.12),inset_0_1px_0_hsl(0_0%_100%_/_0.6)] active:scale-[0.99] transition-all duration-300 ease-out cursor-pointer group"
             >
-              <div className="hidden md:flex w-16 h-16 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:bg-white/[0.08] transition-colors overflow-hidden">
+              <div className="hidden md:flex w-16 h-16 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.04] border border-foreground/[0.06] group-hover:bg-foreground/[0.08] transition-colors overflow-hidden">
                 {logo ? (
                   <img
                     src={logo}
@@ -154,7 +154,7 @@ const TrendingNews = () => {
               </div>
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 rounded-full bg-white/[0.08] text-foreground font-bold">
+                  <span className="text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 rounded-full bg-foreground/[0.08] text-foreground font-bold">
                     {item.category}
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider flex items-center gap-1">
