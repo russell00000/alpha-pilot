@@ -152,8 +152,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 style={{ ["--stagger" as string]: i }}
                 data-selected={isSel}
                 className={cn(
-                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-3xl p-5 text-left md:p-6",
-                  leaving && "animate-panel-out"
+                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-3xl p-5 text-left md:p-6"
                 )}
               >
                 <span
