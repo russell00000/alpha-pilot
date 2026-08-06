@@ -134,7 +134,7 @@ const LandingIntro = ({ onStart, onSkip }: { onStart: () => void; onSkip: () => 
 
   useEffect(() => {
     if (phase !== "assembling") return;
-    const t = setTimeout(() => setPhase("settled"), 1000);
+    const t = setTimeout(() => setPhase("settled"), 1500);
     return () => clearTimeout(t);
   }, [phase]);
 
