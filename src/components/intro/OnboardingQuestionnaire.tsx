@@ -150,12 +150,10 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 key={opt.value}
                 onClick={() => setAnswers((a) => ({ ...a, [current.key as string]: opt.value }))}
                 style={{ ["--stagger" as string]: i }}
+                data-selected={isSel}
                 className={cn(
-                  "animate-panel-in group relative flex flex-col items-start gap-2 rounded-3xl p-5 text-left",
-                  "border backdrop-blur-xl transition-colors duration-300 md:p-6",
-                  isSel
-                    ? "border-transparent bg-foreground/[0.14] ring-1 ring-foreground"
-                    : "border-white/10 bg-white/[0.06] md:hover:bg-white/[0.12]"
+                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-3xl p-5 text-left md:p-6",
+                  leaving && "animate-panel-out"
                 )}
               >
                 <span
