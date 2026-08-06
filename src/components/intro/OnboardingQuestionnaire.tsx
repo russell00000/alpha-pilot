@@ -305,25 +305,107 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 style={{ ["--stagger" as string]: i }}
                 data-selected={isSel}
                 className={cn(
-                  "glass-tile group relative flex flex-col items-start gap-2 overflow-hidden rounded-[6px] p-5 pt-7 text-left md:p-6 md:pt-8"
+                  "glass-tile group relative flex flex-col items-start overflow-hidden rounded-[6px] p-5 pt-5 text-left md:p-6 md:pt-6"
                 )}
               >
                 <span aria-hidden className="glass-tile-glint" />
                 <span aria-hidden className="glass-sheen" />
+                <span aria-hidden className="card-lumen" />
+                <span aria-hidden className="viz-grid" />
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-0 z-[1]"
                   style={{ opacity: 0.018, backgroundImage: GRAIN_URL, backgroundSize: "120px 120px" }}
                 />
-                <span
-                  className={cn(
-                    "relative z-[2] font-mono text-[10px] tracking-[0.32em] transition-colors duration-300",
-                    isSel ? "text-[#a8dcff]" : "text-foreground/25"
+
+                {/* header row — index + strategy tag on the left, viz on the right */}
+                <span className="relative z-[2] flex w-full items-start justify-between gap-3">
+                  <span className="flex flex-col gap-1">
+                    <span
+                      className={cn(
+                        "font-mono text-[10px] tracking-[0.32em] transition-colors duration-300",
+                        isSel ? "text-[#a8dcff]" : "text-foreground/25"
+                      )}
+                      style={isSel ? { textShadow: "0 0 18px rgba(140,208,255,.45)" } : undefined}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    {opt.tag && (
+                      <span className="font-mono text-[9px] uppercase tracking-[0.26em] text-foreground/30">
+                        {opt.tag}
+                      </span>
+                    )}
+                  </span>
+                  {opt.viz && opt.slices ? (
+                    <AgeBandGraphic variant={opt.viz} slices={opt.slices} />
+                  ) : (
+                    <span className="w-6" />
                   )}
-                  style={isSel ? { textShadow: "0 0 18px rgba(140,208,255,.45)" } : undefined}
-                >
-                  {String(i + 1).padStart(2, "0")}
                 </span>
+
+                <span className="relative z-[2] mt-4 pr-8 text-base font-normal uppercase tracking-[0.1em] text-[#f2f7ff] [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] md:text-[17px]">
+                  {opt.label}
+                </span>
+                {opt.desc && (
+                  <span className="relative z-[2] mt-2.5 text-[13px] font-light leading-relaxed tracking-[0.015em] text-foreground/35">
+                    {opt.desc}
+                  </span>
+                )}
+
+                {/* allocation readout — dominant class in the accent, rest muted */}
+                {opt.slices && (
+                  <span className="relative z-[2] mt-4 w-full">
+                    <span
+                      aria-hidden
+                      className="mb-3 block h-px w-full"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, rgba(178,216,255,0.22) 0%, rgba(178,216,255,0.06) 60%, transparent 100%)",
+                      }}
+                    />
+                    <span className="flex flex-col gap-1.5">
+                      {opt.slices.map((s, si) => (
+                        <span key={s.label} className="flex items-center justify-between gap-3">
+                          <span
+                            className={cn(
+                              "text-[10.5px] uppercase tracking-[0.18em]",
+                              si === 0 ? "text-[#bfe3ff]/85" : "text-foreground/28"
+                            )}
+                          >
+                            {s.label}
+                          </span>
+                          <span className="flex flex-1 items-center gap-2">
+                            <span
+                              aria-hidden
+                              className="h-[2px] flex-1 overflow-hidden rounded-full bg-foreground/[0.07]"
+                            >
+                              <span
+                                className="block h-full rounded-full"
+                                style={{
+                                  width: `${s.pct}%`,
+                                  background:
+                                    si === 0
+                                      ? "linear-gradient(90deg, rgba(158,212,255,0.9), rgba(158,212,255,0.35))"
+                                      : "rgba(200,220,240,0.28)",
+                                  boxShadow: si === 0 ? "0 0 10px rgba(140,205,255,0.4)" : undefined,
+                                }}
+                              />
+                            </span>
+                            <span
+                              className={cn(
+                                "w-9 text-right font-mono text-[11px] tabular-nums",
+                                si === 0 ? "text-[#cfeaff]" : "text-foreground/35"
+                              )}
+                              style={si === 0 ? { textShadow: "0 0 14px rgba(140,208,255,.35)" } : undefined}
+                            >
+                              {s.pct}%
+                            </span>
+                          </span>
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                )}
                 <span
                   className={cn(
                     "absolute right-4 top-4 z-[2] flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#dff0ff] to-[#8ec9f5] text-[#04070f] shadow-[0_0_18px_rgba(140,208,255,.45),inset_0_1px_0_rgba(255,255,255,.6)] transition-opacity duration-300",
@@ -332,14 +414,6 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 >
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
-                <span className="relative z-[2] pr-8 text-base font-normal uppercase tracking-[0.1em] text-[#f2f7ff] [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] md:text-[17px]">
-                  {opt.label}
-                </span>
-                {opt.desc && (
-                  <span className="relative z-[2] text-[13px] font-light leading-relaxed tracking-[0.015em] text-foreground/35">
-                    {opt.desc}
-                  </span>
-                )}
               </button>
             );
           })}
