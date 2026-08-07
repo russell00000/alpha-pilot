@@ -1,8 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
 import AgeBandGraphic, { type VizVariant, type Slice } from "@/components/intro/AgeBandGraphic";
+import OptionCoverflow, { type CoverflowItem } from "@/components/intro/OptionCoverflow";
+
+/* Slider Spectra palette — each card owns a hue used for its gradient + halo */
+const HUES = [
+  { c1: "#3f6bab", c2: "#10131f", glow: "#4a86d8" },
+  { c1: "#4ea23a", c2: "#0d2a12", glow: "#5fce46" },
+  { c1: "#6f86a8", c2: "#141a24", glow: "#8aa6cf" },
+  { c1: "#c6924e", c2: "#2c1d10", glow: "#e0ab63" },
+  { c1: "#c8a988", c2: "#14110d", glow: "#e2c39a" },
+  { c1: "#5a7ba8", c2: "#0b0f16", glow: "#6f93c4" },
+  { c1: "#7fae8f", c2: "#141a17", glow: "#9fd0ad" },
+];
 
 type Option = {
   value: string;
@@ -203,11 +215,6 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
   const current = STEPS[step];
   const selected = answers[current.key as string];
 
-  const grid = useMemo(
-    () => (current.options.length > 4 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"),
-    [current.options.length]
-  );
-
   const advance = () => {
     if (!selected) return;
     if (step === STEPS.length - 1) {
@@ -241,25 +248,111 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
     }, 340);
   };
 
-  /* cursor drives the reflection origin and a 1–2° tilt toward the pointer */
-  const trackPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    el.style.setProperty("--mx", `${(px * 100).toFixed(2)}%`);
-    el.style.setProperty("--my", `${(py * 100).toFixed(2)}%`);
-    el.style.setProperty("--tilt-y", `${((px - 0.5) * 3.2).toFixed(2)}deg`);
-    el.style.setProperty("--tilt-x", `${((0.5 - py) * -2.4).toFixed(2)}deg`);
-  }, []);
+  /* build the coverflow cards — our option copy inside the Slider Spectra shell */
+  const items: CoverflowItem[] = current.options.map((opt, i) => {
+    const hue = HUES[i % HUES.length];
+    const isSel = selected === opt.value;
+    return {
+      key: opt.value,
+      label: opt.label,
+      c1: hue.c1,
+      c2: hue.c2,
+      glow: hue.glow,
+      selected: isSel,
+      node: (
+        <>
+          <span aria-hidden className="glass-sheen" />
+          <span aria-hidden className="card-lumen" />
+          <span aria-hidden className="viz-grid" />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ opacity: 0.02, backgroundImage: GRAIN_URL, backgroundSize: "120px 120px" }}
+          />
 
-  const resetPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const el = e.currentTarget;
-    el.style.setProperty("--mx", "50%");
-    el.style.setProperty("--my", "30%");
-    el.style.setProperty("--tilt-y", "0deg");
-    el.style.setProperty("--tilt-x", "0deg");
-  }, []);
+          <span className="relative z-[2] flex w-full items-start justify-between gap-3">
+            <span className="flex flex-col gap-1">
+              <span
+                className="font-mono text-[10px] tracking-[0.32em]"
+                style={{
+                  color: isSel ? hue.glow : "rgba(244,246,251,0.3)",
+                  textShadow: isSel ? `0 0 18px ${hue.glow}66` : undefined,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {opt.tag && (
+                <span className="font-mono text-[9px] uppercase tracking-[0.24em] text-white/35">{opt.tag}</span>
+              )}
+            </span>
+            {opt.viz && opt.slices ? <AgeBandGraphic variant={opt.viz} slices={opt.slices} /> : null}
+          </span>
+
+          <span className="relative z-[2] mt-4 text-[15px] font-normal uppercase leading-tight tracking-[0.1em] text-[#f4f6fb] [text-shadow:0_1px_1px_rgba(0,0,0,0.5)]">
+            {opt.label}
+          </span>
+          {opt.desc && (
+            <span className="relative z-[2] mt-2 text-[11.5px] font-light leading-relaxed tracking-[0.015em] text-white/45">
+              {opt.desc}
+            </span>
+          )}
+
+          {opt.slices && (
+            <span className="relative z-[2] mt-auto w-full pt-3">
+              <span
+                aria-hidden
+                className="mb-2.5 block h-px w-full"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
+                }}
+              />
+              <span className="flex flex-col gap-1.5">
+                {opt.slices.map((s, si) => (
+                  <span key={s.label} className="flex items-center justify-between gap-2.5">
+                    <span
+                      className="text-[9.5px] uppercase tracking-[0.16em]"
+                      style={{ color: si === 0 ? `${hue.glow}` : "rgba(244,246,251,0.35)" }}
+                    >
+                      {s.label}
+                    </span>
+                    <span className="flex flex-1 items-center gap-2">
+                      <span aria-hidden className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
+                        <span
+                          className="block h-full rounded-full"
+                          style={{
+                            width: `${s.pct}%`,
+                            background: si === 0 ? hue.glow : "rgba(255,255,255,0.3)",
+                            boxShadow: si === 0 ? `0 0 10px ${hue.glow}88` : undefined,
+                          }}
+                        />
+                      </span>
+                      <span
+                        className="w-8 text-right font-mono text-[10px] tabular-nums"
+                        style={{ color: si === 0 ? "#f4f6fb" : "rgba(244,246,251,0.4)" }}
+                      >
+                        {s.pct}%
+                      </span>
+                    </span>
+                  </span>
+                ))}
+              </span>
+            </span>
+          )}
+
+          <span
+            className={cn(
+              "absolute bottom-4 right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full text-[#05070c] transition-all duration-300",
+              isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
+            )}
+            style={{ background: hue.glow, boxShadow: `0 0 18px ${hue.glow}99` }}
+          >
+            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+          </span>
+        </>
+      ),
+    };
+  });
 
   return (
     <div className="relative flex min-h-[100svh] w-full flex-col items-center justify-center px-5 py-16 md:px-8">
@@ -288,138 +381,22 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
           {current.note}
         </p>
 
-        <div className="relative mt-10">
+        <div className="relative mt-6">
           <span aria-hidden className="glass-env" />
-          <div
-            key={step}
-            className={cn("relative grid grid-cols-1 gap-4", grid, leaving && "animate-panel-out")}
-          >
-          {current.options.map((opt, i) => {
-            const isSel = selected === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => setAnswers((a) => ({ ...a, [current.key as string]: opt.value }))}
-                onPointerMove={trackPointer}
-                onPointerLeave={resetPointer}
-                style={{ ["--stagger" as string]: i }}
-                data-selected={isSel}
-                className={cn(
-                  "glass-tile group relative flex flex-col items-start overflow-hidden rounded-[6px] p-5 pt-5 text-left md:p-6 md:pt-6"
-                )}
-              >
-                <span aria-hidden className="glass-tile-glint" />
-                <span aria-hidden className="glass-sheen" />
-                <span aria-hidden className="card-lumen" />
-                <span aria-hidden className="viz-grid" />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-[1]"
-                  style={{ opacity: 0.018, backgroundImage: GRAIN_URL, backgroundSize: "120px 120px" }}
-                />
-
-                {/* header row — index + strategy tag on the left, viz on the right */}
-                <span className="relative z-[2] flex w-full items-start justify-between gap-3">
-                  <span className="flex flex-col gap-1">
-                    <span
-                      className={cn(
-                        "font-mono text-[10px] tracking-[0.32em] transition-colors duration-300",
-                        isSel ? "text-[#a8dcff]" : "text-foreground/25"
-                      )}
-                      style={isSel ? { textShadow: "0 0 18px rgba(140,208,255,.45)" } : undefined}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    {opt.tag && (
-                      <span className="font-mono text-[9px] uppercase tracking-[0.26em] text-foreground/30">
-                        {opt.tag}
-                      </span>
-                    )}
-                  </span>
-                  {opt.viz && opt.slices ? (
-                    <AgeBandGraphic variant={opt.viz} slices={opt.slices} />
-                  ) : (
-                    <span className="w-6" />
-                  )}
-                </span>
-
-                <span className="relative z-[2] mt-4 pr-8 text-base font-normal uppercase tracking-[0.1em] text-[#f2f7ff] [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] md:text-[17px]">
-                  {opt.label}
-                </span>
-                {opt.desc && (
-                  <span className="relative z-[2] mt-2.5 text-[13px] font-light leading-relaxed tracking-[0.015em] text-foreground/35">
-                    {opt.desc}
-                  </span>
-                )}
-
-                {/* allocation readout — dominant class in the accent, rest muted */}
-                {opt.slices && (
-                  <span className="relative z-[2] mt-4 w-full">
-                    <span
-                      aria-hidden
-                      className="mb-3 block h-px w-full"
-                      style={{
-                        background:
-                          "linear-gradient(90deg, rgba(178,216,255,0.22) 0%, rgba(178,216,255,0.06) 60%, transparent 100%)",
-                      }}
-                    />
-                    <span className="flex flex-col gap-1.5">
-                      {opt.slices.map((s, si) => (
-                        <span key={s.label} className="flex items-center justify-between gap-3">
-                          <span
-                            className={cn(
-                              "text-[10.5px] uppercase tracking-[0.18em]",
-                              si === 0 ? "text-[#bfe3ff]/85" : "text-foreground/28"
-                            )}
-                          >
-                            {s.label}
-                          </span>
-                          <span className="flex flex-1 items-center gap-2">
-                            <span
-                              aria-hidden
-                              className="h-[2px] flex-1 overflow-hidden rounded-full bg-foreground/[0.07]"
-                            >
-                              <span
-                                className="block h-full rounded-full"
-                                style={{
-                                  width: `${s.pct}%`,
-                                  background:
-                                    si === 0
-                                      ? "linear-gradient(90deg, rgba(158,212,255,0.9), rgba(158,212,255,0.35))"
-                                      : "rgba(200,220,240,0.28)",
-                                  boxShadow: si === 0 ? "0 0 10px rgba(140,205,255,0.4)" : undefined,
-                                }}
-                              />
-                            </span>
-                            <span
-                              className={cn(
-                                "w-9 text-right font-mono text-[11px] tabular-nums",
-                                si === 0 ? "text-[#cfeaff]" : "text-foreground/35"
-                              )}
-                              style={si === 0 ? { textShadow: "0 0 14px rgba(140,208,255,.35)" } : undefined}
-                            >
-                              {s.pct}%
-                            </span>
-                          </span>
-                        </span>
-                      ))}
-                    </span>
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    "absolute right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#dff0ff] to-[#8ec9f5] text-[#04070f] shadow-[0_0_18px_rgba(140,208,255,.45),inset_0_1px_0_rgba(255,255,255,.6)] transition-opacity duration-300",
-                    opt.viz ? "bottom-4" : "top-4",
-                    isSel ? "animate-check-settle opacity-100" : "scale-75 opacity-0"
-                  )}
-                >
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                </span>
-              </button>
-            );
-          })}
+          <div key={step} className={cn("relative", leaving && "animate-panel-out")}>
+            <OptionCoverflow
+              items={items}
+              resetKey={step}
+              start={0}
+              autoplay={!selected}
+              onSelect={(key) => setAnswers((a) => ({ ...a, [current.key as string]: key }))}
+            />
+            <p className="mt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.28em] text-foreground/30">
+              Drag, swipe or use arrow keys · tap the centre card to choose
+            </p>
           </div>
         </div>
+
 
         <div className="mt-10 flex items-center justify-between">
           <button
