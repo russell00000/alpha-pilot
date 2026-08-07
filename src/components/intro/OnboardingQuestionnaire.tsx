@@ -346,7 +346,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
               "absolute bottom-4 right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full text-[#05070c] transition-all duration-300",
               isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
             )}
-            style={{ background: hue.glow, boxShadow: `0 0 18px ${hue.glow}99` }}
+            style={{ background: hue.glow, boxShadow: `0 0 10px -2px ${hue.glow}88` }}
           >
             <Check className="h-3.5 w-3.5" strokeWidth={3} />
           </span>
@@ -359,7 +359,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
     <div className="relative flex min-h-[100svh] w-full flex-col items-center justify-center px-5 py-16 md:px-8">
       <div className="relative w-full max-w-5xl">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-[10px] font-medium uppercase tracking-[0.34em] text-foreground/45">
+          <span className="text-[10px] font-medium uppercase tracking-[0.34em] text-foreground/65">
             Step {step + 1} of {STEPS.length}
           </span>
           <div className="flex items-center gap-1.5">
@@ -378,7 +378,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
         <h2 className="font-display text-3xl md:text-5xl max-w-3xl leading-[1.08] tracking-[-0.015em]">
           {current.question}
         </h2>
-        <p className="mt-3 max-w-2xl text-[13px] font-light leading-relaxed tracking-[0.02em] text-foreground/40">
+        <p className="mt-3 max-w-2xl text-[13px] font-normal leading-relaxed tracking-[0.01em] text-foreground/60">
           {current.note}
         </p>
 
@@ -392,7 +392,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
               autoplay={!selected}
               onSelect={(key) => setAnswers((a) => ({ ...a, [current.key as string]: key }))}
             />
-            <p className="mt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.28em] text-foreground/30">
+            <p className="mt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.28em] text-foreground/45">
               Drag, swipe or use arrow keys · tap the centre card to choose
             </p>
           </div>
