@@ -38,6 +38,7 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
   const stageRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const liveRef = useRef<HTMLSpanElement>(null);
+  const syncRef = useRef<() => void>(() => {});
 
   const N = items.length;
   const metaRef = useRef({ N, glows: items.map((i) => i.glow), names: items.map((i) => i.label) });
@@ -147,8 +148,6 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
     document.addEventListener("visibilitychange", sync);
     return () => { if (timer) clearInterval(timer); document.removeEventListener("visibilitychange", sync); };
   }, [autoplay, N]);
-
-  const syncRef = useRef<() => void>(() => {});
 
   /* ——— reset when the step changes ——— */
   useEffect(() => {
