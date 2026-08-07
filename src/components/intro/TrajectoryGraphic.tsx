@@ -106,7 +106,7 @@ const TrajectoryGraphic = ({ variant }: { variant: VizVariant }) => {
       </defs>
 
       {/* contained warm reflection catching the upper-right of the glass */}
-      <rect x={W * 0.5} y={-H * 0.35} width={W * 0.6} height={H * 1.1} fill={`url(#${lightId})`} />
+      <ellipse cx={W * 0.78} cy={H * 0.16} rx={W * 0.34} ry={H * 0.46} fill={`url(#${lightId})`} />
 
       {/* reference grid — hairlines only, no axis, no labels */}
       <g stroke="#FFFFFF" strokeWidth="0.5" vectorEffect="non-scaling-stroke">
