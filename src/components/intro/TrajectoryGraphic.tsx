@@ -100,13 +100,13 @@ const TrajectoryGraphic = ({ variant }: { variant: VizVariant }) => {
           <stop offset="100%" stopColor={GOLD} />
         </linearGradient>
         <radialGradient id={lightId} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0%" stopColor="#F3E2B4" stopOpacity="0.16" />
+          <stop offset="0%" stopColor="#F3E2B4" stopOpacity="0.11" />
           <stop offset="100%" stopColor="#F3E2B4" stopOpacity="0" />
         </radialGradient>
       </defs>
 
       {/* contained warm reflection catching the upper-right of the glass */}
-      <ellipse cx={W * 0.78} cy={H * 0.16} rx={W * 0.34} ry={H * 0.46} fill={`url(#${lightId})`} />
+      <ellipse cx={W * 0.7} cy={H * 0.3} rx={W * 0.26} ry={H * 0.3} fill={`url(#${lightId})`} />
 
       {/* reference grid — hairlines only, no axis, no labels */}
       <g stroke="#FFFFFF" strokeWidth="0.5" vectorEffect="non-scaling-stroke">
