@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
@@ -214,11 +214,6 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
 
   const current = STEPS[step];
   const selected = answers[current.key as string];
-
-  const grid = useMemo(
-    () => (current.options.length > 4 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"),
-    [current.options.length]
-  );
 
   const advance = () => {
     if (!selected) return;
