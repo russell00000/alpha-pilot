@@ -2,18 +2,18 @@ import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
-import AgeBandGraphic, { type VizVariant, type Slice } from "@/components/intro/AgeBandGraphic";
+import TrajectoryGraphic, { type VizVariant, type Slice } from "@/components/intro/TrajectoryGraphic";
 import OptionCoverflow, { type CoverflowItem } from "@/components/intro/OptionCoverflow";
 
-/* Slider Spectra palette — each card owns a hue used for its gradient + halo */
+/* Restrained champagne-gold palette — metallic, controlled, never hazy orange */
 const HUES = [
-  { c1: "#3f6bab", c2: "#10131f", glow: "#4a86d8" },
-  { c1: "#4ea23a", c2: "#0d2a12", glow: "#5fce46" },
-  { c1: "#6f86a8", c2: "#141a24", glow: "#8aa6cf" },
-  { c1: "#c6924e", c2: "#2c1d10", glow: "#e0ab63" },
-  { c1: "#c8a988", c2: "#14110d", glow: "#e2c39a" },
-  { c1: "#5a7ba8", c2: "#0b0f16", glow: "#6f93c4" },
-  { c1: "#7fae8f", c2: "#141a17", glow: "#9fd0ad" },
+  { c1: "#8a7038", c2: "#0a0a0c", glow: "#E3C783" },
+  { c1: "#7d6c46", c2: "#0a0a0c", glow: "#DCC38C" },
+  { c1: "#8f7a44", c2: "#0b0a0a", glow: "#E8D29B" },
+  { c1: "#6f6244", c2: "#0a0a0b", glow: "#D6BE8A" },
+  { c1: "#847048", c2: "#0a0a0c", glow: "#E0CA96" },
+  { c1: "#78683f", c2: "#09090b", glow: "#D9C089" },
+  { c1: "#8b7647", c2: "#0a0a0b", glow: "#E5CE95" },
 ];
 
 type Option = {
@@ -275,64 +275,65 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
               <span
                 className="font-mono text-[10px] tracking-[0.32em]"
                 style={{
-                  color: isSel ? hue.glow : "rgba(244,246,251,0.3)",
-                  textShadow: isSel ? `0 0 18px ${hue.glow}66` : undefined,
+                  color: isSel ? hue.glow : "rgba(246,247,250,0.5)",
                 }}
               >
                 {String(i + 1).padStart(2, "0")}
               </span>
               {opt.tag && (
-                <span className="font-mono text-[9px] uppercase tracking-[0.24em] text-white/35">{opt.tag}</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/60">{opt.tag}</span>
               )}
             </span>
-            {opt.viz && opt.slices ? <AgeBandGraphic variant={opt.viz} slices={opt.slices} /> : null}
           </span>
 
-          <span className="relative z-[2] mt-4 text-[15px] font-normal uppercase leading-tight tracking-[0.1em] text-[#f4f6fb] [text-shadow:0_1px_1px_rgba(0,0,0,0.5)]">
+          <span className="relative z-[2] mt-3 text-[15px] font-medium uppercase leading-tight tracking-[0.06em] text-[#F7F8FA]">
             {opt.label}
           </span>
           {opt.desc && (
-            <span className="relative z-[2] mt-2 text-[11.5px] font-light leading-relaxed tracking-[0.015em] text-white/45">
+            <span className="relative z-[2] mt-1.5 text-[11.5px] font-normal leading-snug tracking-[0.01em] text-white/70">
               {opt.desc}
+            </span>
+          )}
+
+          {/* portfolio trajectory — the card's main visual, middle ~42% */}
+          {opt.viz && (
+            <span className="relative z-[2] mt-3 block h-[42%] w-full">
+              <TrajectoryGraphic variant={opt.viz} />
             </span>
           )}
 
           {opt.slices && (
             <span className="relative z-[2] mt-auto w-full pt-3">
-              <span
-                aria-hidden
-                className="mb-2.5 block h-px w-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
-                }}
-              />
-              <span className="flex flex-col gap-1.5">
+              {/* one clean segmented allocation strip */}
+              <span aria-hidden className="flex h-[3px] w-full gap-[2px] overflow-hidden">
                 {opt.slices.map((s, si) => (
-                  <span key={s.label} className="flex items-center justify-between gap-2.5">
+                  <span
+                    key={s.label}
+                    className="block h-full"
+                    style={{
+                      width: `${s.pct}%`,
+                      background:
+                        si === 0
+                          ? `linear-gradient(90deg, ${hue.glow}, #F2DFAE)`
+                          : `rgba(255,255,255,${0.34 - si * 0.07})`,
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="mt-2 flex items-center justify-between gap-2">
+                {opt.slices.map((s, si) => (
+                  <span key={s.label} className="flex items-baseline gap-1">
                     <span
-                      className="text-[9.5px] uppercase tracking-[0.16em]"
-                      style={{ color: si === 0 ? `${hue.glow}` : "rgba(244,246,251,0.35)" }}
+                      className="font-mono text-[9px] uppercase tracking-[0.1em]"
+                      style={{ color: si === 0 ? hue.glow : "rgba(246,247,250,0.55)" }}
                     >
-                      {s.label}
+                      {s.label.replace(" & cash", "+$")}
                     </span>
-                    <span className="flex flex-1 items-center gap-2">
-                      <span aria-hidden className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
-                        <span
-                          className="block h-full rounded-full"
-                          style={{
-                            width: `${s.pct}%`,
-                            background: si === 0 ? hue.glow : "rgba(255,255,255,0.3)",
-                            boxShadow: si === 0 ? `0 0 10px ${hue.glow}88` : undefined,
-                          }}
-                        />
-                      </span>
-                      <span
-                        className="w-8 text-right font-mono text-[10px] tabular-nums"
-                        style={{ color: si === 0 ? "#f4f6fb" : "rgba(244,246,251,0.4)" }}
-                      >
-                        {s.pct}%
-                      </span>
+                    <span
+                      className="font-mono text-[10px] font-medium tabular-nums"
+                      style={{ color: si === 0 ? "#FBF7EC" : "rgba(246,247,250,0.72)" }}
+                    >
+                      {s.pct}
                     </span>
                   </span>
                 ))}
@@ -345,7 +346,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
               "absolute bottom-4 right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full text-[#05070c] transition-all duration-300",
               isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
             )}
-            style={{ background: hue.glow, boxShadow: `0 0 18px ${hue.glow}99` }}
+            style={{ background: hue.glow, boxShadow: `0 0 10px -2px ${hue.glow}88` }}
           >
             <Check className="h-3.5 w-3.5" strokeWidth={3} />
           </span>
@@ -358,7 +359,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
     <div className="relative flex min-h-[100svh] w-full flex-col items-center justify-center px-5 py-16 md:px-8">
       <div className="relative w-full max-w-5xl">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-[10px] font-medium uppercase tracking-[0.34em] text-foreground/45">
+          <span className="text-[10px] font-medium uppercase tracking-[0.34em] text-foreground/65">
             Step {step + 1} of {STEPS.length}
           </span>
           <div className="flex items-center gap-1.5">
@@ -377,7 +378,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
         <h2 className="font-display text-3xl md:text-5xl max-w-3xl leading-[1.08] tracking-[-0.015em]">
           {current.question}
         </h2>
-        <p className="mt-3 max-w-2xl text-[13px] font-light leading-relaxed tracking-[0.02em] text-foreground/40">
+        <p className="mt-3 max-w-2xl text-[13px] font-normal leading-relaxed tracking-[0.01em] text-foreground/60">
           {current.note}
         </p>
 
@@ -391,7 +392,7 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
               autoplay={!selected}
               onSelect={(key) => setAnswers((a) => ({ ...a, [current.key as string]: key }))}
             />
-            <p className="mt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.28em] text-foreground/30">
+            <p className="mt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.28em] text-foreground/45">
               Drag, swipe or use arrow keys · tap the centre card to choose
             </p>
           </div>

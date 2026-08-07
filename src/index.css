@@ -167,8 +167,8 @@
     @apply relative rounded-3xl overflow-hidden;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.10);
-    backdrop-filter: blur(24px) saturate(120%);
-    -webkit-backdrop-filter: blur(24px) saturate(120%);
+    backdrop-filter: blur(15px) saturate(118%);
+    -webkit-backdrop-filter: blur(15px) saturate(118%);
     box-shadow: var(--shadow-card);
     transition: background 0.3s var(--ease-out-smooth), border-color 0.3s var(--ease-out-smooth);
   }
@@ -178,16 +178,16 @@
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.10);
-    backdrop-filter: blur(24px) saturate(120%);
-    -webkit-backdrop-filter: blur(24px) saturate(120%);
+    backdrop-filter: blur(15px) saturate(118%);
+    -webkit-backdrop-filter: blur(15px) saturate(118%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.06), var(--shadow-card);
   }
 
   .glass-panel {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.10);
-    backdrop-filter: blur(24px) saturate(120%);
-    -webkit-backdrop-filter: blur(24px) saturate(120%);
+    backdrop-filter: blur(15px) saturate(118%);
+    -webkit-backdrop-filter: blur(15px) saturate(118%);
     box-shadow: var(--shadow-card);
   }
 
@@ -199,8 +199,8 @@
 
   .glass-search {
     background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(20px) saturate(120%);
-    -webkit-backdrop-filter: blur(20px) saturate(120%);
+    backdrop-filter: blur(13px) saturate(118%);
+    -webkit-backdrop-filter: blur(13px) saturate(118%);
     border: 1px solid rgba(255, 255, 255, 0.10);
     border-bottom: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 16px;
@@ -408,8 +408,8 @@
       radial-gradient(140% 130% at 50% -12%, rgba(120, 190, 255, 0.07) 0%, transparent 60%),
       /* thick smoked navy glass body */
       linear-gradient(158deg, rgba(9, 15, 26, 0.78) 0%, rgba(4, 8, 16, 0.86) 52%, rgba(1, 3, 7, 0.9) 100%);
-    backdrop-filter: blur(22px) saturate(160%) contrast(112%) brightness(0.96);
-    -webkit-backdrop-filter: blur(22px) saturate(160%) contrast(112%) brightness(0.96);
+    backdrop-filter: blur(14px) saturate(130%) contrast(116%) brightness(1.04);
+    -webkit-backdrop-filter: blur(14px) saturate(130%) contrast(116%) brightness(1.04);
     border: 1px solid rgba(178, 214, 255, 0.16);
     border-radius: 6px;
     box-shadow:
@@ -437,8 +437,8 @@
     inset: -35%;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.55;
-    filter: blur(26px);
+    opacity: 0.38;
+    filter: blur(16px);
     mix-blend-mode: screen;
     background:
       linear-gradient(
@@ -532,8 +532,8 @@
     .glass-tile:hover {
       transform: perspective(1200px) translateY(-7px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(1.02);
       border-color: rgba(150, 210, 255, 0.34);
-      backdrop-filter: blur(24px) saturate(170%) contrast(110%) brightness(1.02);
-      -webkit-backdrop-filter: blur(24px) saturate(170%) contrast(110%) brightness(1.02);
+      backdrop-filter: blur(15px) saturate(135%) contrast(116%) brightness(1.1);
+      -webkit-backdrop-filter: blur(15px) saturate(135%) contrast(116%) brightness(1.1);
       box-shadow:
         inset 0 1px 0 rgba(236, 250, 255, 0.34),
         inset 0 0 80px rgba(3, 6, 14, 0.42),
@@ -546,7 +546,7 @@
       transform: translateX(60%);
     }
     .glass-tile:hover::after { opacity: 1; }
-    .glass-tile:hover > .glass-sheen { opacity: 0.95; }
+    .glass-tile:hover > .glass-sheen { opacity: 0.62; }
   }
   .glass-tile[data-selected="true"] {
     border-color: rgba(140, 208, 255, 0.5);
@@ -566,7 +566,7 @@
     animation: glass-tile-confirm 0.62s cubic-bezier(0.22, 1.15, 0.36, 1) both;
   }
   .glass-tile[data-selected="true"]::after { opacity: 1; }
-  .glass-tile[data-selected="true"] > .glass-sheen { opacity: 0.9; }
+  .glass-tile[data-selected="true"] > .glass-sheen { opacity: 0.6; }
 
   /* premium confirmation — a settle, not a snap */
   @keyframes glass-tile-confirm {
@@ -597,12 +597,11 @@
     z-index: 1;
     border-radius: inherit;
     background:
-      radial-gradient(120% 70% at 50% 4%, rgba(190, 226, 255, 0.11) 0%, transparent 62%),
-      radial-gradient(78% 62% at 50% 40%, rgba(205, 233, 255, 0.1) 0%, rgba(160, 205, 255, 0.03) 45%, transparent 74%),
-      linear-gradient(142deg, rgba(226, 242, 255, 0.06) 0%, transparent 34%, rgba(0, 0, 0, 0.22) 100%),
-      radial-gradient(130% 100% at 50% 116%, rgba(0, 0, 0, 0.4) 0%, transparent 58%);
+      /* one focused warm-gold light source, upper right */
+      radial-gradient(56% 44% at 78% 8%, rgba(243, 226, 180, 0.16) 0%, rgba(226, 199, 131, 0.05) 46%, transparent 72%),
+      linear-gradient(146deg, rgba(255, 250, 238, 0.035) 0%, transparent 30%, rgba(0, 0, 0, 0.26) 100%);
     mix-blend-mode: screen;
-    opacity: 0.9;
+    opacity: 0.95;
     transition: opacity 0.35s ease;
   }
   .glass-tile:hover > .card-lumen,
@@ -617,7 +616,7 @@
     pointer-events: none;
     z-index: 1;
     background: radial-gradient(50% 50% at 50% 50%, rgba(140, 205, 255, 0.16), transparent 72%);
-    filter: blur(18px);
+    filter: blur(11px);
     animation: viz-bloom-pulse 7.5s ease-in-out infinite;
   }
   @keyframes viz-bloom-pulse {
@@ -631,11 +630,11 @@
     pointer-events: none;
     z-index: 1;
     background:
-      repeating-linear-gradient(0deg, rgba(178, 216, 255, 0.05) 0 1px, transparent 1px 22px),
-      repeating-linear-gradient(90deg, rgba(178, 216, 255, 0.035) 0 1px, transparent 1px 30px);
-    -webkit-mask-image: radial-gradient(90% 80% at 62% 18%, #000 0%, transparent 82%);
-    mask-image: radial-gradient(90% 80% at 62% 18%, #000 0%, transparent 82%);
-    opacity: 0.7;
+      repeating-linear-gradient(0deg, rgba(255, 246, 226, 0.045) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(90deg, rgba(255, 246, 226, 0.03) 0 1px, transparent 1px 32px);
+    -webkit-mask-image: radial-gradient(84% 74% at 60% 16%, #000 0%, transparent 78%);
+    mask-image: radial-gradient(84% 74% at 60% 16%, #000 0%, transparent 78%);
+    opacity: 0.6;
   }
   /* slow self-drawing chart line */
   @keyframes viz-draw {
@@ -673,12 +672,12 @@
     top: 46%;
     left: 50%;
     z-index: 0;
-    width: min(70vw, 640px);
+    width: min(52vw, 460px);
     aspect-ratio: 1;
     transform: translate(-50%, -50%);
-    background: radial-gradient(closest-side, var(--halo, #7fd8ff), transparent 72%);
-    opacity: 0.3;
-    filter: blur(30px);
+    background: radial-gradient(closest-side, var(--halo, #E3C783), transparent 58%);
+    opacity: 0.16;
+    filter: blur(19px);
     pointer-events: none;
     transition: background 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
@@ -715,18 +714,20 @@
   .cf-inner {
     position: absolute;
     inset: 0;
-    border-radius: 22px;
+    border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
-    padding: 20px 18px;
+    padding: 18px 17px;
     background:
-      radial-gradient(120% 78% at 50% -10%, color-mix(in srgb, var(--c1, #3f6bab) 34%, transparent), transparent 62%),
-      linear-gradient(158deg, color-mix(in srgb, var(--c1, #3f6bab) 16%, #0a0e18), var(--c2, #0a0e18));
-    box-shadow: 0 30px 60px -22px rgba(0, 0, 0, 0.85), 0 6px 20px -10px rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(14px);
+      /* single focused warm-gold key light, upper right */
+      radial-gradient(64% 46% at 80% -6%, color-mix(in srgb, var(--c1, #8a7038) 30%, transparent), transparent 62%),
+      /* clean dark glass base with subtle tonal variation */
+      linear-gradient(160deg, #131315 0%, #0d0d10 46%, var(--c2, #08080a) 100%);
+    box-shadow: 0 24px 44px -18px rgba(0, 0, 0, 0.92), 0 4px 12px -6px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(9px) saturate(120%) contrast(112%);
   }
   .cf-inner::after {
     content: "";
@@ -734,15 +735,20 @@
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    /* crisp 1px edge + specular top highlight */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 250, 236, 0.22),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(226, 199, 131, 0.1);
   }
   .cf-card:focus-visible { outline: none; }
   .cf-card:focus-visible .cf-inner {
-    box-shadow: 0 30px 60px -22px rgba(0, 0, 0, 0.85), 0 0 0 3px var(--glow, #7fd8ff);
+    box-shadow: 0 24px 44px -18px rgba(0, 0, 0, 0.9), 0 0 0 2px var(--glow, #E3C783);
   }
   .cf-card[data-selected="true"] .cf-inner {
-    box-shadow: 0 30px 60px -22px rgba(0, 0, 0, 0.9), 0 0 0 1.5px color-mix(in srgb, var(--glow, #7fd8ff) 70%, transparent),
-      0 0 42px -6px color-mix(in srgb, var(--glow, #7fd8ff) 48%, transparent);
+    box-shadow: 0 24px 44px -18px rgba(0, 0, 0, 0.92),
+      inset 0 0 0 1px color-mix(in srgb, var(--glow, #E3C783) 62%, transparent),
+      0 0 18px -6px color-mix(in srgb, var(--glow, #E3C783) 30%, transparent);
   }
 
   @keyframes env-bloom-drift-legacy {
@@ -764,10 +770,9 @@
     position: absolute;
     inset: -20%;
     background:
-      radial-gradient(46% 40% at 18% 22%, rgba(86, 156, 226, 0.15), transparent 70%),
-      radial-gradient(40% 36% at 82% 30%, rgba(110, 186, 236, 0.11), transparent 72%),
-      radial-gradient(52% 44% at 50% 96%, rgba(60, 120, 190, 0.1), transparent 74%);
-    filter: blur(38px);
+      radial-gradient(34% 28% at 22% 20%, rgba(226, 199, 131, 0.1), transparent 66%),
+      radial-gradient(30% 26% at 80% 26%, rgba(243, 226, 180, 0.07), transparent 68%);
+    filter: blur(24px);
     animation: env-bloom-drift 18s ease-in-out infinite;
   }
   .glass-env::after {
@@ -776,9 +781,8 @@
     inset: 0;
     /* faint financial grid + light rays, vignetted away at the edges */
     background:
-      repeating-linear-gradient(90deg, rgba(160, 205, 255, 0.045) 0 1px, transparent 1px 68px),
-      repeating-linear-gradient(0deg, rgba(160, 205, 255, 0.035) 0 1px, transparent 1px 68px),
-      repeating-linear-gradient(104deg, rgba(200, 230, 255, 0.022) 0 2px, transparent 2px 180px);
+      repeating-linear-gradient(90deg, rgba(240, 236, 224, 0.04) 0 1px, transparent 1px 68px),
+      repeating-linear-gradient(0deg, rgba(240, 236, 224, 0.03) 0 1px, transparent 1px 68px);
     -webkit-mask-image: radial-gradient(72% 62% at 50% 42%, #000 0%, transparent 100%);
     mask-image: radial-gradient(72% 62% at 50% 42%, #000 0%, transparent 100%);
     opacity: 0.85;
@@ -845,7 +849,7 @@
     height: 60vmax;
     transform: translateX(-50%);
     background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.07), transparent 65%);
-    filter: blur(60px);
+    filter: blur(38px);
   }
 
   .luxe-grain {
