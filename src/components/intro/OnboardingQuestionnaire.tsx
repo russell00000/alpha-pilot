@@ -253,25 +253,111 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
     }, 340);
   };
 
-  /* cursor drives the reflection origin and a 1–2° tilt toward the pointer */
-  const trackPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    el.style.setProperty("--mx", `${(px * 100).toFixed(2)}%`);
-    el.style.setProperty("--my", `${(py * 100).toFixed(2)}%`);
-    el.style.setProperty("--tilt-y", `${((px - 0.5) * 3.2).toFixed(2)}deg`);
-    el.style.setProperty("--tilt-x", `${((0.5 - py) * -2.4).toFixed(2)}deg`);
-  }, []);
+  /* build the coverflow cards — our option copy inside the Slider Spectra shell */
+  const items: CoverflowItem[] = current.options.map((opt, i) => {
+    const hue = HUES[i % HUES.length];
+    const isSel = selected === opt.value;
+    return {
+      key: opt.value,
+      label: opt.label,
+      c1: hue.c1,
+      c2: hue.c2,
+      glow: hue.glow,
+      selected: isSel,
+      node: (
+        <>
+          <span aria-hidden className="glass-sheen" />
+          <span aria-hidden className="card-lumen" />
+          <span aria-hidden className="viz-grid" />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ opacity: 0.02, backgroundImage: GRAIN_URL, backgroundSize: "120px 120px" }}
+          />
 
-  const resetPointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const el = e.currentTarget;
-    el.style.setProperty("--mx", "50%");
-    el.style.setProperty("--my", "30%");
-    el.style.setProperty("--tilt-y", "0deg");
-    el.style.setProperty("--tilt-x", "0deg");
-  }, []);
+          <span className="relative z-[2] flex w-full items-start justify-between gap-3">
+            <span className="flex flex-col gap-1">
+              <span
+                className="font-mono text-[10px] tracking-[0.32em]"
+                style={{
+                  color: isSel ? hue.glow : "rgba(244,246,251,0.3)",
+                  textShadow: isSel ? `0 0 18px ${hue.glow}66` : undefined,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {opt.tag && (
+                <span className="font-mono text-[9px] uppercase tracking-[0.24em] text-white/35">{opt.tag}</span>
+              )}
+            </span>
+            {opt.viz && opt.slices ? <AgeBandGraphic variant={opt.viz} slices={opt.slices} /> : null}
+          </span>
+
+          <span className="relative z-[2] mt-4 text-[15px] font-normal uppercase leading-tight tracking-[0.1em] text-[#f4f6fb] [text-shadow:0_1px_1px_rgba(0,0,0,0.5)]">
+            {opt.label}
+          </span>
+          {opt.desc && (
+            <span className="relative z-[2] mt-2 text-[11.5px] font-light leading-relaxed tracking-[0.015em] text-white/45">
+              {opt.desc}
+            </span>
+          )}
+
+          {opt.slices && (
+            <span className="relative z-[2] mt-auto w-full pt-3">
+              <span
+                aria-hidden
+                className="mb-2.5 block h-px w-full"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
+                }}
+              />
+              <span className="flex flex-col gap-1.5">
+                {opt.slices.map((s, si) => (
+                  <span key={s.label} className="flex items-center justify-between gap-2.5">
+                    <span
+                      className="text-[9.5px] uppercase tracking-[0.16em]"
+                      style={{ color: si === 0 ? `${hue.glow}` : "rgba(244,246,251,0.35)" }}
+                    >
+                      {s.label}
+                    </span>
+                    <span className="flex flex-1 items-center gap-2">
+                      <span aria-hidden className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
+                        <span
+                          className="block h-full rounded-full"
+                          style={{
+                            width: `${s.pct}%`,
+                            background: si === 0 ? hue.glow : "rgba(255,255,255,0.3)",
+                            boxShadow: si === 0 ? `0 0 10px ${hue.glow}88` : undefined,
+                          }}
+                        />
+                      </span>
+                      <span
+                        className="w-8 text-right font-mono text-[10px] tabular-nums"
+                        style={{ color: si === 0 ? "#f4f6fb" : "rgba(244,246,251,0.4)" }}
+                      >
+                        {s.pct}%
+                      </span>
+                    </span>
+                  </span>
+                ))}
+              </span>
+            </span>
+          )}
+
+          <span
+            className={cn(
+              "absolute bottom-4 right-4 z-[3] flex h-6 w-6 items-center justify-center rounded-full text-[#05070c] transition-all duration-300",
+              isSel ? "scale-100 opacity-100" : "scale-75 opacity-0"
+            )}
+            style={{ background: hue.glow, boxShadow: `0 0 18px ${hue.glow}99` }}
+          >
+            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+          </span>
+        </>
+      ),
+    };
+  });
 
   return (
     <div className="relative flex min-h-[100svh] w-full flex-col items-center justify-center px-5 py-16 md:px-8">
