@@ -1,8 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
 import AgeBandGraphic, { type VizVariant, type Slice } from "@/components/intro/AgeBandGraphic";
+import OptionCoverflow, { type CoverflowItem } from "@/components/intro/OptionCoverflow";
+
+/* Slider Spectra palette — each card owns a hue used for its gradient + halo */
+const HUES = [
+  { c1: "#3f6bab", c2: "#10131f", glow: "#4a86d8" },
+  { c1: "#4ea23a", c2: "#0d2a12", glow: "#5fce46" },
+  { c1: "#6f86a8", c2: "#141a24", glow: "#8aa6cf" },
+  { c1: "#c6924e", c2: "#2c1d10", glow: "#e0ab63" },
+  { c1: "#c8a988", c2: "#14110d", glow: "#e2c39a" },
+  { c1: "#5a7ba8", c2: "#0b0f16", glow: "#6f93c4" },
+  { c1: "#7fae8f", c2: "#141a17", glow: "#9fd0ad" },
+];
 
 type Option = {
   value: string;
