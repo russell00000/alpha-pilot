@@ -472,7 +472,7 @@ const LandingIntro = ({
                   ref={(el) => (wordRefs.current[i] = el)}
                   className={
                     eyebrow
-                      ? "text-[0.85rem] md:text-[1.05rem] font-medium uppercase tracking-[0.46em] text-foreground/55"
+                      ? "text-[0.8rem] md:text-[0.95rem] font-medium uppercase tracking-[0.46em] text-gold/80"
                       : "font-black uppercase tracking-[-0.045em]"
                   }
                   style={{
@@ -481,17 +481,17 @@ const LandingIntro = ({
                     ...(i === 3
                       ? {
                           color: "transparent",
-                          WebkitTextStroke: "1.4px hsl(var(--foreground) / 0.85)",
+                          WebkitTextStroke: "1.2px rgba(226, 194, 122, 0.9)",
                         }
                       : {}),
                     ...(i === 2 || i === 4
                       ? {
                           backgroundImage:
-                            "linear-gradient(180deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.72) 100%)",
+                            "linear-gradient(172deg, #FFFDF7 0%, #F4EEE1 42%, rgba(244,238,225,0.78) 100%)",
                           WebkitBackgroundClip: "text",
                           backgroundClip: "text",
                           color: "transparent",
-                          filter: "drop-shadow(0 6px 26px hsl(var(--foreground) / 0.18))",
+                          filter: "drop-shadow(0 4px 18px rgba(226,194,122,0.14))",
                         }
                       : {}),
                     transform:
@@ -523,7 +523,7 @@ const LandingIntro = ({
             transition: "opacity .8s cubic-bezier(.22,1,.36,1) .1s, transform .8s cubic-bezier(.22,1,.36,1) .1s",
           }}
         >
-          <p className="max-w-lg text-sm md:text-base text-foreground/55 leading-relaxed">
+          <p className="max-w-lg text-sm md:text-base text-foreground/70 leading-relaxed">
             Institutional-grade market intelligence, AI research, and portfolio analytics — built for the way you
             actually invest.
           </p>
