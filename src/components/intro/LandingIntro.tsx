@@ -272,13 +272,19 @@ const LandingIntro = ({
         >
           <defs>
             <linearGradient id="vpsArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f5f5f2" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#f5f5f2" stopOpacity="0" />
+              <stop offset="0%" stopColor="#E2C27A" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#E2C27A" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="vpsFade" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#f5f5f2" stopOpacity="0.05" />
-              <stop offset="45%" stopColor="#f5f5f2" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#f5f5f2" stopOpacity="0.06" />
+              <stop offset="0%" stopColor="#D6D0C4" stopOpacity="0.04" />
+              <stop offset="45%" stopColor="#D6D0C4" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#D6D0C4" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="vpsMetal" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#A77626" />
+              <stop offset="40%" stopColor="#E2C27A" />
+              <stop offset="78%" stopColor="#F0DCB2" />
+              <stop offset="100%" stopColor="#E2C27A" />
             </linearGradient>
           </defs>
 
@@ -294,7 +300,7 @@ const LandingIntro = ({
                   x2={1.2 * stage.w}
                   y1={y}
                   y2={y}
-                  stroke="#f5f5f2"
+                  stroke="#E2C27A"
                   strokeWidth={major ? 0.6 : 0.4}
                   opacity={major ? 0.11 : 0.05}
                 />
@@ -310,7 +316,7 @@ const LandingIntro = ({
                   x2={x}
                   y1={-0.2 * stage.h}
                   y2={1.2 * stage.h}
-                  stroke="#f5f5f2"
+                  stroke="#E2C27A"
                   strokeWidth={major ? 0.6 : 0.4}
                   opacity={major ? 0.09 : 0.04}
                 />
@@ -328,15 +334,15 @@ const LandingIntro = ({
               const wh = (c.wick / 100) * stage.h * 0.5;
               return (
                 <g key={`c${i}`}>
-                  <line x1={x} x2={x} y1={y - wh} y2={y + wh} stroke="#f5f5f2" strokeWidth={0.7} opacity={0.5} />
+                  <line x1={x} x2={x} y1={y - wh} y2={y + wh} stroke="#D6D0C4" strokeWidth={0.7} opacity={0.5} />
                   <rect
                     x={x - w / 2}
                     y={y - bh / 2}
                     width={w}
                     height={bh}
-                    fill={c.up ? "#f5f5f2" : "none"}
+                    fill={c.up ? "#D6D0C4" : "none"}
                     fillOpacity={c.up ? 0.35 : 0}
-                    stroke="#f5f5f2"
+                    stroke="#D6D0C4"
                     strokeOpacity={0.5}
                     strokeWidth={0.7}
                   />
@@ -374,16 +380,16 @@ const LandingIntro = ({
 
           {/* vertices */}
           {px.map(([x, y], i) => (
-            <circle key={`p${i}`} cx={x} cy={y} r={2.2} fill="#f5f5f2" opacity={0.35} />
+            <circle key={`p${i}`} cx={x} cy={y} r={2.2} fill="#F0DCB2" opacity={0.4} />
           ))}
 
           {/* the hero line: wide glow underlay + crisp stroke */}
           <polyline
             points={px.map(([x, y]) => `${x},${y}`).join(" ")}
             fill="none"
-            stroke="#f5f5f2"
+            stroke="#E2C27A"
             strokeWidth="9"
-            strokeOpacity={0.09}
+            strokeOpacity={0.1}
             strokeLinejoin="round"
             strokeLinecap="round"
             style={{ strokeDasharray: total || 1, strokeDashoffset: reduced ? 0 : total || 1 }}
@@ -393,14 +399,14 @@ const LandingIntro = ({
             ref={pathRef}
             points={px.map(([x, y]) => `${x},${y}`).join(" ")}
             fill="none"
-            stroke="#f5f5f2"
-            strokeWidth="2.5"
+            stroke="url(#vpsMetal)"
+            strokeWidth="2.25"
             strokeLinejoin="round"
             strokeLinecap="round"
             style={{
               strokeDasharray: total || 1,
               strokeDashoffset: reduced ? 0 : total || 1,
-              filter: "drop-shadow(0 0 12px rgba(245,245,242,.5))",
+              filter: "drop-shadow(0 0 8px rgba(226,194,122,.45))",
             }}
           />
 
@@ -412,7 +418,7 @@ const LandingIntro = ({
                 x2={1.2 * stage.w}
                 y1={tip.y}
                 y2={tip.y}
-                stroke="#f5f5f2"
+                stroke="#E2C27A"
                 strokeWidth={0.6}
                 strokeDasharray="3 8"
                 opacity={0.16}
@@ -422,17 +428,17 @@ const LandingIntro = ({
                 x2={tip.x}
                 y1={-0.2 * stage.h}
                 y2={1.2 * stage.h}
-                stroke="#f5f5f2"
+                stroke="#E2C27A"
                 strokeWidth={0.6}
                 strokeDasharray="3 8"
                 opacity={0.12}
               />
-              <circle cx={tip.x} cy={tip.y} r={16} fill="#f5f5f2" opacity={0.06} />
+              <circle cx={tip.x} cy={tip.y} r={16} fill="#F0DCB2" opacity={0.07} />
               <g transform={`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`}>
                 <polygon
                   points="12,0 -7,7 -7,-7"
-                  fill="#f5f5f2"
-                  style={{ filter: "drop-shadow(0 0 10px rgba(245,245,242,.7))" }}
+                  fill="#F0DCB2"
+                  style={{ filter: "drop-shadow(0 0 8px rgba(240,220,178,.6))" }}
                 />
               </g>
             </g>
@@ -466,7 +472,7 @@ const LandingIntro = ({
                   ref={(el) => (wordRefs.current[i] = el)}
                   className={
                     eyebrow
-                      ? "text-[0.85rem] md:text-[1.05rem] font-medium uppercase tracking-[0.46em] text-foreground/55"
+                      ? "text-[0.8rem] md:text-[0.95rem] font-medium uppercase tracking-[0.46em] text-gold/80"
                       : "font-black uppercase tracking-[-0.045em]"
                   }
                   style={{
@@ -475,17 +481,17 @@ const LandingIntro = ({
                     ...(i === 3
                       ? {
                           color: "transparent",
-                          WebkitTextStroke: "1.4px hsl(var(--foreground) / 0.85)",
+                          WebkitTextStroke: "1.2px rgba(226, 194, 122, 0.9)",
                         }
                       : {}),
                     ...(i === 2 || i === 4
                       ? {
                           backgroundImage:
-                            "linear-gradient(180deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.72) 100%)",
+                            "linear-gradient(172deg, #FFFDF7 0%, #F4EEE1 42%, rgba(244,238,225,0.78) 100%)",
                           WebkitBackgroundClip: "text",
                           backgroundClip: "text",
                           color: "transparent",
-                          filter: "drop-shadow(0 6px 26px hsl(var(--foreground) / 0.18))",
+                          filter: "drop-shadow(0 4px 18px rgba(226,194,122,0.14))",
                         }
                       : {}),
                     transform:
@@ -517,7 +523,7 @@ const LandingIntro = ({
             transition: "opacity .8s cubic-bezier(.22,1,.36,1) .1s, transform .8s cubic-bezier(.22,1,.36,1) .1s",
           }}
         >
-          <p className="max-w-lg text-sm md:text-base text-foreground/55 leading-relaxed">
+          <p className="max-w-lg text-sm md:text-base text-foreground/70 leading-relaxed">
             Institutional-grade market intelligence, AI research, and portfolio analytics — built for the way you
             actually invest.
           </p>

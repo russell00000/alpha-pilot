@@ -7,6 +7,7 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CapitalComposition from "@/components/graphics/CapitalComposition";
 import cityBg from "@/assets/finance-bg.jpg";
 
 const Index = () => {
@@ -46,8 +47,8 @@ const Index = () => {
           backgroundImage: `url(${cityBg})`,
           backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
           backgroundPosition: 'center -140px',
-          filter: 'grayscale(1) brightness(0.55) contrast(1.05)',
-          opacity: 0.14,
+          filter: 'grayscale(1) brightness(0.5) contrast(1.12) sepia(0.18)',
+          opacity: 0.11,
           imageRendering: 'crisp-edges',
           WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
           maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
@@ -59,53 +60,93 @@ const Index = () => {
       <Header />
       
       <main className="relative">
-        {/* First screen: zoomed-out hero with actions fitting above the fold */}
-        <section className="container px-4 md:px-6 h-[560px] md:h-[620px] flex flex-col justify-center pt-4 pb-4 text-center">
-          <div className="flex flex-col items-center justify-center">
-            <span className="relative text-[10px] uppercase tracking-[0.3em] font-medium text-foreground/70 mb-5 animate-fade-in px-3.5 py-1.5 rounded-full luxe-glass overflow-hidden">
-              <span className="relative z-10 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
+        {/* ——— Hero: asymmetric editorial composition, one visual centerpiece ——— */}
+        <section className="container px-4 md:px-6 pt-10 pb-14 md:pt-16 md:pb-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14">
+            {/* left: type */}
+            <div className="max-w-xl">
+              <span className="eyebrow inline-flex items-center gap-2.5 animate-fade-in">
+                <span className="h-1 w-1 rounded-full bg-gold" />
                 AI · Investing Copilot
               </span>
-            </span>
-            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl max-w-5xl leading-[1.04]">
-              <span className="reveal-clip">
-                <span className="reveal-line" style={{ ["--stagger" as string]: 0 }}>
-                  Welcome to Vantage
-                </span>
-              </span>
-              <span className="reveal-clip">
-                <span className="reveal-line" style={{ ["--stagger" as string]: 1 }}>
-                  Portfolio Solutions
-                </span>
-              </span>
-            </h1>
-            <p className="text-sm md:text-lg text-foreground/55 mt-5 max-w-xl animate-rise-in font-normal leading-relaxed" style={{ ["--stagger" as string]: 2 }}>
-              Your capital, elevated. Real-time intelligence and AI-driven insights for the modern portfolio.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-7 animate-rise-in" style={{ ["--stagger" as string]: 3 }}>
-              <Link to="/portfolio">
-                <button className="pill-primary tap-scale text-sm">
-                  Get Started
-                  <span className="pill-badge">
-                    <ArrowRight className="w-3.5 h-3.5" />
+              <h1 className="mt-6 font-display text-[2.6rem] leading-[1.02] sm:text-5xl md:text-[4.1rem] md:leading-[0.98]">
+                <span className="reveal-clip">
+                  <span className="reveal-line block" style={{ ["--stagger" as string]: 0 }}>
+                    Welcome to
                   </span>
-                </button>
-              </Link>
-              <Link to="/markets">
-                <button className="pill-secondary tap-scale text-sm">All Markets</button>
-              </Link>
+                </span>
+                <span className="reveal-clip">
+                  <span className="reveal-line block font-editorial italic metal-text text-[1.06em]" style={{ ["--stagger" as string]: 1 }}>
+                    Vantage
+                  </span>
+                </span>
+                <span className="reveal-clip">
+                  <span className="reveal-line block" style={{ ["--stagger" as string]: 2 }}>
+                    Portfolio Solutions
+                  </span>
+                </span>
+              </h1>
+              <div className="rule-gold mt-7 w-40 animate-fade-in" style={{ ["--stagger" as string]: 3 }} />
+              <p
+                className="mt-6 max-w-md text-[15px] font-normal leading-relaxed text-foreground/65 animate-rise-in md:text-base"
+                style={{ ["--stagger" as string]: 3 }}
+              >
+                Your capital, elevated. Real-time intelligence and AI-driven insight,
+                composed for the modern portfolio.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-3 animate-rise-in" style={{ ["--stagger" as string]: 4 }}>
+                <Link to="/portfolio">
+                  <button className="pill-primary tap-scale text-sm">
+                    Get Started
+                    <span className="pill-badge">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </button>
+                </Link>
+                <Link to="/markets">
+                  <button className="pill-secondary tap-scale text-sm">All Markets</button>
+                </Link>
+              </div>
+            </div>
+
+            {/* right: the centerpiece visualization */}
+            <div className="relative animate-fade-in" style={{ ["--stagger" as string]: 2 }}>
+              <div className="relative overflow-hidden rounded-[22px] luxe-glass px-5 pb-4 pt-5 md:px-7 md:pb-6 md:pt-6">
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <p className="eyebrow">Model Allocation · Composite</p>
+                    <p className="mt-2 font-display text-base text-foreground/90">Capital Trajectory</p>
+                  </div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-foreground/45">
+                    10Y · Indexed
+                  </p>
+                </div>
+                <CapitalComposition className="mt-1" />
+                <div className="mt-1 grid grid-cols-3 gap-4 border-t border-border/60 pt-4">
+                  {[
+                    { k: "Equity", v: "62%" },
+                    { k: "Fixed income", v: "24%" },
+                    { k: "Alts & cash", v: "14%" },
+                  ].map((s) => (
+                    <div key={s.k}>
+                      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/45">{s.k}</p>
+                      <p className="mt-1 font-mono text-sm text-gold-light">{s.v}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="mt-6 md:mt-8">
+
+          <div className="mt-14 md:mt-20">
             <QuickActions />
           </div>
         </section>
 
         {/* Market Overview + AI Chat (resizable split on lg+) */}
-        <section ref={rowRef} className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-12">
+        <section ref={rowRef} className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-20 md:mb-28">
           <div
-            className="animate-fade-in rounded-3xl luxe-glass p-6 w-full lg:w-auto lg:flex-1 min-w-0"
+            className="animate-fade-in rounded-[22px] luxe-glass p-6 w-full lg:w-auto lg:flex-1 min-w-0"
             style={{ animationDelay: "100ms" }}
           >
             <MarketOverview />
@@ -122,7 +163,7 @@ const Index = () => {
             aria-orientation="vertical"
             aria-label="Resize panels"
           >
-            <div className="h-20 w-1 rounded-full bg-foreground/10 group-hover/handle:bg-foreground/30 transition-colors" />
+            <div className="h-20 w-px rounded-full bg-foreground/12 transition-colors group-hover/handle:bg-gold/60" />
           </div>
 
           <div
@@ -134,15 +175,15 @@ const Index = () => {
         </section>
 
         {/* News - full width */}
-        <section className="container px-4 md:px-6 mb-12 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <div className="rounded-3xl luxe-glass p-6">
+        <section className="container px-4 md:px-6 mb-20 animate-fade-in md:mb-28" style={{ animationDelay: "200ms" }}>
+          <div className="rounded-[22px] luxe-glass p-6 md:p-8">
             <TrendingNews />
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="relative border-t border-border/20 mt-12 bg-background/80">
+      <footer className="relative mt-8 border-t border-border/50 bg-background/80">
         <div className="container px-4 md:px-6 py-5">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">

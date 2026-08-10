@@ -33,17 +33,17 @@ const QuickActions = () => {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 animate-stagger">
+    <div className="flex flex-wrap items-center justify-center gap-2.5 animate-stagger">
       {actions.map((action) => (
         <button
           key={action.label}
           onClick={() => handleAction(action)}
-          className="luxe-sheen flex items-center gap-2.5 pl-2 pr-5 py-2 rounded-full luxe-glass hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.6)] active:scale-[0.97] transition-all duration-500 ease-out whitespace-nowrap group"
+          className="group flex items-center gap-2.5 whitespace-nowrap rounded-full border border-border/80 bg-card/60 py-1.5 pl-1.5 pr-4 transition-[transform,border-color,background] duration-300 ease-out hover:-translate-y-0.5 hover:border-gold/30 hover:bg-card/90 active:scale-[0.98]"
         >
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-foreground/[0.08] group-hover:bg-foreground/[0.16] shadow-[inset_0_1px_0_hsl(0_0%_100%_/_0.6)] transition-colors duration-300">
-            <action.icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors duration-200" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gold/15 bg-gold/[0.07] transition-colors duration-300 group-hover:border-gold/35 group-hover:bg-gold/[0.14]">
+            <action.icon className="h-3.5 w-3.5 text-gold/80 transition-colors duration-200 group-hover:text-gold-light" strokeWidth={1.75} />
           </span>
-          <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+          <span className="text-[13px] font-medium tracking-[0.01em] text-foreground/80 transition-colors duration-200 group-hover:text-foreground">
             {action.label}
           </span>
         </button>

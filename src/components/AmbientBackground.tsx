@@ -24,8 +24,9 @@ type Node = {
   r: number;
 };
 
-const GOLD = "#F5F5F2";
-const TEAL = "#BFBFBA";
+/** gold 60% / graphite-silver 40% node network */
+const GOLD = "#E2C27A";
+const TEAL = "#B7B1A5";
 const CYCLE_MS = 14000; // 12–16s
 
 const grainDataUri =
