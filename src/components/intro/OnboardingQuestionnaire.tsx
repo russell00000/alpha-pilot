@@ -3,6 +3,7 @@ import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { AssessmentData } from "@/components/InvestmentAssessment";
 import { cn } from "@/lib/utils";
 import TrajectoryGraphic, { type VizVariant, type Slice } from "@/components/intro/TrajectoryGraphic";
+import StrategyEmblem, { type EmblemKind } from "@/components/graphics/StrategyEmblem";
 import OptionCoverflow, { type CoverflowItem } from "@/components/intro/OptionCoverflow";
 
 /* Restrained champagne-gold palette — metallic, controlled, never hazy orange */
@@ -22,6 +23,7 @@ type Option = {
   desc?: string;
   /** age bands only — miniature portfolio dashboard preview */
   viz?: VizVariant;
+  emblem?: EmblemKind;
   slices?: Slice[];
   tag?: string;
 };
@@ -85,6 +87,7 @@ const AGE: Option[] = [
     tag: "Aggressive Growth",
     desc: "Maximum runway — equity-weighted for compounding.",
     viz: "growth",
+    emblem: "orbital",
     slices: [
       { label: "Stocks", pct: 70 },
       { label: "ETFs", pct: 25 },
@@ -97,6 +100,7 @@ const AGE: Option[] = [
     tag: "Balanced Growth",
     desc: "Growth-led with the first sleeve of bond ballast.",
     viz: "donut",
+    emblem: "lattice",
     slices: [
       { label: "Stocks", pct: 65 },
       { label: "ETFs", pct: 25 },
@@ -110,6 +114,7 @@ const AGE: Option[] = [
     tag: "Diversification",
     desc: "Broader sector spread, growth moderated.",
     viz: "bars",
+    emblem: "spectrum",
     slices: [
       { label: "Stocks", pct: 50 },
       { label: "ETFs", pct: 30 },
@@ -123,6 +128,7 @@ const AGE: Option[] = [
     tag: "Transition Phase",
     desc: "Income allocation rising as equity weight steps down.",
     viz: "area",
+    emblem: "envelope",
     slices: [
       { label: "Stocks", pct: 40 },
       { label: "ETFs", pct: 30 },
@@ -136,6 +142,7 @@ const AGE: Option[] = [
     tag: "Preservation",
     desc: "Low-volatility core with a larger fixed-income segment.",
     viz: "stable",
+    emblem: "stability",
     slices: [
       { label: "ETFs", pct: 45 },
       { label: "Bonds", pct: 25 },
@@ -149,6 +156,7 @@ const AGE: Option[] = [
     tag: "Retirement Income",
     desc: "Bond-led stability with a modest equity sleeve.",
     viz: "shield",
+    emblem: "vault",
     slices: [
       { label: "Bonds", pct: 60 },
       { label: "Stocks", pct: 15 },
@@ -281,23 +289,25 @@ const OnboardingQuestionnaire = ({ onComplete }: { onComplete: (data: Assessment
                 {String(i + 1).padStart(2, "0")}
               </span>
               {opt.tag && (
-                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/60">{opt.tag}</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/65">{opt.tag}</span>
               )}
             </span>
+            {/* strategy emblem — one refined metallic mark, upper half */}
+            {opt.emblem && <StrategyEmblem kind={opt.emblem} className="h-11 w-11 shrink-0 opacity-95" />}
           </span>
 
-          <span className="relative z-[2] mt-3 text-[15px] font-medium uppercase leading-tight tracking-[0.06em] text-[#F7F8FA]">
+          <span className="relative z-[2] mt-3 text-[15px] font-medium uppercase leading-tight tracking-[0.06em] text-[#FBF9F4]">
             {opt.label}
           </span>
           {opt.desc && (
-            <span className="relative z-[2] mt-1.5 text-[11.5px] font-normal leading-snug tracking-[0.01em] text-white/70">
+            <span className="relative z-[2] mt-1.5 text-[11.5px] font-normal leading-snug tracking-[0.01em] text-white/75">
               {opt.desc}
             </span>
           )}
 
           {/* portfolio trajectory — the card's main visual, middle ~42% */}
           {opt.viz && (
-            <span className="relative z-[2] mt-3 block h-[42%] w-full">
+            <span className="relative z-[2] mt-3 block h-[36%] w-full">
               <TrajectoryGraphic variant={opt.viz} />
             </span>
           )}

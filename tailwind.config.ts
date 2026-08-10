@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        editorial: ['Instrument Serif', 'Space Grotesk', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
@@ -47,9 +48,16 @@ export default {
         gold: {
           DEFAULT: "hsl(var(--gold))",
           foreground: "hsl(var(--gold-foreground))",
+          light: "hsl(var(--gold-light))",
+          mid: "hsl(var(--gold-mid))",
+          deep: "hsl(var(--gold-deep))",
+          shadow: "hsl(var(--gold-shadow))",
         },
         teal: {
           DEFAULT: "hsl(var(--teal))",
+        },
+        graphite: {
+          DEFAULT: "hsl(var(--graphite))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
