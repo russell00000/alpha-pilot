@@ -84,8 +84,8 @@ const CapitalComposition = ({ className = "" }: { className?: string }) => {
     >
       <defs>
         <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={GOLD_LIGHT} stopOpacity="0.18" />
-          <stop offset="60%" stopColor={GOLD} stopOpacity="0.05" />
+          <stop offset="0%" stopColor={GOLD_LIGHT} stopOpacity="0.1" />
+          <stop offset="55%" stopColor={GOLD} stopOpacity="0.035" />
           <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
         </linearGradient>
         <linearGradient id={stroke} x1="0" y1="0" x2="1" y2="0">
