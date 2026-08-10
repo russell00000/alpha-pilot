@@ -20,8 +20,8 @@
     --popover: 240 5% 10%;
     --popover-foreground: 60 14% 98%;
 
-    /* Primary surface accent stays near-white; gold is the metallic signal colour */
-    --primary: 42 47% 87%;            /* #EFE0C4 warm near-white */
+    /* Primary IS the metallic champagne — one accent across the whole product */
+    --primary: 40 60% 68%;            /* #E2C27A */
     --primary-foreground: 240 6% 7%;
 
     --secondary: 240 5% 13%;
