@@ -564,7 +564,7 @@ const Markets = () => {
 
       <Header />
       
-      <main className="container mx-auto px-4 py-8 relative">
+      <main data-scene="analytics" className="container mx-auto px-4 py-8 relative">
         {/* Hero Search Section */}
         <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 mb-8 text-center overflow-visible relative z-20">
           <div className="flex items-center justify-center gap-3 mb-4">

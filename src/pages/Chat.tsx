@@ -490,7 +490,7 @@ const Chat = () => {
 
       <Header />
       
-      <main className="flex-1 container mx-auto px-4 py-6 flex gap-4 max-w-6xl relative">
+      <main data-scene="insights" className="flex-1 container mx-auto px-4 py-6 flex gap-4 max-w-6xl relative">
         {/* Thread sidebar */}
         <aside className="hidden md:flex w-64 flex-col rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-3 max-h-[calc(100vh-120px)]">
           <Button
