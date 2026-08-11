@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import PageTransition from "./components/PageTransition";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AmbientBackground from "./components/AmbientBackground";
+import MotionLayer from "./components/motion/MotionLayer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ const App = () => (
       <BrowserRouter>
         <ErrorBoundary>
         <AmbientBackground />
+        <MotionLayer />
         <PageTransition>
         <Routes>
           <Route path="/" element={<ErrorBoundary><Root /></ErrorBoundary>} />

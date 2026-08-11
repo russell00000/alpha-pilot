@@ -6,12 +6,27 @@ import { useCallback, useEffect, useRef } from "react";
  * spin; autoplay pauses on hover, drag, hidden tab, and once a card is picked.
  */
 
-const GEO = { gap: 164, rotate: 38, depth: 150, drop: 24, shrink: 0.14, fade: 0.26, dim: 0.2, visible: 3 };
+/**
+ * Wider gap, gentler rotation and far deeper Z separation so side cards recede
+ * instead of intersecting the centre card. `spread` pushes cards further out as
+ * they rotate, guaranteeing their physical edges never cross.
+ */
+const GEO = {
+  gap: 248,
+  rotate: 25,
+  depth: 240,
+  drop: 20,
+  spread: 34,
+  shrink: 0.12,
+  fade: 0.3,
+  dim: 0.22,
+  visible: 3,
+};
 const CARD_W = 260;
 const CARD_H = 330;
 const PERSP = 1680;
 const AUTOPLAY_MS = 3200;
-const EASE = 0.14;
+const EASE = 0.085;
 const SENSITIVITY = 0.0072;
 
 export type CoverflowItem = {
@@ -67,7 +82,7 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
 
   const paint = useCallback(() => {
     const s = state.current;
-    const { gap, rotate, depth, drop, shrink, fade, dim, visible } = GEO;
+    const { gap, rotate, depth, drop, spread, shrink, fade, dim, visible } = GEO;
     const n = metaRef.current.N;
     for (let i = 0; i < n; i++) {
       const el = cardRefs.current[i];
@@ -77,16 +92,22 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
       if (ao > visible + 0.5) {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
+        el.removeAttribute("data-centre");
         continue;
       }
-      const sc = Math.max(0.4, 1 - ao * shrink);
+      const centred = ao < 0.42;
+      const sc = centred ? 1.05 - ao * 0.12 : Math.max(0.4, 1 - ao * shrink);
+      const outward = Math.sign(o) * ao * ao * spread;
+      const z = centred ? 46 * (1 - ao / 0.42) : -ao * depth * s.scale;
       el.style.transform =
-        `translateX(${o * gap * s.scale}px) translateY(${ao * drop * s.scale}px) ` +
-        `translateZ(${-ao * depth * s.scale}px) rotateY(${-o * rotate}deg) scale(${sc})`;
+        `translateX(${(o * gap + outward) * s.scale}px) translateY(${ao * drop * s.scale}px) ` +
+        `translateZ(${z.toFixed(1)}px) rotateY(${-o * rotate}deg) scale(${sc.toFixed(3)})`;
       el.style.opacity = String(Math.max(0, 1 - ao * fade));
-      el.style.filter = `brightness(${Math.max(0.3, 1 - ao * dim)}) saturate(${1 + (1 - Math.min(1, ao)) * 0.25})`;
+      el.style.filter = `brightness(${(centred ? 1.1 : Math.max(0.3, 1 - ao * dim)).toFixed(3)}) saturate(${1 + (1 - Math.min(1, ao)) * 0.25})`;
       el.style.zIndex = String(Math.round(100 - ao * 10));
       el.style.pointerEvents = "auto";
+      if (centred) el.setAttribute("data-centre", "true");
+      else el.removeAttribute("data-centre");
     }
     const active = ((Math.round(s.pos) % n) + n) % n;
     const glow = metaRef.current.glows[active];
@@ -94,7 +115,7 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
   }, [wrap]);
 
   const layout = useCallback(() => {
-    const f = Math.max(0.56, Math.min(1, window.innerWidth / 1180));
+    const f = Math.max(0.52, Math.min(1, window.innerWidth / 1320));
     const el = sectionRef.current;
     if (!el) return;
     el.style.setProperty("--card-w", Math.round(CARD_W * f) + "px");
@@ -191,7 +212,8 @@ const OptionCoverflow = ({ items, resetKey, start = 0, autoplay = true, onSelect
     if (!s.dragging) return;
     s.dragging = false;
     stageRef.current?.classList.remove("-drag");
-    s.target = Math.round(s.pos + s.vel * 8);
+    /* weighted momentum — the deck carries further and settles softly */
+    s.target = Math.round(s.pos + s.vel * 14);
     s.vel = 0;
     syncRef.current();
   };

@@ -67,7 +67,7 @@ const PortfolioAnalysis = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container px-4 md:px-6 py-8 space-y-6">
+      <main data-scene="analytics" className="container px-4 md:px-6 py-8 space-y-6">
         <div className="animate-fade-in">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>

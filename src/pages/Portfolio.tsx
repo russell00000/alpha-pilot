@@ -193,7 +193,7 @@ const Portfolio = () => {
         <div className="fixed inset-0 pointer-events-none opacity-[0.16]" style={{ filter: "brightness(1.2) saturate(0.3) contrast(0.9)", backgroundImage: `url(${financeBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
         <div className="fixed inset-0 pointer-events-none bg-background/90" />
         <Header />
-        <main className="container mx-auto px-4 py-8 relative">
+        <main data-scene="portfolio" className="container mx-auto px-4 py-8 relative">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-pulse text-muted-foreground">Loading...</div>
           </div>
@@ -210,7 +210,7 @@ const Portfolio = () => {
 
       <Header />
       
-      <main className="container mx-auto px-4 py-8 relative">
+      <main data-scene="portfolio" className="container mx-auto px-4 py-8 relative">
         {/* Show loading state while data is being fetched */}
         {loadingData ? (
           <div className="flex items-center justify-center min-h-[60vh]">

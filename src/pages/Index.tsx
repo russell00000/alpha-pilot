@@ -8,6 +8,8 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CapitalComposition from "@/components/graphics/CapitalComposition";
+import Reveal from "@/components/motion/Reveal";
+import Dimensional from "@/components/motion/Dimensional";
 import cityBg from "@/assets/finance-bg.jpg";
 
 const Index = () => {
@@ -61,7 +63,7 @@ const Index = () => {
       
       <main className="relative">
         {/* ——— Hero: asymmetric editorial composition, one visual centerpiece ——— */}
-        <section className="container px-4 md:px-6 pt-10 pb-14 md:pt-16 md:pb-20">
+        <section data-scene="hero" className="container px-4 md:px-6 pt-10 pb-14 md:pt-16 md:pb-20">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14">
             {/* left: type */}
             <div className="max-w-xl">
@@ -109,8 +111,8 @@ const Index = () => {
               </div>
             </div>
 
-            {/* right: the centerpiece visualization */}
-            <div className="relative animate-fade-in" style={{ ["--stagger" as string]: 2 }}>
+            {/* right: the dimensional centerpiece */}
+            <Dimensional className="relative animate-fade-in" tilt={3} shift={10} cycle={30}>
               <div className="relative overflow-hidden rounded-[22px] luxe-glass px-5 pb-4 pt-5 md:px-7 md:pb-6 md:pt-6">
                 <div className="flex items-start justify-between gap-6">
                   <div>
@@ -135,22 +137,26 @@ const Index = () => {
                   ))}
                 </div>
               </div>
-            </div>
+            </Dimensional>
           </div>
 
-          <div className="mt-14 md:mt-20">
+          <Reveal variant="stagger" className="mt-14 md:mt-20">
             <QuickActions />
-          </div>
+          </Reveal>
         </section>
 
         {/* Market Overview + AI Chat (resizable split on lg+) */}
-        <section ref={rowRef} className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-20 md:mb-28">
-          <div
-            className="animate-fade-in rounded-[22px] luxe-glass p-6 w-full lg:w-auto lg:flex-1 min-w-0"
-            style={{ animationDelay: "100ms" }}
+        <section
+          ref={rowRef}
+          data-scene="analytics"
+          className="container px-4 md:px-6 flex flex-col lg:flex-row gap-6 mb-20 md:mb-28"
+        >
+          <Reveal
+            variant="depth"
+            className="rounded-[22px] luxe-glass p-6 w-full lg:w-auto lg:flex-1 min-w-0"
           >
             <MarketOverview />
-          </div>
+          </Reveal>
 
           {/* Drag handle — visible on lg+ */}
           <div
@@ -166,19 +172,21 @@ const Index = () => {
             <div className="h-20 w-px rounded-full bg-foreground/12 transition-colors group-hover/handle:bg-gold/60" />
           </div>
 
-          <div
-            className="animate-fade-in w-full lg:w-auto min-w-0"
-            style={{ animationDelay: "150ms", flexBasis: `${chatPct}%`, flexGrow: 0, flexShrink: 0 }}
+          <Reveal
+            variant="depth"
+            delay={120}
+            className="w-full lg:w-auto min-w-0"
+            style={{ flexBasis: `${chatPct}%`, flexGrow: 0, flexShrink: 0 }}
           >
             <AIChat onResetSize={() => setChatPct(40)} />
-          </div>
+          </Reveal>
         </section>
 
         {/* News - full width */}
-        <section className="container px-4 md:px-6 mb-20 animate-fade-in md:mb-28" style={{ animationDelay: "200ms" }}>
-          <div className="rounded-[22px] luxe-glass p-6 md:p-8">
+        <section data-scene="insights" className="container px-4 md:px-6 mb-20 md:mb-28">
+          <Reveal variant="drift-x" className="rounded-[22px] luxe-glass p-6 md:p-8">
             <TrendingNews />
-          </div>
+          </Reveal>
         </section>
       </main>
 

@@ -1,4 +1,5 @@
 import { useId } from "react";
+import useInView from "@/hooks/useInView";
 
 /**
  * Capital Composition — the homepage centerpiece. One architectural financial
@@ -46,6 +47,7 @@ const RING = [
 
 const CapitalComposition = ({ className = "" }: { className?: string }) => {
   const uid = useId().replace(/[:]/g, "");
+  const { ref, inView } = useInView<SVGSVGElement>({ threshold: 0.25 });
   const fill = `cc-fill-${uid}`;
   const stroke = `cc-stroke-${uid}`;
   const key = `cc-key-${uid}`;
@@ -77,8 +79,10 @@ const CapitalComposition = ({ className = "" }: { className?: string }) => {
 
   return (
     <svg
+      ref={ref}
       viewBox={`0 0 ${W} ${H}`}
-      className={`block w-full ${className}`}
+      className={`chart-draw block w-full ${className}`}
+      data-visible={inView || undefined}
       shapeRendering="geometricPrecision"
       aria-hidden="true"
     >
@@ -119,15 +123,24 @@ const CapitalComposition = ({ className = "" }: { className?: string }) => {
       </g>
 
       {/* risk envelope */}
-      <path d={band} fill={GOLD} fillOpacity="0.035" />
-      <path d={up.d} fill="none" stroke={GOLD} strokeOpacity="0.16" strokeWidth="0.8" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
-      <path d={lo.d} fill="none" stroke={GOLD} strokeOpacity="0.13" strokeWidth="0.8" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
+      <path d={band} fill={GOLD} fillOpacity="0.035" data-fadein />
+      <path d={up.d} fill="none" stroke={GOLD} strokeOpacity="0.16" strokeWidth="0.8" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" data-fadein />
+      <path d={lo.d} fill="none" stroke={GOLD} strokeOpacity="0.13" strokeWidth="0.8" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" data-fadein />
 
       {/* benchmark comparison */}
-      <path d={bench.d} fill="none" stroke="#D8D2C6" strokeOpacity="0.16" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      <path
+        d={bench.d}
+        fill="none"
+        stroke="#D8D2C6"
+        strokeOpacity="0.16"
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+        data-draw
+        style={{ ["--dash" as string]: 1500, ["--d" as string]: "180ms" }}
+      />
 
       {/* primary trajectory */}
-      <path d={`${main.d} L${end.x.toFixed(2)},${yBot} L${x0},${yBot} Z`} fill={`url(#${fill})`} className="animate-fill-in" />
+      <path d={`${main.d} L${end.x.toFixed(2)},${yBot} L${x0},${yBot} Z`} fill={`url(#${fill})`} data-fadein />
       <path
         d={main.d}
         fill="none"
@@ -136,11 +149,13 @@ const CapitalComposition = ({ className = "" }: { className?: string }) => {
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
-        className="animate-draw-line"
-        style={{ ["--dash-len" as string]: 1400 }}
+        data-draw
+        style={{ ["--dash" as string]: 1600 }}
       />
-      <circle cx={end.x} cy={end.y} r="4.4" fill={GOLD_LIGHT} fillOpacity="0.16" />
-      <circle cx={end.x} cy={end.y} r="2.3" fill={GOLD_LIGHT} />
+      <g data-marker>
+        <circle cx={end.x} cy={end.y} r="4.4" fill={GOLD_LIGHT} fillOpacity="0.16" />
+        <circle cx={end.x} cy={end.y} r="2.3" fill={GOLD_LIGHT} />
+      </g>
 
       {/* dimensional allocation ring, lower left — the second focal layer */}
       <g>
@@ -153,6 +168,8 @@ const CapitalComposition = ({ className = "" }: { className?: string }) => {
           return (
             <circle
               key={i}
+              data-seg
+              style={{ ["--i" as string]: i }}
               cx={cx}
               cy={cy}
               r={r}
