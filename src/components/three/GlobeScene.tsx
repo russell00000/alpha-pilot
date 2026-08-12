@@ -97,15 +97,17 @@ function Globe({ reduced }: { reduced: boolean }) {
     return geo;
   }, [points]);
 
-  const rings = useMemo(
-    () => [ringGeometry(Math.PI / 2), ringGeometry(Math.PI / 3.5, 0.3), ringGeometry(-Math.PI / 4.2, -0.25)],
-    []
-  );
+  const rings = useMemo(() => {
+    const mat = new THREE.LineBasicMaterial({ color: GOLD, transparent: true, opacity: 0.16, depthWrite: false });
+    return [ringGeometry(Math.PI / 2), ringGeometry(Math.PI / 3.5, 0.3), ringGeometry(-Math.PI / 4.2, -0.25)].map(
+      (geo) => new THREE.Line(geo, mat)
+    );
+  }, []);
 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
-    const t = state.clock.getElapsedMillis?.() ?? state.clock.elapsedTime * 1000;
+    const t = state.clock.elapsedTime * 1000;
 
     if (!reduced) {
       g.rotation.y += 0.00026 * delta * 1000;
@@ -172,10 +174,8 @@ function Globe({ reduced }: { reduced: boolean }) {
         <lineBasicMaterial color={GOLD} transparent opacity={0.15} depthWrite={false} />
       </lineSegments>
 
-      {rings.map((geo, i) => (
-        <line key={i} geometry={geo as any}>
-          <lineBasicMaterial color={GOLD} transparent opacity={0.16} depthWrite={false} />
-        </line>
+      {rings.map((ring, i) => (
+        <primitive key={i} object={ring} />
       ))}
     </group>
   );
