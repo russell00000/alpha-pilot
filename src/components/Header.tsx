@@ -73,16 +73,12 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur-[10px]">
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/50 backdrop-blur-[24px]">
       <div className="container relative flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo - left */}
         <Link to="/?intro=1" className="flex items-center gap-2.5 group" aria-label="Replay Vantage intro">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden">
-            <span aria-hidden className="luxe-conic-ring absolute -inset-1 opacity-70 blur-[2px] rounded-lg" />
-            <span aria-hidden className="absolute inset-[1.5px] rounded-[7px] bg-background" />
-            <TrendingUp className="relative w-4 h-4 text-foreground" />
-          </div>
-          <span className="hidden sm:block text-base font-semibold tracking-tight luxe-shimmer-text">Vantage</span>
+          <span aria-hidden className="text-gold text-sm leading-none">◆</span>
+          <span className="hidden sm:block font-display text-lg font-medium tracking-tight text-gold">Vantage</span>
         </Link>
 
         {/* Desktop Nav - absolutely centered */}
@@ -91,11 +87,11 @@ const Header = () => {
             ref={navRef}
             className="relative flex items-center bg-secondary/40 rounded-full p-1 border border-border/20"
           >
-            {/* Sliding active pill */}
+            {/* Sliding gold accent line under the active item */}
             <span
               aria-hidden
               className={cn(
-                "absolute top-1 bottom-1 rounded-full border border-gold/25 bg-gold/[0.09] shadow-[inset_0_1px_0_rgba(240,220,178,0.12)]",
+                "absolute bottom-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent",
                 "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform",
                 pill.visible ? "opacity-100" : "opacity-0"
               )}
@@ -117,10 +113,10 @@ const Header = () => {
                 >
                   <button
                     className={cn(
-                      "relative px-5 py-1.5 text-sm font-medium rounded-full transition-colors duration-200 ease-out",
+                      "relative px-5 py-1.5 font-mono text-[0.62rem] uppercase tracking-[0.16em] rounded-full transition-colors duration-200 ease-out",
                       isActive
-                        ? "text-gold-light"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-gold"
+                        : "text-muted-foreground hover:text-gold"
                     )}
                   >
                     <span className="relative z-10">{item.label}</span>
