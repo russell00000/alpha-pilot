@@ -5,8 +5,6 @@ import MarketOverview from "@/components/MarketOverview";
 import AIChat from "@/components/AIChat";
 import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Reveal from "@/components/motion/Reveal";
 import LandingHero from "@/components/LandingHero";
 import TickerBar from "@/components/TickerBar";
