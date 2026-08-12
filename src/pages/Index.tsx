@@ -7,10 +7,9 @@ import TrendingNews from "@/components/TrendingNews";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import CapitalComposition from "@/components/graphics/CapitalComposition";
 import Reveal from "@/components/motion/Reveal";
-import Dimensional from "@/components/motion/Dimensional";
-import cityBg from "@/assets/finance-bg.jpg";
+import LandingHero from "@/components/LandingHero";
+import TickerBar from "@/components/TickerBar";
 
 const Index = () => {
   // Chat panel width as % of the row (lg+ only). Min 28, Max 60.
@@ -42,105 +41,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* City skyline background — a whisper of Manhattan behind the charcoal */}
-      <div
-        className="fixed inset-0 pointer-events-none bg-no-repeat"
-        style={{
-          backgroundImage: `url(${cityBg})`,
-          backgroundSize: '110vw clamp(820px, calc(100svh + 140px), 1900px)',
-          backgroundPosition: 'center -140px',
-          filter: 'grayscale(1) brightness(0.5) contrast(1.12) sepia(0.18)',
-          opacity: 0.11,
-          imageRendering: 'crisp-edges',
-          WebkitMaskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, hsl(0 0% 0% / 0.9) 0%, hsl(0 0% 0% / 0.9) 78%, hsl(0 0% 0% / 0.5) 92%, hsl(0 0% 0% / 0) 100%)',
-        }}
-      />
-      {/* Overlay: fades the skyline softly into the background */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-background/50 via-background/70 to-background/95" />
-
       <Header />
+      <TickerBar />
       
       <main className="relative">
-        {/* ——— Hero: asymmetric editorial composition, one visual centerpiece ——— */}
-        <section data-scene="hero" className="container px-4 md:px-6 pt-10 pb-14 md:pt-16 md:pb-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14">
-            {/* left: type */}
-            <div className="max-w-xl">
-              <span className="eyebrow inline-flex items-center gap-2.5 animate-fade-in">
-                <span className="h-1 w-1 rounded-full bg-gold" />
-                AI · Investing Copilot
-              </span>
-              <h1 className="mt-6 font-display text-[2.6rem] leading-[1.02] sm:text-5xl md:text-[4.1rem] md:leading-[0.98]">
-                <span className="reveal-clip">
-                  <span className="reveal-line block" style={{ ["--stagger" as string]: 0 }}>
-                    Welcome to
-                  </span>
-                </span>
-                <span className="reveal-clip">
-                  <span className="reveal-line block font-editorial italic metal-text text-[1.06em]" style={{ ["--stagger" as string]: 1 }}>
-                    Vantage
-                  </span>
-                </span>
-                <span className="reveal-clip">
-                  <span className="reveal-line block" style={{ ["--stagger" as string]: 2 }}>
-                    Portfolio Solutions
-                  </span>
-                </span>
-              </h1>
-              <div className="rule-gold mt-7 w-40 animate-fade-in" style={{ ["--stagger" as string]: 3 }} />
-              <p
-                className="mt-6 max-w-md text-[15px] font-normal leading-relaxed text-foreground/65 animate-rise-in md:text-base"
-                style={{ ["--stagger" as string]: 3 }}
-              >
-                Your capital, elevated. Real-time intelligence and AI-driven insight,
-                composed for the modern portfolio.
-              </p>
-              <div className="mt-9 flex flex-wrap items-center gap-3 animate-rise-in" style={{ ["--stagger" as string]: 4 }}>
-                <Link to="/portfolio">
-                  <button className="pill-primary tap-scale text-sm">
-                    Get Started
-                    <span className="pill-badge">
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
-                  </button>
-                </Link>
-                <Link to="/markets">
-                  <button className="pill-secondary tap-scale text-sm">All Markets</button>
-                </Link>
-              </div>
-            </div>
+        <LandingHero />
 
-            {/* right: the dimensional centerpiece */}
-            <Dimensional className="relative animate-fade-in" tilt={3} shift={10} cycle={30}>
-              <div className="relative overflow-hidden rounded-[22px] luxe-glass px-5 pb-4 pt-5 md:px-7 md:pb-6 md:pt-6">
-                <div className="flex items-start justify-between gap-6">
-                  <div>
-                    <p className="eyebrow">Model Allocation · Composite</p>
-                    <p className="mt-2 font-display text-base text-foreground/90">Capital Trajectory</p>
-                  </div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-foreground/45">
-                    10Y · Indexed
-                  </p>
-                </div>
-                <CapitalComposition className="mt-1" />
-                <div className="mt-1 grid grid-cols-3 gap-4 border-t border-border/60 pt-4">
-                  {[
-                    { k: "Equity", v: "62%" },
-                    { k: "Fixed income", v: "24%" },
-                    { k: "Alts & cash", v: "14%" },
-                  ].map((s) => (
-                    <div key={s.k}>
-                      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/45">{s.k}</p>
-                      <p className="mt-1 font-mono text-sm text-gold-light">{s.v}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Dimensional>
-          </div>
-
-          <Reveal variant="stagger" className="mt-14 md:mt-20">
+        <section className="container px-4 md:px-6 pb-14 md:pb-20">
+          <Reveal variant="stagger">
             <QuickActions />
           </Reveal>
         </section>
