@@ -80,8 +80,8 @@ const MarketOverview = () => {
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Top Movers</h2>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium mt-1.5">
+          <h2 className="font-display text-[2.2rem] font-medium leading-none text-foreground tracking-tight">Top Movers</h2>
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em] mt-2">
             {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Institutional data stream"}
           </p>
         </div>
