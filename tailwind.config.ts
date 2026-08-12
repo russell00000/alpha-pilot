@@ -15,8 +15,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
-        editorial: ['Instrument Serif', 'Space Grotesk', 'Georgia', 'serif'],
+        display: ['Cormorant Garamond', 'Instrument Serif', 'Georgia', 'serif'],
+        editorial: ['Cormorant Garamond', 'Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {

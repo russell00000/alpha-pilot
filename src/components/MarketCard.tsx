@@ -1,6 +1,7 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SparklineChart from "./SparklineChart";
+import { motion } from "framer-motion";
 import AnimatedNumber from "./AnimatedNumber";
 
 interface MarketCardProps {
@@ -19,15 +20,19 @@ const MarketCard = ({ symbol, name, price, change, changePercent, sparkline, ind
   const priceNum = Number(String(price).replace(/,/g, ""));
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ type: "spring", stiffness: 60, damping: 20, delay: index * 0.08 }}
       style={{ ["--stagger" as any]: index }}
-      className="luxe-sheen tap-scale animate-card-in group relative cursor-pointer p-5 rounded-2xl luxe-glass hover:-translate-y-1 hover:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 ease-out"
+      className="luxe-sheen tap-scale group relative cursor-pointer p-5 rounded-2xl luxe-glass hover:-translate-y-1 hover:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 ease-out"
     >
       <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,0%),hsl(0_0%_100%/0.08),transparent_55%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
       <div className="relative flex items-start justify-between">
         <div className="min-w-0 animate-card-in" style={{ ["--stagger" as any]: 0 }}>
-          <p className="font-bold text-foreground text-base tracking-tight">{symbol}</p>
+          <p className="font-mono font-medium text-foreground text-[1.1rem] tracking-tight">{symbol}</p>
           <p className="text-[11px] text-muted-foreground truncate mt-0.5">{name}</p>
         </div>
         <div className={cn(
@@ -40,7 +45,7 @@ const MarketCard = ({ symbol, name, price, change, changePercent, sparkline, ind
       </div>
 
       <div className="relative mt-5">
-        <p className="text-2xl font-bold font-mono text-foreground tabular-nums tracking-tight">
+        <p className="font-display text-[2rem] font-medium leading-none text-foreground tabular-nums tracking-tight">
           {Number.isFinite(priceNum) ? (
             <AnimatedNumber value={priceNum} prefix="$" decimals={2} />
           ) : (
@@ -60,7 +65,14 @@ const MarketCard = ({ symbol, name, price, change, changePercent, sparkline, ind
           <SparklineChart data={sparkline} positive={isPositive} animate />
         </div>
       )}
-    </div>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -inset-6 -z-10 rounded-[28px] opacity-40 blur-2xl",
+          isPositive ? "bg-gold/[0.07]" : "bg-destructive/[0.06]"
+        )}
+      />
+    </motion.div>
   );
 };
 
