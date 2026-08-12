@@ -36,10 +36,15 @@ const LandingHero = () => {
       <div className="pointer-events-none absolute inset-0 hero-vignette" />
       <div className="pointer-events-none absolute inset-0 hero-grid opacity-70" />
       {wide ? (
-        <GlobeScene className="pointer-events-none absolute inset-0" />
+        <GlobeScene className="pointer-events-none absolute inset-0 opacity-[0.72]" />
       ) : (
         <div className="pointer-events-none absolute inset-0 hero-fallback" />
       )}
+      {/* legibility scrim behind the type */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(ellipse 46% 38% at 50% 50%, rgba(8,7,8,0.82) 0%, rgba(8,7,8,0.35) 55%, transparent 78%)" }}
+      />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
 
       <div className="container relative px-4 md:px-6">
