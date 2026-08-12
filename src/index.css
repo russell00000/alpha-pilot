@@ -180,50 +180,50 @@
   .glass-panel {
     position: relative;
     isolation: isolate;
-    background:
-      radial-gradient(120% 90% at 18% -10%, rgba(255, 248, 234, 0.055) 0%, transparent 58%),
-      linear-gradient(168deg, rgba(26, 25, 27, 0.9) 0%, rgba(16, 16, 19, 0.93) 55%, rgba(10, 10, 12, 0.95) 100%);
-    border: 1px solid rgba(214, 206, 190, 0.11);
-    backdrop-filter: blur(12px) saturate(112%);
-    -webkit-backdrop-filter: blur(12px) saturate(112%);
-    box-shadow:
-      inset 0 1px 0 rgba(240, 220, 178, 0.13),
-      inset 0 -40px 60px -60px rgba(0, 0, 0, 0.9),
-      var(--shadow-card);
-    transition: border-color 0.3s var(--ease-out-smooth), box-shadow 0.3s var(--ease-out-smooth),
-      transform 0.35s var(--ease-out-smooth);
+    background: rgba(239, 232, 219, 0.04);
+    border: 1px solid rgba(239, 232, 219, 0.09);
+    backdrop-filter: blur(20px) saturate(115%);
+    -webkit-backdrop-filter: blur(20px) saturate(115%);
+    border-radius: 1.25rem;
+    box-shadow: 0 24px 80px -24px rgba(0, 0, 0, 0.6);
+    transition: background 0.3s var(--ease-out-smooth), border-color 0.3s var(--ease-out-smooth),
+      box-shadow 0.3s var(--ease-out-smooth), transform 0.35s var(--ease-out-smooth);
   }
-  .glass-card { @apply rounded-3xl overflow-hidden; }
-  .luxe-glass { border-radius: 20px; }
+  .glass-card { @apply overflow-hidden; }
+  .luxe-glass { border-radius: 1.25rem; }
 
   .deep-card {
-    background: linear-gradient(168deg, #131315 0%, #0b0b0d 100%);
-    border: 1px solid rgba(214, 206, 190, 0.09);
-    border-radius: 20px;
-    box-shadow: inset 0 1px 0 rgba(240, 220, 178, 0.09), var(--shadow-elevated);
+    background: rgba(239, 232, 219, 0.03);
+    border: 1px solid rgba(239, 232, 219, 0.09);
+    border-radius: 1.25rem;
+    box-shadow: 0 24px 80px -24px rgba(0, 0, 0, 0.6);
   }
 
   .glass-search {
-    background: linear-gradient(168deg, rgba(24, 23, 25, 0.9) 0%, rgba(13, 13, 16, 0.94) 100%);
-    backdrop-filter: blur(11px) saturate(112%);
-    -webkit-backdrop-filter: blur(11px) saturate(112%);
-    border: 1px solid rgba(214, 206, 190, 0.11);
-    border-bottom: 1px solid rgba(226, 194, 122, 0.4);
+    background: rgba(239, 232, 219, 0.04);
+    backdrop-filter: blur(20px) saturate(115%);
+    -webkit-backdrop-filter: blur(20px) saturate(115%);
+    border: 1px solid rgba(239, 232, 219, 0.09);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.45);
     border-radius: 14px;
   }
 
-  .hairline { border-color: rgba(214, 206, 190, 0.11); }
-  .hairline-gold { border-color: rgba(226, 194, 122, 0.26); }
+  .hairline { border-color: rgba(239, 232, 219, 0.09); }
+  .hairline-gold { border-color: rgba(212, 175, 55, 0.28); }
 
   /* ---------- Buttons ---------- */
   /* White pill with charcoal text + circular dark arrow badge */
   .pill-primary {
     @apply inline-flex items-center gap-2 rounded-full font-medium;
-    background: linear-gradient(150deg, #F3E3BE 0%, #E2C27A 46%, #C89B3C 100%);
+    background: #efe8db;
     color: #14110a;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
     padding: 0.5rem 0.5rem 0.5rem 1.25rem;
-    border: 1px solid rgba(255, 244, 214, 0.35);
-    box-shadow: inset 0 1px 0 rgba(255, 252, 240, 0.6), 0 8px 22px -14px rgba(200, 155, 60, 0.55);
+    border: 1px solid rgba(239, 232, 219, 0.5);
+    box-shadow: 0 10px 30px -16px rgba(239, 232, 219, 0.35);
     transition: transform 0.35s var(--ease-out-smooth), box-shadow 0.35s var(--ease-out-smooth), opacity 0.2s;
   }
   .pill-primary .pill-badge {
@@ -240,20 +240,29 @@
     @apply inline-flex items-center gap-2 rounded-full font-medium;
     padding: 0.625rem 1.25rem;
     background: transparent;
-    color: #fafaf8;
-    border: 1px solid rgba(214, 206, 190, 0.2);
+    color: #efe8db;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+    border: 1px solid rgba(239, 232, 219, 0.28);
     transition: background 0.3s var(--ease-out-smooth), border-color 0.3s var(--ease-out-smooth);
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .pill-primary:hover { box-shadow: inset 0 1px 0 rgba(255,252,240,.7), 0 12px 30px -14px rgba(200,155,60,.6); }
+    .pill-primary:hover { transform: scale(1.03); }
     .pill-primary:hover .pill-badge { transform: translateX(3px); }
-    .pill-secondary:hover { background: rgba(226,194,122,.07); border-color: rgba(226,194,122,.34); }
-    .glass-card:hover { border-color: rgba(226,194,122,.22); }
+    .pill-secondary:hover { background: rgba(239,232,219,.07); border-color: rgba(212,175,55,.45); transform: scale(1.03); }
+    .glass-card:hover,
+    .luxe-glass:hover,
+    .glass-panel:hover {
+      background: rgba(239, 232, 219, 0.075);
+      border-color: rgba(239, 232, 219, 0.18);
+    }
     .card-hover:hover {
-      border-color: rgba(226,194,122,.24);
+      border-color: rgba(239,232,219,.18);
       transform: translateY(-3px);
-      box-shadow: inset 0 1px 0 rgba(240,220,178,.16), 0 22px 46px -26px rgba(0,0,0,.92);
+      box-shadow: 0 30px 90px -24px rgba(0,0,0,.7);
     }
     .btn-hover-lift:hover {
       transform: translateY(-1px);
