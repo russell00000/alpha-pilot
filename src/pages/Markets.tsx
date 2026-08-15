@@ -1025,13 +1025,15 @@ const Markets = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Asset</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">24h Change</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Type</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28 md:w-32">Chart</th>
+                <tr className="border-b border-border/30">
+                  <th className="p-4 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">#</th>
+                  <th className="p-4 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Asset</th>
+                  <th className="p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Price</th>
+                  <th className="p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Change</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:table-cell">Market Cap</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:table-cell">Volume</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:table-cell">Day Range</th>
+                  <th className="w-32 p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:w-40">Chart</th>
                 </tr>
               </thead>
               <tbody>
@@ -1050,13 +1052,15 @@ const Markets = () => {
                       </td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
-                      <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-12 ml-auto" /></td>
-                      <td className="p-4 text-right"><div className="h-10 bg-muted rounded w-20 md:w-24 ml-auto" /></td>
+                      <td className="hidden p-4 text-right lg:table-cell"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
+                      <td className="hidden p-4 text-right lg:table-cell"><div className="h-5 bg-muted rounded w-14 ml-auto" /></td>
+                      <td className="hidden p-4 text-right md:table-cell"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
+                      <td className="p-4 text-right"><div className="h-12 bg-muted rounded w-24 md:w-32 ml-auto" /></td>
                     </tr>
                   ))
                 ) : displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center">
+                    <td colSpan={8} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-12 h-12 text-muted-foreground/50" />
                         <p className="text-muted-foreground">
@@ -1074,9 +1078,9 @@ const Markets = () => {
                     const isLoadingThis = loadingSymbol === item.symbol;
                     
                     return (
-                      <tr 
-                        key={item.symbol} 
-                        className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                      <tr
+                        key={item.symbol}
+                        className="group cursor-pointer border-b border-border/25 shadow-[inset_3px_0_0_0_transparent] transition-all duration-300 hover:bg-foreground/[0.035] hover:shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
                         onClick={() => navigate(`/stock/${item.symbol}`)}
                       >
                         <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
@@ -1105,9 +1109,9 @@ const Markets = () => {
                                 {item.symbol.slice(0, 2)}
                               </span>
                             </div>
-                            <div>
-                              <p className="font-semibold text-foreground">{item.symbol}</p>
-                              <p className="text-sm text-muted-foreground">{item.name}</p>
+                            <div className="min-w-0">
+                              <p className="font-mono text-[1rem] uppercase leading-tight text-primary">{item.symbol}</p>
+                              <p className="truncate text-[0.82rem] text-muted-foreground">{item.name}</p>
                             </div>
                           </div>
                         </td>
@@ -1115,7 +1119,14 @@ const Markets = () => {
                           {isLoadingThis ? (
                             <Loader2 className="w-4 h-4 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPrice ? (
-                            <p className="font-semibold text-foreground">${item.price}</p>
+                            <div className="flex items-center justify-end gap-2">
+                              <p className="font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums">
+                                ${item.price}
+                              </p>
+                              {item.delayed && (
+                                <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground">delayed</span>
+                              )}
+                            </div>
                           ) : (
                             <div className="flex items-center justify-end gap-2">
                               <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
@@ -1126,8 +1137,8 @@ const Markets = () => {
                         <td className="p-4 text-right">
                           {hasPrice ? (
                             <div className={cn(
-                              "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium",
-                              isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-semibold tabular-nums",
+                              isPositive ? "bg-success/[0.08] text-success" : "bg-destructive/[0.08] text-destructive"
                             )}>
                               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                               {isPositive ? "+" : ""}{safeNumber(item.changePercent).toFixed(2)}%
@@ -1136,19 +1147,19 @@ const Markets = () => {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="p-4 text-right hidden md:table-cell">
-                          <span className={cn(
-                            "text-xs px-2 py-1 rounded-full",
-                            item.type === "crypto" ? "bg-primary/10 text-primary" :
-                            item.type === "etf" ? "bg-accent/10 text-accent-foreground" :
-                            item.type === "mutual_fund" ? "bg-warning/10 text-warning" :
-                            "bg-secondary text-muted-foreground"
-                          )}>
-                            {item.type === "mutual_fund" ? "Mutual Fund" : item.type.toUpperCase()}
-                          </span>
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums lg:table-cell">
+                          {compact(item.marketCap)}
                         </td>
-                        <td className="p-4 text-right w-28 md:w-32">
-                          <div className="w-20 md:w-24 h-10 ml-auto">
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums lg:table-cell">
+                          {compact(item.volumeShares)}
+                        </td>
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums md:table-cell">
+                          {item.dayLow && item.dayHigh
+                            ? `${formatPrice(item.dayLow)} – ${formatPrice(item.dayHigh)}`
+                            : "—"}
+                        </td>
+                        <td className="w-32 p-4 text-right md:w-40">
+                          <div className="ml-auto h-12 w-24 md:w-32">
                             <SparklineChart data={item.sparkline || []} positive={isPositive} />
                           </div>
                         </td>
