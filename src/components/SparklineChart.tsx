@@ -92,7 +92,7 @@ const SparklineChart = ({ data, positive, animate = false }: SparklineChartProps
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-10 w-full overflow-visible"
+      className="h-full w-full overflow-visible"
       preserveAspectRatio="none"
       shapeRendering="geometricPrecision"
       aria-hidden="true"

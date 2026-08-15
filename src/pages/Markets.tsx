@@ -12,6 +12,10 @@ import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import financeBg from "@/assets/finance-bg.webp";
 import { SearchSuggestions } from "@/components/SearchSuggestions";
 import { useSymbolSearch } from "@/hooks/useSymbolSearch";
+import IndicesBar from "@/components/markets/IndicesBar";
+import SectorHeatMap from "@/components/markets/SectorHeatMap";
+import { useFinnhubQuotes } from "@/hooks/useFinnhubQuotes";
+import { useMarketClock } from "@/hooks/useMarketClock";
 
 interface MarketData {
   symbol: string;
@@ -22,7 +26,33 @@ interface MarketData {
   volume: string;
   sparkline?: number[];
   type: "stock" | "crypto" | "etf" | "mutual_fund";
+  /** Live Finnhub extras */
+  dayHigh?: number | null;
+  dayLow?: number | null;
+  marketCap?: number | null;
+  volumeShares?: number | null;
+  /** True when the newest poll failed and we're showing the last known price. */
+  delayed?: boolean;
 }
+
+const compact = (value?: number | null) => {
+  if (!value || !Number.isFinite(value)) return "—";
+  const units = [
+    { limit: 1e12, suffix: "T" },
+    { limit: 1e9, suffix: "B" },
+    { limit: 1e6, suffix: "M" },
+    { limit: 1e3, suffix: "K" },
+  ];
+  const unit = units.find((u) => Math.abs(value) >= u.limit);
+  return unit ? `${(value / unit.limit).toFixed(2)}${unit.suffix}` : value.toFixed(2);
+};
+
+const formatPrice = (value: number) =>
+  value >= 1000
+    ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value < 1
+      ? value.toFixed(4)
+      : value.toFixed(2);
 
 const safeNumber = (value: unknown, fallback = 0) => {
   const number = typeof value === "number" ? value : Number(value);
@@ -48,25 +78,39 @@ const normalizeMarketData = (item: any, fallback?: Partial<MarketData>): MarketD
 };
 
 const tabs = [
-  { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
-  { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
-  { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
-  { id: "sectors", label: "Sectors", icon: Layers, count: null, description: "S&P 500 sector moves" },
+  { id: "all", label: "All", icon: Globe, description: "Everything we track" },
+  { id: "stocks", label: "Stocks", icon: BarChart3, description: "US equities" },
+  { id: "etf", label: "ETFs", icon: PieChart, description: "Exchange-traded funds" },
+  { id: "crypto", label: "Crypto", icon: Globe, description: "Digital assets" },
+  { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, description: "Managed portfolios" },
+  { id: "sectors", label: "Sectors", icon: Layers, description: "S&P 500 sector moves" },
+];
+
+// Crypto tickers priced through the Finnhub proxy (with CoinGecko fallback).
+const cryptoUniverse = [
+  { symbol: "BTC", name: "Bitcoin" },
+  { symbol: "ETH", name: "Ethereum" },
+  { symbol: "SOL", name: "Solana" },
+  { symbol: "XRP", name: "XRP" },
+  { symbol: "ADA", name: "Cardano" },
+  { symbol: "AVAX", name: "Avalanche" },
+  { symbol: "LINK", name: "Chainlink" },
+  { symbol: "DOGE", name: "Dogecoin" },
 ];
 
 // SPDR sector ETFs used as proxies for how each S&P 500 sector is moving today.
-const sectorProxies: Array<{ symbol: string; name: string; description: string }> = [
-  { symbol: "XLK", name: "Technology", description: "Software, semis, hardware" },
-  { symbol: "XLV", name: "Health Care", description: "Pharma, biotech, devices" },
-  { symbol: "XLF", name: "Financials", description: "Banks, insurance, capital markets" },
-  { symbol: "XLY", name: "Consumer Discretionary", description: "Retail, autos, leisure" },
-  { symbol: "XLP", name: "Consumer Staples", description: "Food, beverage, household" },
-  { symbol: "XLI", name: "Industrials", description: "Aerospace, machinery, transport" },
-  { symbol: "XLE", name: "Energy", description: "Oil, gas, services" },
-  { symbol: "XLU", name: "Utilities", description: "Electric, water, gas utilities" },
-  { symbol: "XLB", name: "Materials", description: "Chemicals, metals, mining" },
-  { symbol: "XLRE", name: "Real Estate", description: "REITs & real estate services" },
-  { symbol: "XLC", name: "Communication Services", description: "Media, telecom, internet" },
+const sectorProxies: Array<{ symbol: string; name: string; description: string; weight: number }> = [
+  { symbol: "XLK", name: "Technology", description: "Software, semis, hardware" , weight: 33 },
+  { symbol: "XLV", name: "Health Care", description: "Pharma, biotech, devices" , weight: 9 },
+  { symbol: "XLF", name: "Financials", description: "Banks, insurance, capital markets" , weight: 13 },
+  { symbol: "XLY", name: "Consumer Discretionary", description: "Retail, autos, leisure" , weight: 11 },
+  { symbol: "XLP", name: "Consumer Staples", description: "Food, beverage, household" , weight: 5 },
+  { symbol: "XLI", name: "Industrials", description: "Aerospace, machinery, transport" , weight: 8 },
+  { symbol: "XLE", name: "Energy", description: "Oil, gas, services" , weight: 3 },
+  { symbol: "XLU", name: "Utilities", description: "Electric, water, gas utilities" , weight: 2.5 },
+  { symbol: "XLB", name: "Materials", description: "Chemicals, metals, mining" , weight: 2 },
+  { symbol: "XLRE", name: "Real Estate", description: "REITs & real estate services" , weight: 2 },
+  { symbol: "XLC", name: "Communication Services", description: "Media, telecom, internet" , weight: 10 },
 ];
 
 const popularSearches = [
@@ -92,6 +136,7 @@ const Markets = () => {
   const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
   const [visibleRows, setVisibleRows] = useState(30);
   const { toast } = useToast();
+  const { clock, isOpen: isMarketOpen } = useMarketClock();
 
   // Map to store fetched prices
   const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
@@ -212,7 +257,7 @@ const Markets = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchMarketData();
+    await Promise.all([fetchMarketData(), refreshLive()]);
     setIsRefreshing(false);
     toast({
       title: "Data refreshed",
@@ -389,7 +434,35 @@ const Markets = () => {
   const getDisplayData = () => {
     if (searchResults.length > 0) return searchResults.map(ensureSparkline);
 
+    const fromList = (
+      list: Array<{ symbol: string; name: string }>,
+      type: MarketData["type"],
+    ) =>
+      list.map((entry) => {
+        const cached = priceCache[entry.symbol];
+        return ensureSparkline(
+          cached || {
+            symbol: entry.symbol,
+            name: entry.name,
+            price: "—",
+            change: 0,
+            changePercent: 0,
+            volume: "—",
+            type,
+          },
+        );
+      });
+
     switch (activeTab) {
+      case "all":
+        return [
+          ...fromList(top100Stocks.slice(0, 40), "stock"),
+          ...fromList(topETFs.slice(0, 15), "etf"),
+          ...fromList(cryptoUniverse, "crypto"),
+          ...fromList(topMutualFunds.slice(0, 10), "mutual_fund"),
+        ];
+      case "crypto":
+        return fromList(cryptoUniverse, "crypto");
       case "stocks":
         return top100Stocks.map(stock => {
           const cached = priceCache[stock.symbol];
@@ -449,7 +522,85 @@ const Markets = () => {
     }
   };
 
-  const displayData = getDisplayData();
+  const baseDisplayData = getDisplayData();
+
+  // Symbols currently on screen (plus the sector proxies powering the heat map).
+  const visibleSlice = baseDisplayData.slice(0, visibleRows);
+  const liveEquitySymbols = Array.from(
+    new Set([
+      ...visibleSlice.filter((item) => item.type !== "crypto").map((item) => item.symbol),
+      ...sectorProxies.map((sector) => sector.symbol),
+    ]),
+  ).slice(0, 55);
+  const liveCryptoSymbols = Array.from(
+    new Set(visibleSlice.filter((item) => item.type === "crypto").map((item) => item.symbol)),
+  );
+
+  const {
+    quotes: liveQuotes,
+    isFetching: isLiveFetching,
+    lastUpdated: liveUpdated,
+    isDelayed,
+    refresh: refreshLive,
+  } = useFinnhubQuotes({
+    symbols: liveEquitySymbols,
+    cryptoSymbols: liveCryptoSymbols,
+    intervalMs: 15000,
+  });
+
+  // Market Cap / Volume come from Finnhub fundamentals (cached for hours).
+  const [fundamentals, setFundamentals] = useState<Record<string, { marketCap: number | null; volume: number | null }>>({});
+  const fundamentalsRef = useRef<Record<string, { marketCap: number | null; volume: number | null }>>({});
+  const equityKey = liveEquitySymbols.join(",");
+
+  useEffect(() => {
+    const wanted = equityKey ? equityKey.split(",").filter((s) => !fundamentalsRef.current[s]) : [];
+    if (wanted.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("finnhub", {
+          body: { action: "metrics", symbols: wanted.slice(0, 40) },
+        });
+        if (cancelled || !Array.isArray(data?.data)) return;
+        const next = { ...fundamentalsRef.current };
+        data.data.forEach((row: any) => {
+          if (row?.symbol) next[row.symbol] = { marketCap: row.marketCap ?? null, volume: row.volume ?? null };
+        });
+        fundamentalsRef.current = next;
+        setFundamentals(next);
+      } catch (err) {
+        console.error("metrics fetch failed", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [equityKey]);
+
+  const withLiveQuote = (item: MarketData): MarketData => {
+    const quote = liveQuotes[item.symbol];
+    const meta = fundamentals[item.symbol];
+    if (!quote) {
+      return { ...item, marketCap: meta?.marketCap ?? null, volumeShares: meta?.volume ?? null };
+    }
+    return {
+      ...item,
+      price: formatPrice(quote.c),
+      change: quote.d,
+      changePercent: quote.dp,
+      dayHigh: quote.h ?? null,
+      dayLow: quote.l ?? null,
+      delayed: quote.delayed,
+      marketCap: meta?.marketCap ?? null,
+      volumeShares: meta?.volume ?? null,
+      sparkline: item.sparkline,
+    };
+  };
+
+  const displayData = baseDisplayData.map(withLiveQuote);
   const visibleDisplayData = displayData.slice(0, visibleRows);
 
   useEffect(() => {
@@ -660,73 +811,97 @@ const Markets = () => {
           </div>
         )}
 
-        {/* Category Cards */}
+        {/* Index chips */}
+        {searchResults.length === 0 && <IndicesBar />}
+
+        {/* Sector heat map */}
         {searchResults.length === 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <SectorHeatMap
+            sectors={sectorProxies.map((sector) => {
+              const quote = liveQuotes[sector.symbol];
+              const cached = priceCache[sector.symbol];
+              const changePercent = quote ? quote.dp : safeNumber(cached?.changePercent, 0);
+              return {
+                symbol: sector.symbol,
+                name: sector.name,
+                weight: sector.weight,
+                changePercent,
+                hasPrice: !!quote || (!!cached && cached.price !== "—"),
+              };
+            })}
+            onSelect={(symbol) => navigate(`/stock/${symbol}`)}
+          />
+        )}
+
+        {/* Asset category tabs */}
+        {searchResults.length === 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-1 border-b border-border/25">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "relative p-5 rounded-xl border-2 transition-all duration-300 text-left group",
-                    isActive
-                      ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-                      : "border-border/50 bg-card hover:border-primary/50 hover:bg-primary/5"
+                    "relative px-4 py-3 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors duration-300",
+                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
                   )}
                 >
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors",
-                    isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
-                  )}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className={cn(
-                    "font-semibold text-lg mb-1 transition-colors",
-                    isActive ? "text-primary" : "text-foreground"
-                  )}>
-                    {tab.label}
-                    {tab.count && <span className="text-sm font-normal text-muted-foreground ml-1">({tab.count})</span>}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{tab.description}</p>
-                  {isActive && (
-                    <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  )}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "absolute inset-x-2 -bottom-px h-px transition-all duration-300",
+                      isActive ? "bg-primary opacity-100" : "opacity-0",
+                    )}
+                  />
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Section Header */}
+        {/* Section header */}
         {searchResults.length === 0 && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {activeTab === "stocks" ? "Stocks" :
+              <h2 className="font-display text-[2.2rem] font-medium italic leading-none tracking-tight text-foreground">
+                {activeTab === "all" ? "All Markets" :
+                 activeTab === "stocks" ? "Stocks" :
                  activeTab === "etf" ? "ETFs" :
-                 activeTab === "sectors" ? "Market Sectors — Today" :
+                 activeTab === "crypto" ? "Crypto" :
+                 activeTab === "sectors" ? "Market Sectors" :
                  "Mutual Funds"}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString()}`}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Updated {clock} ET
+                </span>
+                <span className="flex items-center gap-1.5 rounded-full border border-border/30 bg-background/40 px-2.5 py-1">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", isMarketOpen ? "bg-success" : "bg-muted-foreground")} />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    {isMarketOpen ? "Market Open" : "Market Closed"}
+                  </span>
+                </span>
+                {isDelayed && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-primary/80">Delayed data</span>
+                )}
+              </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
+            <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="gap-2"
+              className="group flex items-center gap-2 rounded-full border border-border/30 bg-background/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              <RefreshCw
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-500 group-hover:text-primary",
+                  (isRefreshing || isLiveFetching) && "animate-spin",
+                )}
+              />
               Refresh
-            </Button>
+            </button>
           </div>
         )}
-
 
         {/* Sectors Grid */}
         {searchResults.length === 0 && activeTab === "sectors" && (() => {
@@ -850,13 +1025,15 @@ const Markets = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Asset</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">24h Change</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Type</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28 md:w-32">Chart</th>
+                <tr className="border-b border-border/30">
+                  <th className="p-4 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">#</th>
+                  <th className="p-4 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Asset</th>
+                  <th className="p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Price</th>
+                  <th className="p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Change</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:table-cell">Market Cap</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:table-cell">Volume</th>
+                  <th className="hidden p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:table-cell">Day Range</th>
+                  <th className="w-32 p-4 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:w-40">Chart</th>
                 </tr>
               </thead>
               <tbody>
@@ -875,13 +1052,15 @@ const Markets = () => {
                       </td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
                       <td className="p-4 text-right"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
-                      <td className="p-4 text-right hidden md:table-cell"><div className="h-5 bg-muted rounded w-12 ml-auto" /></td>
-                      <td className="p-4 text-right"><div className="h-10 bg-muted rounded w-20 md:w-24 ml-auto" /></td>
+                      <td className="hidden p-4 text-right lg:table-cell"><div className="h-5 bg-muted rounded w-16 ml-auto" /></td>
+                      <td className="hidden p-4 text-right lg:table-cell"><div className="h-5 bg-muted rounded w-14 ml-auto" /></td>
+                      <td className="hidden p-4 text-right md:table-cell"><div className="h-5 bg-muted rounded w-20 ml-auto" /></td>
+                      <td className="p-4 text-right"><div className="h-12 bg-muted rounded w-24 md:w-32 ml-auto" /></td>
                     </tr>
                   ))
                 ) : displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center">
+                    <td colSpan={8} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Search className="w-12 h-12 text-muted-foreground/50" />
                         <p className="text-muted-foreground">
@@ -899,9 +1078,9 @@ const Markets = () => {
                     const isLoadingThis = loadingSymbol === item.symbol;
                     
                     return (
-                      <tr 
-                        key={item.symbol} 
-                        className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                      <tr
+                        key={item.symbol}
+                        className="group cursor-pointer border-b border-border/25 shadow-[inset_3px_0_0_0_transparent] transition-all duration-300 hover:bg-foreground/[0.035] hover:shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
                         onClick={() => navigate(`/stock/${item.symbol}`)}
                       >
                         <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
@@ -930,9 +1109,9 @@ const Markets = () => {
                                 {item.symbol.slice(0, 2)}
                               </span>
                             </div>
-                            <div>
-                              <p className="font-semibold text-foreground">{item.symbol}</p>
-                              <p className="text-sm text-muted-foreground">{item.name}</p>
+                            <div className="min-w-0">
+                              <p className="font-mono text-[1rem] uppercase leading-tight text-primary">{item.symbol}</p>
+                              <p className="truncate text-[0.82rem] text-muted-foreground">{item.name}</p>
                             </div>
                           </div>
                         </td>
@@ -940,7 +1119,14 @@ const Markets = () => {
                           {isLoadingThis ? (
                             <Loader2 className="w-4 h-4 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPrice ? (
-                            <p className="font-semibold text-foreground">${item.price}</p>
+                            <div className="flex items-center justify-end gap-2">
+                              <p className="font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums">
+                                ${item.price}
+                              </p>
+                              {item.delayed && (
+                                <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground">delayed</span>
+                              )}
+                            </div>
                           ) : (
                             <div className="flex items-center justify-end gap-2">
                               <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
@@ -951,8 +1137,8 @@ const Markets = () => {
                         <td className="p-4 text-right">
                           {hasPrice ? (
                             <div className={cn(
-                              "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium",
-                              isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-semibold tabular-nums",
+                              isPositive ? "bg-success/[0.08] text-success" : "bg-destructive/[0.08] text-destructive"
                             )}>
                               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                               {isPositive ? "+" : ""}{safeNumber(item.changePercent).toFixed(2)}%
@@ -961,19 +1147,19 @@ const Markets = () => {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="p-4 text-right hidden md:table-cell">
-                          <span className={cn(
-                            "text-xs px-2 py-1 rounded-full",
-                            item.type === "crypto" ? "bg-primary/10 text-primary" :
-                            item.type === "etf" ? "bg-accent/10 text-accent-foreground" :
-                            item.type === "mutual_fund" ? "bg-warning/10 text-warning" :
-                            "bg-secondary text-muted-foreground"
-                          )}>
-                            {item.type === "mutual_fund" ? "Mutual Fund" : item.type.toUpperCase()}
-                          </span>
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums lg:table-cell">
+                          {compact(item.marketCap)}
                         </td>
-                        <td className="p-4 text-right w-28 md:w-32">
-                          <div className="w-20 md:w-24 h-10 ml-auto">
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums lg:table-cell">
+                          {compact(item.volumeShares)}
+                        </td>
+                        <td className="hidden p-4 text-right font-mono text-xs text-muted-foreground tabular-nums md:table-cell">
+                          {item.dayLow && item.dayHigh
+                            ? `${formatPrice(item.dayLow)} – ${formatPrice(item.dayHigh)}`
+                            : "—"}
+                        </td>
+                        <td className="w-32 p-4 text-right md:w-40">
+                          <div className="ml-auto h-12 w-24 md:w-32">
                             <SparklineChart data={item.sparkline || []} positive={isPositive} />
                           </div>
                         </td>
@@ -1001,7 +1187,7 @@ const Markets = () => {
           <p className="text-sm text-muted-foreground">
             Browse the top 100 US stocks by market cap, popular ETFs, mutual funds, and how the eleven S&P 500 sectors are moving today.
             Prices update automatically when you switch tabs. Use the search bar to find any publicly traded asset.
-            Real-time data provided by Finnhub. Sector moves are tracked via SPDR sector ETFs.
+            Real-time quotes, fundamentals and crypto pricing are provided by Finnhub, refreshed every 15 seconds. Sector moves are tracked via SPDR sector ETFs.
           </p>
         </div>
 
@@ -1011,7 +1197,7 @@ const Markets = () => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
           </span>
-          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 60s</span>
+          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 15s</span>
         </div>
       </main>
     </div>

@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.voice-speak]
 verify_jwt = false
+
+[functions.finnhub]
+verify_jwt = false
