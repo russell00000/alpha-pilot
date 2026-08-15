@@ -76,7 +76,9 @@ export default function HoldingsTable({ holdings, onSell, liveQuotes = {} }: Hol
                   </td>
                   <td className="px-4 py-3">
                     {sparkline.length > 1 ? (
-                      <SparklineChart data={sparkline} positive={changePct >= 0} />
+                      <div className="h-10 w-24">
+                        <SparklineChart data={sparkline} positive={changePct >= 0} />
+                      </div>
                     ) : (
                       <div className="text-center text-xs text-muted-foreground">—</div>
                     )}
