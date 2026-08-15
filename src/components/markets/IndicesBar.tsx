@@ -61,6 +61,7 @@ const IndicesBar = () => {
             <div key={index.key} className="flex flex-col gap-1 px-5 py-4">
               <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                 {index.label}
+                {index.proxy && <span className="ml-2 text-foreground/35">via {index.proxy}</span>}
                 {delayed && hasData && <span className="ml-2 text-primary/70">delayed</span>}
               </span>
               <div className="flex items-baseline gap-3">
