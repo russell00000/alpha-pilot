@@ -26,7 +26,33 @@ interface MarketData {
   volume: string;
   sparkline?: number[];
   type: "stock" | "crypto" | "etf" | "mutual_fund";
+  /** Live Finnhub extras */
+  dayHigh?: number | null;
+  dayLow?: number | null;
+  marketCap?: number | null;
+  volumeShares?: number | null;
+  /** True when the newest poll failed and we're showing the last known price. */
+  delayed?: boolean;
 }
+
+const compact = (value?: number | null) => {
+  if (!value || !Number.isFinite(value)) return "—";
+  const units = [
+    { limit: 1e12, suffix: "T" },
+    { limit: 1e9, suffix: "B" },
+    { limit: 1e6, suffix: "M" },
+    { limit: 1e3, suffix: "K" },
+  ];
+  const unit = units.find((u) => Math.abs(value) >= u.limit);
+  return unit ? `${(value / unit.limit).toFixed(2)}${unit.suffix}` : value.toFixed(2);
+};
+
+const formatPrice = (value: number) =>
+  value >= 1000
+    ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value < 1
+      ? value.toFixed(4)
+      : value.toFixed(2);
 
 const safeNumber = (value: unknown, fallback = 0) => {
   const number = typeof value === "number" ? value : Number(value);
@@ -230,7 +256,7 @@ const Markets = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchMarketData();
+    await Promise.all([fetchMarketData(), refreshLive()]);
     setIsRefreshing(false);
     toast({
       title: "Data refreshed",
@@ -407,7 +433,35 @@ const Markets = () => {
   const getDisplayData = () => {
     if (searchResults.length > 0) return searchResults.map(ensureSparkline);
 
+    const fromList = (
+      list: Array<{ symbol: string; name: string }>,
+      type: MarketData["type"],
+    ) =>
+      list.map((entry) => {
+        const cached = priceCache[entry.symbol];
+        return ensureSparkline(
+          cached || {
+            symbol: entry.symbol,
+            name: entry.name,
+            price: "—",
+            change: 0,
+            changePercent: 0,
+            volume: "—",
+            type,
+          },
+        );
+      });
+
     switch (activeTab) {
+      case "all":
+        return [
+          ...fromList(top100Stocks.slice(0, 40), "stock"),
+          ...fromList(topETFs.slice(0, 15), "etf"),
+          ...fromList(cryptoUniverse, "crypto"),
+          ...fromList(topMutualFunds.slice(0, 10), "mutual_fund"),
+        ];
+      case "crypto":
+        return fromList(cryptoUniverse, "crypto");
       case "stocks":
         return top100Stocks.map(stock => {
           const cached = priceCache[stock.symbol];
@@ -467,7 +521,85 @@ const Markets = () => {
     }
   };
 
-  const displayData = getDisplayData();
+  const baseDisplayData = getDisplayData();
+
+  // Symbols currently on screen (plus the sector proxies powering the heat map).
+  const visibleSlice = baseDisplayData.slice(0, visibleRows);
+  const liveEquitySymbols = Array.from(
+    new Set([
+      ...visibleSlice.filter((item) => item.type !== "crypto").map((item) => item.symbol),
+      ...sectorProxies.map((sector) => sector.symbol),
+    ]),
+  ).slice(0, 55);
+  const liveCryptoSymbols = Array.from(
+    new Set(visibleSlice.filter((item) => item.type === "crypto").map((item) => item.symbol)),
+  );
+
+  const {
+    quotes: liveQuotes,
+    isFetching: isLiveFetching,
+    lastUpdated: liveUpdated,
+    isDelayed,
+    refresh: refreshLive,
+  } = useFinnhubQuotes({
+    symbols: liveEquitySymbols,
+    cryptoSymbols: liveCryptoSymbols,
+    intervalMs: 15000,
+  });
+
+  // Market Cap / Volume come from Finnhub fundamentals (cached for hours).
+  const [fundamentals, setFundamentals] = useState<Record<string, { marketCap: number | null; volume: number | null }>>({});
+  const fundamentalsRef = useRef<Record<string, { marketCap: number | null; volume: number | null }>>({});
+  const equityKey = liveEquitySymbols.join(",");
+
+  useEffect(() => {
+    const wanted = equityKey ? equityKey.split(",").filter((s) => !fundamentalsRef.current[s]) : [];
+    if (wanted.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("finnhub", {
+          body: { action: "metrics", symbols: wanted.slice(0, 40) },
+        });
+        if (cancelled || !Array.isArray(data?.data)) return;
+        const next = { ...fundamentalsRef.current };
+        data.data.forEach((row: any) => {
+          if (row?.symbol) next[row.symbol] = { marketCap: row.marketCap ?? null, volume: row.volume ?? null };
+        });
+        fundamentalsRef.current = next;
+        setFundamentals(next);
+      } catch (err) {
+        console.error("metrics fetch failed", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [equityKey]);
+
+  const withLiveQuote = (item: MarketData): MarketData => {
+    const quote = liveQuotes[item.symbol];
+    const meta = fundamentals[item.symbol];
+    if (!quote) {
+      return { ...item, marketCap: meta?.marketCap ?? null, volumeShares: meta?.volume ?? null };
+    }
+    return {
+      ...item,
+      price: formatPrice(quote.c),
+      change: quote.d,
+      changePercent: quote.dp,
+      dayHigh: quote.h ?? null,
+      dayLow: quote.l ?? null,
+      delayed: quote.delayed,
+      marketCap: meta?.marketCap ?? null,
+      volumeShares: meta?.volume ?? null,
+      sparkline: item.sparkline,
+    };
+  };
+
+  const displayData = baseDisplayData.map(withLiveQuote);
   const visibleDisplayData = displayData.slice(0, visibleRows);
 
   useEffect(() => {
