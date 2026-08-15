@@ -50,6 +50,32 @@ const quote = (symbol: string) =>
     };
   });
 
+const COINGECKO_IDS: Record<string, string> = {
+  AVAX: "avalanche-2",
+  LINK: "chainlink",
+  DOGE: "dogecoin",
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  SOL: "solana",
+  XRP: "ripple",
+  ADA: "cardano",
+};
+
+// Finnhub crypto candles require a paid plan, so CoinGecko backs up crypto.
+const coingeckoQuote = async (symbol: string) => {
+  const id = COINGECKO_IDS[symbol];
+  if (!id) return null;
+  const json = await getJson(
+    `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`,
+  );
+  const entry = json?.[id];
+  if (!entry || typeof entry.usd !== "number") return null;
+  const c = entry.usd;
+  const dp = typeof entry.usd_24h_change === "number" ? entry.usd_24h_change : 0;
+  const pc = dp ? c / (1 + dp / 100) : c;
+  return { symbol, c, d: c - pc, dp, h: null, l: null, o: pc, pc };
+};
+
 const cryptoQuote = (symbol: string) =>
   cached(`c:${symbol}`, 30_000, async () => {
     const pair = `BINANCE:${symbol}USDT`;
@@ -57,9 +83,9 @@ const cryptoQuote = (symbol: string) =>
     const from = now - 60 * 60 * 24 * 8;
     const candle = await getJson(
       `${BASE}/crypto/candle?symbol=${encodeURIComponent(pair)}&resolution=D&from=${from}&to=${now}&token=${KEY}`,
-    );
+    ).catch(() => null);
     const closes: number[] = Array.isArray(candle?.c) ? candle.c : [];
-    if (closes.length === 0) return null;
+    if (closes.length === 0) return await coingeckoQuote(symbol);
     const c = closes[closes.length - 1];
     const pc = closes.length > 1 ? closes[closes.length - 2] : c;
     return {
