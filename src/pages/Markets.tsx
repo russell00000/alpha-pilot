@@ -136,6 +136,7 @@ const Markets = () => {
   const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
   const [visibleRows, setVisibleRows] = useState(30);
   const { toast } = useToast();
+  const { clock, isOpen: isMarketOpen } = useMarketClock();
 
   // Map to store fetched prices
   const [priceCache, setPriceCache] = useState<Record<string, MarketData>>({});
@@ -810,73 +811,97 @@ const Markets = () => {
           </div>
         )}
 
-        {/* Category Cards */}
+        {/* Index chips */}
+        {searchResults.length === 0 && <IndicesBar />}
+
+        {/* Sector heat map */}
         {searchResults.length === 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <SectorHeatMap
+            sectors={sectorProxies.map((sector) => {
+              const quote = liveQuotes[sector.symbol];
+              const cached = priceCache[sector.symbol];
+              const changePercent = quote ? quote.dp : safeNumber(cached?.changePercent, 0);
+              return {
+                symbol: sector.symbol,
+                name: sector.name,
+                weight: sector.weight,
+                changePercent,
+                hasPrice: !!quote || (!!cached && cached.price !== "—"),
+              };
+            })}
+            onSelect={(symbol) => navigate(`/stock/${symbol}`)}
+          />
+        )}
+
+        {/* Asset category tabs */}
+        {searchResults.length === 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-1 border-b border-border/25">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "relative p-5 rounded-xl border-2 transition-all duration-300 text-left group",
-                    isActive
-                      ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-                      : "border-border/50 bg-card hover:border-primary/50 hover:bg-primary/5"
+                    "relative px-4 py-3 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors duration-300",
+                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
                   )}
                 >
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors",
-                    isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
-                  )}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className={cn(
-                    "font-semibold text-lg mb-1 transition-colors",
-                    isActive ? "text-primary" : "text-foreground"
-                  )}>
-                    {tab.label}
-                    {tab.count && <span className="text-sm font-normal text-muted-foreground ml-1">({tab.count})</span>}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{tab.description}</p>
-                  {isActive && (
-                    <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  )}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "absolute inset-x-2 -bottom-px h-px transition-all duration-300",
+                      isActive ? "bg-primary opacity-100" : "opacity-0",
+                    )}
+                  />
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Section Header */}
+        {/* Section header */}
         {searchResults.length === 0 && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {activeTab === "stocks" ? "Stocks" :
+              <h2 className="font-display text-[2.2rem] font-medium italic leading-none tracking-tight text-foreground">
+                {activeTab === "all" ? "All Markets" :
+                 activeTab === "stocks" ? "Stocks" :
                  activeTab === "etf" ? "ETFs" :
-                 activeTab === "sectors" ? "Market Sectors — Today" :
+                 activeTab === "crypto" ? "Crypto" :
+                 activeTab === "sectors" ? "Market Sectors" :
                  "Mutual Funds"}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString()}`}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Updated {clock} ET
+                </span>
+                <span className="flex items-center gap-1.5 rounded-full border border-border/30 bg-background/40 px-2.5 py-1">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", isMarketOpen ? "bg-success" : "bg-muted-foreground")} />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    {isMarketOpen ? "Market Open" : "Market Closed"}
+                  </span>
+                </span>
+                {isDelayed && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-primary/80">Delayed data</span>
+                )}
+              </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
+            <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="gap-2"
+              className="group flex items-center gap-2 rounded-full border border-border/30 bg-background/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              <RefreshCw
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-500 group-hover:text-primary",
+                  (isRefreshing || isLiveFetching) && "animate-spin",
+                )}
+              />
               Refresh
-            </Button>
+            </button>
           </div>
         )}
-
 
         {/* Sectors Grid */}
         {searchResults.length === 0 && activeTab === "sectors" && (() => {
