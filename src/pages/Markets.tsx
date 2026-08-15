@@ -1187,7 +1187,7 @@ const Markets = () => {
           <p className="text-sm text-muted-foreground">
             Browse the top 100 US stocks by market cap, popular ETFs, mutual funds, and how the eleven S&P 500 sectors are moving today.
             Prices update automatically when you switch tabs. Use the search bar to find any publicly traded asset.
-            Real-time data provided by Finnhub. Sector moves are tracked via SPDR sector ETFs.
+            Real-time quotes, fundamentals and crypto pricing are provided by Finnhub, refreshed every 15 seconds. Sector moves are tracked via SPDR sector ETFs.
           </p>
         </div>
 
@@ -1197,7 +1197,7 @@ const Markets = () => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
           </span>
-          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 60s</span>
+          <span className="text-sm text-muted-foreground">Live data • Auto-updates every 15s</span>
         </div>
       </main>
     </div>
