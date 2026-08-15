@@ -12,6 +12,10 @@ import { top100Stocks, topETFs, topMutualFunds } from "@/data/top-stocks";
 import financeBg from "@/assets/finance-bg.webp";
 import { SearchSuggestions } from "@/components/SearchSuggestions";
 import { useSymbolSearch } from "@/hooks/useSymbolSearch";
+import IndicesBar from "@/components/markets/IndicesBar";
+import SectorHeatMap from "@/components/markets/SectorHeatMap";
+import { useFinnhubQuotes } from "@/hooks/useFinnhubQuotes";
+import { useMarketClock } from "@/hooks/useMarketClock";
 
 interface MarketData {
   symbol: string;
@@ -48,25 +52,39 @@ const normalizeMarketData = (item: any, fallback?: Partial<MarketData>): MarketD
 };
 
 const tabs = [
-  { id: "stocks", label: "Stocks", icon: BarChart3, count: null, description: "US equities" },
-  { id: "etf", label: "ETFs", icon: PieChart, count: null, description: "Exchange-traded funds" },
-  { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, count: null, description: "Managed portfolios" },
-  { id: "sectors", label: "Sectors", icon: Layers, count: null, description: "S&P 500 sector moves" },
+  { id: "all", label: "All", icon: Globe, description: "Everything we track" },
+  { id: "stocks", label: "Stocks", icon: BarChart3, description: "US equities" },
+  { id: "etf", label: "ETFs", icon: PieChart, description: "Exchange-traded funds" },
+  { id: "crypto", label: "Crypto", icon: Globe, description: "Digital assets" },
+  { id: "mutual_fund", label: "Mutual Funds", icon: Briefcase, description: "Managed portfolios" },
+  { id: "sectors", label: "Sectors", icon: Layers, description: "S&P 500 sector moves" },
+];
+
+// Crypto tickers priced through the Finnhub proxy (with CoinGecko fallback).
+const cryptoUniverse = [
+  { symbol: "BTC", name: "Bitcoin" },
+  { symbol: "ETH", name: "Ethereum" },
+  { symbol: "SOL", name: "Solana" },
+  { symbol: "XRP", name: "XRP" },
+  { symbol: "ADA", name: "Cardano" },
+  { symbol: "AVAX", name: "Avalanche" },
+  { symbol: "LINK", name: "Chainlink" },
+  { symbol: "DOGE", name: "Dogecoin" },
 ];
 
 // SPDR sector ETFs used as proxies for how each S&P 500 sector is moving today.
-const sectorProxies: Array<{ symbol: string; name: string; description: string }> = [
-  { symbol: "XLK", name: "Technology", description: "Software, semis, hardware" },
-  { symbol: "XLV", name: "Health Care", description: "Pharma, biotech, devices" },
-  { symbol: "XLF", name: "Financials", description: "Banks, insurance, capital markets" },
-  { symbol: "XLY", name: "Consumer Discretionary", description: "Retail, autos, leisure" },
-  { symbol: "XLP", name: "Consumer Staples", description: "Food, beverage, household" },
-  { symbol: "XLI", name: "Industrials", description: "Aerospace, machinery, transport" },
-  { symbol: "XLE", name: "Energy", description: "Oil, gas, services" },
-  { symbol: "XLU", name: "Utilities", description: "Electric, water, gas utilities" },
-  { symbol: "XLB", name: "Materials", description: "Chemicals, metals, mining" },
-  { symbol: "XLRE", name: "Real Estate", description: "REITs & real estate services" },
-  { symbol: "XLC", name: "Communication Services", description: "Media, telecom, internet" },
+const sectorProxies: Array<{ symbol: string; name: string; description: string; weight: number }> = [
+  { symbol: "XLK", name: "Technology", description: "Software, semis, hardware" , weight: 33 },
+  { symbol: "XLV", name: "Health Care", description: "Pharma, biotech, devices" , weight: 9 },
+  { symbol: "XLF", name: "Financials", description: "Banks, insurance, capital markets" , weight: 13 },
+  { symbol: "XLY", name: "Consumer Discretionary", description: "Retail, autos, leisure" , weight: 11 },
+  { symbol: "XLP", name: "Consumer Staples", description: "Food, beverage, household" , weight: 5 },
+  { symbol: "XLI", name: "Industrials", description: "Aerospace, machinery, transport" , weight: 8 },
+  { symbol: "XLE", name: "Energy", description: "Oil, gas, services" , weight: 3 },
+  { symbol: "XLU", name: "Utilities", description: "Electric, water, gas utilities" , weight: 2.5 },
+  { symbol: "XLB", name: "Materials", description: "Chemicals, metals, mining" , weight: 2 },
+  { symbol: "XLRE", name: "Real Estate", description: "REITs & real estate services" , weight: 2 },
+  { symbol: "XLC", name: "Communication Services", description: "Media, telecom, internet" , weight: 10 },
 ];
 
 const popularSearches = [
