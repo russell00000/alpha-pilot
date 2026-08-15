@@ -1,28 +1,42 @@
-type Tick = { symbol: string; price: string; change: number };
+import { cn } from "@/lib/utils";
+import { useFinnhubQuotes, type FinnhubQuote } from "@/hooks/useFinnhubQuotes";
 
-const TICKS: Tick[] = [
-  { symbol: "GOOGL", price: "343.80", change: -3.84 },
-  { symbol: "ADBE", price: "263.71", change: -3.39 },
-  { symbol: "AVGO", price: "296.42", change: -3.28 },
-  { symbol: "AMZN", price: "272.27", change: -2.09 },
-  { symbol: "NVDA", price: "184.06", change: 2.1 },
-  { symbol: "MSFT", price: "489.12", change: 1.24 },
-  { symbol: "AAPL", price: "231.44", change: 0.86 },
-  { symbol: "META", price: "612.90", change: 2.0 },
-];
+const STOCKS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META"];
+const CRYPTO = ["AVAX", "LINK", "DOGE"];
+const ORDER = [...STOCKS, ...CRYPTO];
 
-const Row = () => (
+const format = (value: number) =>
+  value >= 1000 ? value.toLocaleString("en-US", { maximumFractionDigits: 2 }) : value < 1 ? value.toFixed(4) : value.toFixed(2);
+
+const Row = ({ quotes }: { quotes: Record<string, FinnhubQuote> }) => (
   <div className="flex shrink-0 items-center">
-    {TICKS.map((t, i) => {
-      const up = t.change >= 0;
+    {ORDER.map((symbol) => {
+      const q = quotes[symbol];
+      const up = (q?.dp ?? 0) >= 0;
+      const tickUp = q?.tick === "up";
+      const tickDown = q?.tick === "down";
       return (
-        <span key={`${t.symbol}-${i}`} className="flex items-center whitespace-nowrap font-mono text-[0.72rem]">
-          <span className="text-foreground/75">{t.symbol}</span>
-          <span className="ml-2 text-foreground/55">${t.price}</span>
-          <span className={up ? "ml-2 text-gold" : "ml-2 text-destructive"}>
-            {up ? "▲" : "▼"}
-            {Math.abs(t.change).toFixed(2)}%
+        <span key={symbol} className="flex items-center whitespace-nowrap font-mono text-[0.72rem]">
+          <span className="text-foreground/75">{symbol}</span>
+          <span
+            className={cn(
+              "ml-2 transition-colors duration-500",
+              tickUp ? "text-success" : tickDown ? "text-destructive" : "text-foreground/55",
+            )}
+          >
+            {q ? `$${format(q.c)}` : "—"}
           </span>
+          <span className={cn("ml-2", up ? "text-success" : "text-destructive")}>
+            {q ? (
+              <>
+                {up ? "▲" : "▼"}
+                {Math.abs(q.dp).toFixed(2)}%
+              </>
+            ) : (
+              "·"
+            )}
+          </span>
+          {q?.delayed && <span className="ml-1.5 text-[0.6rem] uppercase tracking-widest text-muted-foreground">delayed</span>}
           <span className="mx-4 text-foreground/20">·</span>
         </span>
       );
@@ -30,14 +44,18 @@ const Row = () => (
   </div>
 );
 
-/** Continuously scrolling market tape shown under the navigation. */
-const TickerBar = () => (
-  <div className="ticker-mask border-y border-border/60 bg-background/40 py-2 backdrop-blur-md">
-    <div className="ticker-marquee">
-      <Row />
-      <Row />
+/** Continuously scrolling market tape with live prices under the navigation. */
+const TickerBar = () => {
+  const { quotes } = useFinnhubQuotes({ symbols: STOCKS, cryptoSymbols: CRYPTO, intervalMs: 5000 });
+
+  return (
+    <div className="ticker-mask border-y border-border/60 bg-background/40 py-2 backdrop-blur-md">
+      <div className="ticker-marquee">
+        <Row quotes={quotes} />
+        <Row quotes={quotes} />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default TickerBar;
