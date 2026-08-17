@@ -25,8 +25,7 @@ const MarketCard = ({ symbol, name, price, change, changePercent, sparkline, ind
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ type: "spring", stiffness: 80, damping: 18, delay: Math.min(index * 0.06, 0.36) }}
-      style={{ ["--stagger" as any]: index }}
-      style={{ willChange: "transform, opacity" }}
+      style={{ ["--stagger" as any]: index, willChange: "transform, opacity" }}
       className="luxe-sheen tap-scale group relative cursor-pointer p-5 rounded-2xl luxe-glass hover:-translate-y-1 hover:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-300 ease-out"
     >
       <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(circle_at_var(--mx,50%)_var(--my,0%),hsl(0_0%_100%/0.08),transparent_55%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
