@@ -5,12 +5,13 @@ import GlobeScene from "@/components/three/GlobeScene";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useEffect, useState } from "react";
 
-const spring = { type: "spring" as const, stiffness: 60, damping: 20 };
+const spring = { type: "spring" as const, stiffness: 80, damping: 18 };
 
 const rise = (delay: number) => ({
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   transition: { ...spring, delay },
+  style: { willChange: "transform, opacity" as const },
 });
 
 /** Landing hero: WebGL particle globe behind editorial type. */
@@ -59,7 +60,7 @@ const LandingHero = () => {
           <motion.span {...(anim ?? rise(0))} className="mt-5 block h-px w-[2.5rem] bg-gold" />
 
           <motion.h1
-            {...(anim ?? rise(0.15))}
+            {...(anim ?? rise(0.06))}
             className="mt-8 font-display font-medium leading-[1.06] text-foreground"
             style={{ fontSize: "clamp(3rem, 6vw, 5.5rem)" }}
           >
@@ -69,14 +70,14 @@ const LandingHero = () => {
           </motion.h1>
 
           <motion.p
-            {...(anim ?? rise(0.3))}
+            {...(anim ?? rise(0.12))}
             className="mt-7 max-w-[44ch] text-[0.95rem] leading-relaxed text-foreground/60"
           >
             AI-powered market analysis, real-time signals, and portfolio optimization — built for the
             way you actually invest.
           </motion.p>
 
-          <motion.div {...(anim ?? rise(0.45))} className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          <motion.div {...(anim ?? rise(0.18))} className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link to="/portfolio">
               <button className="pill-primary tap-scale">
                 Get Started

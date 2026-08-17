@@ -19,9 +19,10 @@ const Row = ({ quotes }: { quotes: Record<string, FinnhubQuote> }) => (
         <span key={symbol} className="flex items-center whitespace-nowrap font-mono text-[0.72rem]">
           <span className="text-foreground/75">{symbol}</span>
           <span
+            key={`${symbol}-${q?.c ?? "na"}`}
             className={cn(
-              "ml-2 transition-colors duration-500",
-              tickUp ? "text-success" : tickDown ? "text-destructive" : "text-foreground/55",
+              "ml-2",
+              tickUp ? "text-success price-flash-up" : tickDown ? "text-destructive price-flash-down" : "text-foreground/55",
             )}
           >
             {q ? `$${format(q.c)}` : "—"}

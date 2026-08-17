@@ -1,10 +1,10 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 const RADIUS = 2.1;
-const COUNT = 280;
+const COUNT = 200;
 const LINK_DIST = 0.85;
 const HUBS = 11;
 const GOLD = "#d4af37";
@@ -41,7 +41,7 @@ function fibonacciSphere(count: number, radius: number) {
 
 function ringGeometry(rx: number, ry = 0, radius = RADIUS * 1.16) {
   const pts: THREE.Vector3[] = [];
-  const seg = 180;
+  const seg = 90;
   for (let i = 0; i <= seg; i++) {
     const a = (i / seg) * Math.PI * 2;
     pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
@@ -54,7 +54,7 @@ function ringGeometry(rx: number, ry = 0, radius = RADIUS * 1.16) {
 
 function Globe({ reduced }: { reduced: boolean }) {
   const group = useRef<THREE.Group>(null);
-  const hubRef = useRef<THREE.Points>(null);
+  const hubGroup = useRef<THREE.Group>(null);
   const { size } = useThree();
   const pointer = useRef({ x: 0, y: 0 });
 
@@ -114,21 +114,17 @@ function Globe({ reduced }: { reduced: boolean }) {
       // mouse parallax
       const px = (state.pointer.x || 0) * 0.22;
       const py = (state.pointer.y || 0) * 0.16;
-      pointer.current.x += (px - pointer.current.x) * 0.022;
-      pointer.current.y += (py - pointer.current.y) * 0.022;
+      pointer.current.x += (px - pointer.current.x) * 0.07;
+      pointer.current.y += (py - pointer.current.y) * 0.07;
       g.rotation.x = -pointer.current.y;
       g.position.x = pointer.current.x * 0.4;
       // breathing
       const s = 1 + Math.sin(t * 0.0008) * 0.018;
       g.scale.setScalar(s);
 
-      // hub pulse
-      const hs = hubRef.current?.geometry.getAttribute("size") as THREE.BufferAttribute | undefined;
-      if (hs) {
-        for (let i = 0; i < HUBS; i++) {
-          hs.setX(i, 0.055 * (2.5 + Math.sin(t * 0.0016 + i) * 0.7));
-        }
-        hs.needsUpdate = true;
+      // hub pulse — scale the containing group instead of mutating geometry/material
+      if (hubGroup.current) {
+        hubGroup.current.scale.setScalar(1 + Math.sin(t * 0.0016) * 0.03);
       }
     }
     void size;
@@ -153,22 +149,24 @@ function Globe({ reduced }: { reduced: boolean }) {
         />
       </points>
 
-      <points ref={hubRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[hubPositions, 3]} />
-          <bufferAttribute attach="attributes-size" args={[hubSizes, 1]} />
-        </bufferGeometry>
-        <pointsMaterial
-          map={tex}
-          color="#f4dc9a"
-          size={0.22}
-          sizeAttenuation
-          transparent
-          depthWrite={false}
-          opacity={1}
-          blending={THREE.AdditiveBlending}
-        />
-      </points>
+      <group ref={hubGroup}>
+        <points>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[hubPositions, 3]} />
+            <bufferAttribute attach="attributes-size" args={[hubSizes, 1]} />
+          </bufferGeometry>
+          <pointsMaterial
+            map={tex}
+            color="#f4dc9a"
+            size={0.22}
+            sizeAttenuation
+            transparent
+            depthWrite={false}
+            opacity={1}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      </group>
 
       <lineSegments geometry={lineGeo}>
         <lineBasicMaterial color={GOLD} transparent opacity={0.15} depthWrite={false} />
@@ -184,13 +182,23 @@ function Globe({ reduced }: { reduced: boolean }) {
 /** WebGL particle globe for the landing hero. */
 const GlobeScene = ({ className = "" }: { className?: string }) => {
   const reduced = useReducedMotion();
+  const [ready, setReady] = useState(false);
   return (
-    <div className={className} aria-hidden>
+    <div
+      className={className}
+      aria-hidden
+      style={{ opacity: ready ? undefined : 0, transition: "opacity 0.7s ease-out", willChange: "opacity" }}
+    >
       <Canvas
-        dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: false }}
+        dpr={Math.min(window.devicePixelRatio || 1, 1)}
+        gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
         camera={{ fov: 50, position: [0, 0, 5.8] }}
         style={{ background: "transparent" }}
+        onCreated={({ gl }) => {
+          gl.shadowMap.enabled = false;
+          gl.info.autoReset = false;
+          requestAnimationFrame(() => setReady(true));
+        }}
       >
         <Globe reduced={reduced} />
       </Canvas>
