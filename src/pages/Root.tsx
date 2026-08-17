@@ -57,7 +57,7 @@ const Root = () => {
     setTimeout(() => {
       setPhase("quiz");
       setExiting(false);
-    }, 620);
+    }, 400);
   }, []);
 
   const handleComplete = useCallback(
@@ -84,7 +84,8 @@ const Root = () => {
     <div
       className="relative min-h-[100svh] w-full bg-background"
       style={{
-        transition: "opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1)",
+        transition: "opacity .4s cubic-bezier(.22,1,.36,1), transform .4s cubic-bezier(.22,1,.36,1)",
+        willChange: "transform, opacity",
         opacity: exiting ? 0 : 1,
         transform: exiting ? "translateY(-40px)" : "translateY(0)",
       }}
