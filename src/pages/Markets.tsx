@@ -133,6 +133,12 @@ const Markets = () => {
   const [searchResults, setSearchResults] = useState<MarketData[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // Debounced mirror of the search box (200ms) so suggestion work never runs per keystroke.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(searchQuery), 200);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
   const [loadingSymbol, setLoadingSymbol] = useState<string | null>(null);
   const [visibleRows, setVisibleRows] = useState(30);
   const { toast } = useToast();
@@ -647,9 +653,9 @@ const Markets = () => {
     ...cryptoAssets,
   ];
 
-  const filteredSuggestions = searchQuery.trim()
+  const filteredSuggestions = debouncedQuery.trim()
     ? (() => {
-        const query = searchQuery.toLowerCase().trim();
+        const query = debouncedQuery.toLowerCase().trim();
 
         const score = (asset: { symbol: string; name: string }) => {
           const sym = asset.symbol.toLowerCase();
@@ -695,7 +701,7 @@ const Markets = () => {
 
   // Dynamic, market-wide symbol search (Yahoo). Ensures any listed security
   // is reachable even if it's not in our static list.
-  const { results: remoteSuggestions } = useSymbolSearch(searchQuery, 1, 250);
+  const { results: remoteSuggestions } = useSymbolSearch(debouncedQuery, 1, 250);
 
   // Merge: local matches first, then any remote symbols we don't already show.
   const mergedSuggestions = (() => {
