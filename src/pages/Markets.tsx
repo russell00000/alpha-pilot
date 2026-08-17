@@ -31,6 +31,8 @@ interface MarketData {
   dayLow?: number | null;
   marketCap?: number | null;
   volumeShares?: number | null;
+  /** Direction of the latest tick, used for the 600ms price flash. */
+  tick?: "up" | "down" | "flat";
   /** True when the newest poll failed and we're showing the last known price. */
   delayed?: boolean;
 }
@@ -600,6 +602,7 @@ const Markets = () => {
       dayHigh: quote.h ?? null,
       dayLow: quote.l ?? null,
       delayed: quote.delayed,
+      tick: quote.tick,
       marketCap: meta?.marketCap ?? null,
       volumeShares: meta?.volume ?? null,
       sparkline: item.sparkline,
