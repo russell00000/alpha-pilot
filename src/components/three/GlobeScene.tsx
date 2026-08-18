@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 const RADIUS = 2.1;
 const COUNT = 200;
-const LINK_DIST = 0.85;
+const LINK_DIST = 0.78;
 const HUBS = 11;
 const GOLD = "#d4af37";
 
