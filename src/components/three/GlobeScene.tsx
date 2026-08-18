@@ -179,31 +179,49 @@ function Globe({ reduced }: { reduced: boolean }) {
   );
 }
 
-/** WebGL particle globe for the landing hero. */
-const GlobeScene = ({ className = "" }: { className?: string }) => {
-  const reduced = useReducedMotion();
-  const [ready, setReady] = useState(false);
-  return (
-    <div
-      className={className}
-      aria-hidden
-      style={{ opacity: ready ? undefined : 0, transition: "opacity 0.7s ease-out", willChange: "opacity" }}
-    >
-      <Canvas
-        dpr={Math.min(window.devicePixelRatio || 1, 1)}
-        gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
-        camera={{ fov: 50, position: [0, 0, 5.8] }}
-        style={{ background: "transparent" }}
-        onCreated={({ gl }) => {
-          gl.shadowMap.enabled = false;
-          gl.info.autoReset = false;
-          requestAnimationFrame(() => setReady(true));
+/**
+ * WebGL particle globe for the landing hero.
+ * Memoized with an always-equal comparator so app-level re-renders (price
+ * updates, panel resizing, route state) can never interrupt the WebGL loop.
+ */
+const GlobeScene = memo(
+  ({ className = "" }: { className?: string }) => {
+    const reduced = useReducedMotion();
+    const [ready, setReady] = useState(false);
+    return (
+      <div
+        className={className}
+        aria-hidden
+        style={{
+          opacity: ready ? undefined : 0,
+          transition: "opacity 0.7s ease-out",
+          willChange: "transform, opacity",
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+          pointerEvents: "none",
         }}
       >
-        <Globe reduced={reduced} />
-      </Canvas>
-    </div>
-  );
-};
+        <Canvas
+          frameloop="always"
+          dpr={Math.min(window.devicePixelRatio || 1, 1)}
+          gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
+          camera={{ fov: 50, position: [0, 0, 5.8] }}
+          style={{ background: "transparent", pointerEvents: "none" }}
+          onCreated={({ gl }) => {
+            gl.shadowMap.enabled = false;
+            gl.outputColorSpace = THREE.LinearSRGBColorSpace;
+            gl.info.autoReset = false;
+            requestAnimationFrame(() => setReady(true));
+          }}
+        >
+          <Globe reduced={reduced} />
+        </Canvas>
+      </div>
+    );
+  },
+  () => true,
+);
+
+GlobeScene.displayName = "GlobeScene";
 
 export default GlobeScene;
