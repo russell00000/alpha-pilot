@@ -1360,3 +1360,11 @@
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
 }
+
+/* Markets page pill search focus ring */
+.markets-search-input:focus,
+.markets-search-input:focus-visible {
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
+  outline: none;
+}

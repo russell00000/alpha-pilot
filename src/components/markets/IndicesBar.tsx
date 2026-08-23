@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,7 +12,7 @@ interface IndexQuote {
   dp: number;
 }
 
-/** Full-width glass strip of headline index chips. */
+/** Clean horizontal bar of headline index quotes — no card, no radius. */
 const IndicesBar = () => {
   const [indices, setIndices] = useState<IndexQuote[]>([]);
   const [delayed, setDelayed] = useState(false);
@@ -52,29 +53,46 @@ const IndicesBar = () => {
   const rows = indices.length > 0 ? indices : placeholders.map((p) => ({ ...p, proxy: "", c: 0, d: 0, dp: 0 }));
 
   return (
-    <div className="mb-6 w-full rounded-2xl border border-border/20 border-b-2 border-b-primary/40 bg-background/50 backdrop-blur-md">
-      <div className="grid grid-cols-2 divide-border/20 md:grid-cols-4 md:divide-x">
-        {rows.map((index) => {
+    <div className="mb-10 w-full border-b border-foreground/[0.08] pb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4">
+        {rows.map((index, i) => {
           const positive = index.dp >= 0;
           const hasData = index.c > 0;
           return (
-            <div key={index.key} className="flex flex-col gap-1 px-5 py-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            <div
+              key={index.key}
+              className={cn(
+                "flex flex-col gap-1.5 px-5 first:pl-0",
+                i > 0 && "md:border-l md:border-foreground/[0.08]",
+              )}
+            >
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-foreground/40">
                 {index.label}
-                {index.proxy && <span className="ml-2 text-foreground/35">via {index.proxy}</span>}
-                {delayed && hasData && <span className="ml-2 text-primary/70">delayed</span>}
+                {index.proxy && <span className="ml-2 text-foreground/30">via {index.proxy}</span>}
+                {delayed && hasData && <span className="ml-2 text-foreground/30">delayed</span>}
               </span>
               <div className="flex items-baseline gap-3">
-                <span className="font-display text-[1.7rem] font-semibold leading-none tracking-tight text-foreground tabular-nums">
+                <span className="font-display text-[2.4rem] font-medium leading-none tracking-tight text-foreground tabular-nums">
                   {hasData ? index.c.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                 </span>
                 <span
                   className={cn(
-                    "font-mono text-xs font-semibold tabular-nums",
-                    positive ? "text-success" : "text-destructive",
+                    "flex items-center gap-0.5 font-mono text-[0.72rem] font-medium tabular-nums",
+                    positive ? "text-primary" : "text-destructive",
                   )}
                 >
-                  {hasData ? `${positive ? "+" : ""}${index.dp.toFixed(2)}%` : "·"}
+                  {hasData ? (
+                    <>
+                      {positive ? (
+                        <ArrowUpRight className="h-3 w-3" strokeWidth={2.2} />
+                      ) : (
+                        <ArrowDownRight className="h-3 w-3" strokeWidth={2.2} />
+                      )}
+                      {`${positive ? "+" : ""}${index.dp.toFixed(2)}%`}
+                    </>
+                  ) : (
+                    "·"
+                  )}
                 </span>
               </div>
             </div>

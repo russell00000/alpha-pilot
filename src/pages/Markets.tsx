@@ -724,22 +724,26 @@ const Markets = () => {
 
       <Header />
       
-      <main data-scene="analytics" className="container mx-auto px-4 py-8 relative">
-        {/* Hero Search Section */}
-        <div className="rounded-2xl bg-background/50 backdrop-blur-sm border border-border/20 p-8 mb-8 text-center overflow-visible relative z-20">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Globe className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-              Search the Entire Market
-            </h1>
-          </div>
-          <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Access real-time data for thousands of stocks, ETFs, mutual funds, and cryptocurrencies.
+      <main
+        data-scene="analytics"
+        className="relative mx-auto w-full max-w-[1280px] py-8"
+        style={{ paddingInline: "clamp(1.5rem, 4vw, 3rem)" }}
+      >
+        {/* Editorial header + search */}
+        <section className="relative z-20 mb-10 overflow-visible">
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-primary">
+            — Markets · Real-Time
           </p>
-          
+          <h1 className="mt-3 font-display text-[2.6rem] font-medium italic leading-[1.05] text-foreground">
+            Search the entire market.
+          </h1>
+          <p className="mt-2 font-sans text-[0.88rem] text-muted-foreground">
+            Live data across stocks, ETFs, mutual funds, and crypto.
+          </p>
+
           {/* Main Search Bar */}
-          <div className="relative max-w-2xl mx-auto mb-6">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <div className="relative mt-6 w-full">
+            <Search className="pointer-events-none absolute left-5 top-1/2 z-10 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search any stock, ETF, or crypto (e.g., AAPL, TSLA, BTC)..."
               value={searchQuery}
@@ -757,25 +761,25 @@ const Markets = () => {
                 // Delay hiding suggestions to allow click to register
                 setTimeout(() => setShowSuggestions(false), 200);
               }}
-              className="pl-12 pr-32 h-14 text-lg"
+              className="markets-search-input h-[52px] rounded-full border-foreground/[0.12] bg-foreground/[0.05] pl-12 pr-36 font-sans text-[0.9rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {searchQuery && (
               <button
                 onClick={clearSearch}
-                className="absolute right-28 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-[7.5rem] top-1/2 z-10 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             )}
-            <Button
+            <button
               onClick={() => handleSearch()}
               disabled={isSearching || !searchQuery.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-10"
+              className="absolute right-1.5 top-1/2 z-10 flex h-[40px] -translate-y-1/2 items-center gap-2 rounded-full bg-primary px-5 font-mono text-[0.7rem] uppercase tracking-[0.16em] text-primary-foreground shadow-none transition-opacity hover:opacity-90 disabled:opacity-40"
             >
-              {isSearching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
               Search
-            </Button>
-            
+            </button>
+
             <SearchSuggestions
               suggestions={mergedSuggestions}
               onSelect={(asset) => handleQuickSearch(asset.symbol)}
@@ -785,21 +789,22 @@ const Markets = () => {
           </div>
 
           {/* Popular Searches */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-sm text-muted-foreground">Popular:</span>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="mr-1 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-primary">
+              Popular
+            </span>
             {popularSearches.map((item) => (
-              <Button
+              <button
                 key={item.symbol}
-                variant="outline"
-                size="sm"
                 onClick={() => handleQuickSearch(item.symbol)}
-                className="text-xs"
+                className="rounded-full border border-foreground/[0.15] bg-transparent px-[0.9rem] py-[0.3rem] font-mono text-[0.72rem] text-foreground transition-colors duration-200 hover:border-primary hover:text-primary"
               >
                 {item.symbol}
-              </Button>
+              </button>
             ))}
           </div>
-        </div>
+        </section>
+
 
         {/* Search Results Banner */}
         {searchResults.length > 0 && (
