@@ -1368,3 +1368,25 @@
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
   outline: none;
 }
+
+/* ==========================================================================
+   Hover stability — panels and tabs must never move under the cursor.
+   Neutralizes every hover-triggered transform (lift, tilt, scale) while
+   preserving color/border/shadow feedback.
+   ========================================================================== */
+@media (hover: hover) {
+  .glass-tile:hover,
+  .card-hover:hover,
+  .btn-hover-lift:hover,
+  .hover-scale:hover,
+  .pill-primary:hover,
+  .pill-primary:hover .pill-badge,
+  .pill-secondary:hover,
+  [class*="hover:-translate"]:hover,
+  [class*="hover:translate"]:hover,
+  [class*="hover:scale"]:hover,
+  [class*="group-hover:scale"],
+  [class*="active:scale"]:active {
+    transform: none !important;
+  }
+}
