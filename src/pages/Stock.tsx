@@ -639,7 +639,7 @@ const Stock = () => {
       
       return (
         <div className={cn(
-          "bg-background/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl",
+          "bg-popover border border-border rounded-xl p-3 shadow-2xl",
           insiderView ? "min-w-[340px]" : "min-w-[200px]"
         )}>
           <div className="flex items-center justify-between mb-2">
@@ -1020,7 +1020,7 @@ const Stock = () => {
                     dataKey="displayDate" 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fillOpacity: 0.85, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
                     interval="preserveStartEnd"
                     minTickGap={80}
                     dy={8}
@@ -1029,9 +1029,15 @@ const Stock = () => {
                     domain={['auto', 'auto']}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                    tickFormatter={(value) => `$${value.toLocaleString()}`}
-                    width={65}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fillOpacity: 0.85, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
+                    tickFormatter={(value) => {
+                      const v = Number(value);
+                      const formatted = v >= 1000
+                        ? v.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                        : v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      return `$${formatted}`;
+                    }}
+                    width={72}
                     tickCount={8}
                   />
                   {/* Opening price reference line - Insider View only */}
