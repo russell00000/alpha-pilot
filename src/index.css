@@ -1386,7 +1386,15 @@
   [class*="hover:translate"]:hover,
   [class*="hover:scale"]:hover,
   [class*="group-hover:scale"],
+  .tilt-live,
   [class*="active:scale"]:active {
+    transform: none !important;
+  }
+
+  .luxe-glass,
+  .glass-card,
+  .deep-card,
+  [data-tilt] {
     transform: none !important;
   }
 }
