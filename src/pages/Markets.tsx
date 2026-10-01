@@ -1180,6 +1180,7 @@ const Markets = () => {
                         key={item.symbol}
                         className="group cursor-pointer border-b border-border/25 shadow-[inset_3px_0_0_0_transparent] transition-all duration-300 hover:bg-foreground/[0.035] hover:shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
                         onClick={() => navigate(`/stock/${item.symbol}`)}
+                        onMouseEnter={prefetchStockPage}
                       >
                         <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
                         <td className="p-4">
@@ -1208,7 +1209,19 @@ const Markets = () => {
                               </span>
                             </div>
                             <div className="min-w-0">
-                              <p className="font-mono text-[1rem] uppercase leading-tight text-primary">{item.symbol}</p>
+                              <p className="flex items-center gap-1.5 font-mono text-[1rem] uppercase leading-tight text-primary">
+                                {item.symbol}
+                                <button
+                                  aria-label={isWatched(item.symbol) ? `Remove ${item.symbol} from watchlist` : `Add ${item.symbol} to watchlist`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWatch({ symbol: item.symbol, name: item.name, type: item.type });
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
+                                >
+                                  <Star className={cn("watch-star w-3.5 h-3.5", isWatched(item.symbol) && "active opacity-100")} />
+                                </button>
+                              </p>
                               <p className="truncate text-[0.82rem] text-muted-foreground">{item.name}</p>
                             </div>
                           </div>
@@ -1218,7 +1231,14 @@ const Markets = () => {
                             <Loader2 className="w-4 h-4 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPrice ? (
                             <div className="flex items-center justify-end gap-2">
-                              <p className="font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums">
+                              <p
+                                key={`${item.symbol}-${item.price}`}
+                                className={cn(
+                                  "font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums",
+                                  item.tick === "up" && "price-flash-up",
+                                  item.tick === "down" && "price-flash-down",
+                                )}
+                              >
                                 ${item.price}
                               </p>
                               {item.delayed && (
