@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Briefcase, PieChart, Layers } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Briefcase, PieChart, Layers, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,9 @@ import IndicesBar from "@/components/markets/IndicesBar";
 import SectorHeatMap from "@/components/markets/SectorHeatMap";
 import { useFinnhubQuotes } from "@/hooks/useFinnhubQuotes";
 import { useMarketClock } from "@/hooks/useMarketClock";
+import { useWatchlist } from "@/hooks/useWatchlist";
+
+const prefetchStockPage = () => { void import("@/pages/Stock"); };
 
 interface MarketData {
   symbol: string;
@@ -126,7 +129,17 @@ const popularSearches = [
 
 const Markets = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("stocks");
+  // Remember the last viewed tab so the page picks up where you left off.
+  const [activeTab, setActiveTabState] = useState(() => {
+    try { return localStorage.getItem("vantage:markets-tab") || "stocks"; } catch { return "stocks"; }
+  });
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabState(tab);
+    try { localStorage.setItem("vantage:markets-tab", tab); } catch { /* ignore */ }
+  }, []);
+  const { entries: watchlist, toggle: toggleWatch, isWatched } = useWatchlist();
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [liveData, setLiveData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(false); // Start false - show content immediately
   const [isRefreshing, setIsRefreshing] = useState(false);
