@@ -836,10 +836,12 @@
   }
 
   @keyframes luxe-page-in {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
-  .animate-page-in { animation: luxe-page-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, opacity; }
+  /* Opacity-only and no lingering will-change: a transform on the page wrapper
+     would re-layer every frosted panel and break fixed headers. */
+  .animate-page-in { animation: luxe-page-in 0.22s ease-out both; }
 
   @keyframes tab-in {
     from { opacity: 0; transform: translateY(10px); }
@@ -1080,9 +1082,7 @@
       transparent 72%
     );
     filter: blur(28px);
-    animation: env-key-drift 21s ease-in-out infinite;
     transition: background 1.2s ease-out;
-    translate: calc(var(--ptr-x) * -12px) calc(var(--ptr-y) * -9px);
   }
 
   .env-veil {
@@ -1099,13 +1099,10 @@
     opacity: 0.38;
     -webkit-mask-image: radial-gradient(78% 62% at var(--scene-x) 34%, #000 0%, transparent 100%);
     mask-image: radial-gradient(78% 62% at var(--scene-x) 34%, #000 0%, transparent 100%);
-    translate: calc(var(--ptr-x) * -5px) calc(var(--ptr-y) * -4px);
-    transition: mask-image 1.2s ease-out;
   }
 
   .env-contour {
     opacity: 0.045;
-    translate: calc(var(--ptr-x) * -8px) calc(var(--ptr-y) * -6px);
   }
 
   /* ---------- Global cursor light ---------- */
