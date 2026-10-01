@@ -14,6 +14,8 @@ interface SearchSuggestionsProps {
   visible: boolean;
   query?: string;
   className?: string;
+  /** Index highlighted by keyboard navigation (-1 = none). */
+  activeIndex?: number;
 }
 
 const typeConfig: Record<
