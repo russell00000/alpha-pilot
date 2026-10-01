@@ -46,15 +46,19 @@ const AmbientBackground = () => {
 
   /* viewport */
   useEffect(() => {
-    const onResize = () =>
-      setDims({
-        w: window.innerWidth,
-        h: window.innerHeight,
-        dpr: Math.min(window.devicePixelRatio || 1, 2),
+    let t = 0;
+    const measure = () =>
+      setDims((d) => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        // Ignore small height changes (mobile URL bar) so the canvas isn't rebuilt mid-scroll.
+        if (d.w === w && Math.abs(d.h - h) < 120) return d;
+        return { w, h, dpr: Math.min(window.devicePixelRatio || 1, 1.5) };
       });
-    onResize();
+    const onResize = () => { window.clearTimeout(t); t = window.setTimeout(measure, 150); };
+    measure();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); window.clearTimeout(t); };
   }, []);
 
   /* section-driven lighting — the environment relights as you scroll */
@@ -122,6 +126,9 @@ const AmbientBackground = () => {
     const linkDistSq = linkDist * linkDist;
     const pts = nodes.map((n) => ({ x: n.bx, y: n.by }));
 
+    // Drawn once per resize. A continuously animating layer behind the frosted
+    // glass panels forces every blur to be recomputed each frame — the main
+    // source of scroll/hover jank — so the network is rendered as a still.
     const draw = (t: number) => {
       const theta = ((t % CYCLE_MS) / CYCLE_MS) * Math.PI * 2;
       ctx.clearRect(0, 0, dims.w, dims.h);
@@ -157,12 +164,10 @@ const AmbientBackground = () => {
       }
 
       ctx.globalAlpha = 1;
-      if (!reduced) rafRef.current = requestAnimationFrame(draw);
     };
 
-    if (reduced) draw(0);
-    else rafRef.current = requestAnimationFrame(draw);
-
+    draw(0);
+    void reduced;
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [nodes, dims, reduced]);
 
@@ -212,8 +217,6 @@ const AmbientBackground = () => {
         }}
       />
 
-      {/* cursor light — desktop only, extremely low opacity */}
-      <div className="cursor-light" />
     </div>
   );
 };
