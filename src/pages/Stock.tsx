@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { useWatchlist } from "@/hooks/useWatchlist";
 import { ForecastChart, type ForecastData } from "@/components/ForecastChart";
 import {
   XAxis,
@@ -92,6 +93,7 @@ const timeRanges = [
 
 const Stock = () => {
   const { symbol } = useParams<{ symbol: string }>();
+  const { toggle: toggleWatch, isWatched } = useWatchlist();
   const navigate = useNavigate();
   const { toast } = useToast();
   
