@@ -1,71 +1,31 @@
-# Improve Accuracy & Loading — Sequenced Plan
+# Experience Improvements — Vantage Portfolio Solutions
 
-Three phases, shipped in order. Each phase is verifiable on its own so we can course-correct.
+A prioritized set of upgrades to make the site feel faster, more polished, and more trustworthy. Pick any subset; they're independent.
 
-## Phase 1 — Data Accuracy (screener + fundamentals)
+## 1. Speed & smoothness (highest impact)
+- **Skeleton screens everywhere:** replace spinners/blank areas on Markets, Stock, Screener, and Portfolio with shimmer placeholders shaped like the final content, so pages never feel empty while data loads.
+- **Optimistic navigation:** prefetch the stock page's data when a search suggestion or table row is hovered, so clicking feels instant.
+- **Price flash feedback:** when a live price updates, briefly tint the number green/red so changes are visible without watching.
 
-Building on the MU fix. Goal: no more "Strong Buy on a blow-off top" or bogus-margin scores.
+## 2. Trust & clarity
+- **"As of" timestamps:** show when each price/quote was last updated, with a subtle "LIVE" pulse when data is fresh and "Delayed" when stale.
+- **Rating explainability:** on every Buy/Hold/Sell badge, add a small "Why?" popover summarizing the 2–3 factors that drove the rating (from the v2.0 rubric) — no strategy disclosure, just the headline reasons.
+- **Empty states:** friendly, on-brand empty states for Portfolio, Alerts, and Chat history instead of blank panels.
 
-1. **Fundamentals sanity, round 2**
-   - Reject Yahoo `trailingPE` when it disagrees with `price / trailingEps` by >25% (catches split/adjustment glitches).
-   - Cap `revenueGrowth` sanity band tighter (-80%..+150%) and drop rows where reported revenue is null.
-   - Add a "stale data" flag: if `fundamentals.updated_at` is >14 days old, exclude from screener rating (row shows "—" instead of Strong Buy).
+## 3. Mobile experience
+- Audit Markets, Screener, and Stock pages on phone widths: sticky table headers, horizontally scrollable stat rows, and a bottom nav bar for the main sections.
 
-2. **Technical rubric hardening**
-   - Add ATR-based volatility filter: if 20-day ATR% > 8%, cap technical score magnitude at ±1 (whipsaw names shouldn't drive strong ratings).
-   - Weight the new SMA-extension penalty higher on names >150% above SMA200 (currently −2; make it −3 tier for ≥2.5×).
-   - Renormalize combined score so ratings still map cleanly to ±6.
+## 4. Personal touches
+- **Watchlist:** star any security from search or the stock page; a Watchlist strip on the Markets page shows your starred tickers with live prices.
+- **Remember preferences:** persist chart timeframe, screener filters, and Markets tab per user so the site picks up where you left off.
 
-3. **Price freshness**
-   - `sync-technicals` currently trusts one Yahoo batch call. Add fallback to `v8/chart` last close if `regularMarketPrice` is >20% off the last daily candle (catches the MU $975 phantom).
-
-**Verify:** re-run both sync functions on a shard containing MU, NVDA, SMCI, TSLA, GME; confirm ratings are sane; spot-check via the screener UI.
-
-## Phase 2 — Loading Speed
-
-1. **Screener page**
-   - Debounce filter inputs (300ms) and cancel in-flight requests on new query.
-   - Server-side: add covering index on `screener_view` sort columns (`market_cap`, `combined_score`, `change_pct`) if missing.
-   - Client: virtualize the results table (>100 rows) with `@tanstack/react-virtual`.
-
-2. **Markets page**
-   - Batch the staggered price fetches into a single `market-data` call per category tab instead of per-symbol.
-   - Cache category results in React Query with `staleTime: 60s`.
-
-3. **Stock detail page**
-   - Split route: render header + price immediately, lazy-load `ForecastChart` and AI recommendation panels via `React.lazy` + Suspense.
-   - Cache historical candles in `sessionStorage` keyed by `symbol+range` for 5 min.
-
-4. **Dashboard / Index**
-   - Preload only the top-6 movers query on mount; defer News + Quick Actions to `requestIdleCallback`.
-   - Convert `MarketOverview` sparklines to static SVG paths (skip Recharts hydration for the initial paint).
-
-**Verify:** Lighthouse + manual timing before/after on each page; target 40%+ TTI improvement on Screener and Stock detail.
-
-## Phase 3 — AI Analysis Quality
-
-1. **stock-analysis prompt upgrades**
-   - Feed the model the same rubric inputs the screener uses (RSI, MACD, SMA extension, margin, growth) so its narrative can't contradict the score.
-   - Require the model to explicitly reconcile "score says X, my view is Y, because…" when they diverge — surfaces disagreements as a feature, not a bug.
-
-2. **ai-chat grounding**
-   - Pre-fetch current quote + 1yr chart + latest fundamentals for any ticker mentioned in the user message, pass into the system context. Kills the "I don't have current data" hedge.
-
-3. **Consistency check**
-   - Add server-side sanity: if AI recommendation is "Strong Buy" but combined_score < 0 (or vice versa), log the divergence and show a small "Analyst view differs from quant score" badge in the UI.
-
-**Verify:** re-run MU, TSLA, NVDA, PLTR through `stock-analysis` and compare narrative vs screener rating.
+## 5. Polish
+- Keyboard navigation: arrow keys through search suggestions, Enter to open, "/" to focus search from anywhere.
+- Subtle number transitions (count-up) on portfolio totals and index values instead of abrupt swaps.
 
 ## Technical notes
+- All frontend work in existing pages/components; no schema changes except a `watchlists` table (with RLS + grants) if item 4 is approved.
+- Respects existing rules: no hover movement on panes, no per-frame background animation, dark platinum/gold design system.
 
-- New DB migration: index on `securities_universe(is_active, symbol)` and `screener_view` sort cols.
-- No breaking API changes; all edge functions stay backward compatible.
-- Rollout: Phase 1 first (deploy → resync fundamentals + technicals full universe → verify). Phase 2 next (frontend-only, safe). Phase 3 last (prompt + logging changes).
-
-## Out of scope
-
-- Adding new data providers (still Yahoo + CoinGecko + Finnhub).
-- Redesigning the rating scale itself — keep ±6 combined score and current rating buckets.
-- Changing the AI persona or copy tone.
-
-Shall I start with Phase 1?
+## Suggested order
+1 → 2 → 4 → 3 → 5, but any item can be done standalone.
