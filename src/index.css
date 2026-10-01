@@ -1415,3 +1415,8 @@
 .watch-star { color: hsl(var(--muted-foreground) / 0.5); transition: color 200ms ease; }
 .watch-star:hover { color: hsl(var(--primary)); }
 .watch-star.active { color: hsl(var(--primary)); fill: hsl(var(--primary)); }
+
+/* Room for the mobile bottom nav so it never covers page content */
+@media (max-width: 767px) {
+  body { padding-bottom: 64px; }
+}
