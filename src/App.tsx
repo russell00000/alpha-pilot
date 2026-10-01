@@ -27,6 +27,27 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import AmbientBackground from "./components/AmbientBackground";
 import MotionLayer from "./components/motion/MotionLayer";
 
+/* Warm every page in the background once the landing page is idle, so
+   switching tabs is instant instead of waiting on a download. */
+if (typeof window !== "undefined") {
+  const warm = () => {
+    [
+      () => import("./pages/Markets"),
+      () => import("./pages/Stock"),
+      () => import("./pages/Screener"),
+      () => import("./pages/Portfolio"),
+      () => import("./pages/Chat"),
+      () => import("./pages/Practice"),
+      () => import("./pages/Alerts"),
+      () => import("./pages/PortfolioAnalysis"),
+      () => import("./pages/PracticeRisk"),
+      () => import("./pages/Auth"),
+    ].forEach((load, i) => window.setTimeout(() => load().catch(() => {}), i * 250));
+  };
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  window.addEventListener("load", () => (ric ? ric(warm, { timeout: 3000 }) : window.setTimeout(warm, 1500)), { once: true });
+}
+
 /** Minimal, spinner-free fallback so route swaps never flash white. */
 const RouteFallback = () => (
   <div style={{ minHeight: "100svh", background: "#080708" }} aria-hidden />
