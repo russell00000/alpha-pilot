@@ -850,7 +850,43 @@ const Markets = () => {
                 {item.symbol}
               </button>
             ))}
+            <span className="ml-auto hidden sm:inline-flex items-center rounded-md border border-border/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">/</span>
           </div>
+
+          {/* Watchlist strip — starred securities with live prices */}
+          {watchlist.length > 0 && searchResults.length === 0 && (
+            <div className="mt-5">
+              <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-primary">Watchlist</p>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {watchlist.map((entry) => {
+                  const quote = liveQuotes[entry.symbol];
+                  const cached = priceCache[entry.symbol];
+                  const pct = quote ? quote.dp : safeNumber(cached?.changePercent, 0);
+                  const price = quote ? formatPrice(quote.c) : cached?.price;
+                  const positive = pct >= 0;
+                  return (
+                    <button
+                      key={entry.symbol}
+                      onClick={() => navigate(`/stock/${entry.symbol}`)}
+                      onMouseEnter={prefetchStockPage}
+                      className="flex flex-shrink-0 items-center gap-2.5 rounded-full border border-border/30 bg-background/50 backdrop-blur-sm px-3.5 py-2 transition-colors duration-200 hover:border-primary/40"
+                    >
+                      <Star className="watch-star active w-3 h-3" />
+                      <span className="font-mono text-xs font-semibold text-foreground">{entry.symbol}</span>
+                      {price && price !== "—" && (
+                        <span className="font-mono text-xs text-muted-foreground tabular-nums">${price}</span>
+                      )}
+                      {(quote || cached) && (
+                        <span className={cn("font-mono text-[10px] tabular-nums", positive ? "text-success" : "text-destructive")}>
+                          {positive ? "+" : ""}{pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
 
