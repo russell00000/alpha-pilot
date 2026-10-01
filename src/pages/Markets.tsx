@@ -352,10 +352,42 @@ const Markets = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!showSuggestions || mergedSuggestions.length === 0) return;
+      e.preventDefault();
+      setActiveSuggestion((prev) => {
+        const next = e.key === "ArrowDown" ? prev + 1 : prev - 1;
+        if (next < 0) return mergedSuggestions.length - 1;
+        return next % mergedSuggestions.length;
+      });
+      return;
+    }
     if (e.key === "Enter") {
+      if (showSuggestions && activeSuggestion >= 0 && mergedSuggestions[activeSuggestion]) {
+        handleQuickSearch(mergedSuggestions[activeSuggestion].symbol);
+        setActiveSuggestion(-1);
+        return;
+      }
       handleSearch();
     }
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setActiveSuggestion(-1);
+    }
   };
+
+  // Press "/" anywhere on the page to jump straight to the search box.
+  useEffect(() => {
+    const onGlobalKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      e.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener("keydown", onGlobalKey);
+    return () => window.removeEventListener("keydown", onGlobalKey);
+  }, []);
 
   const clearSearch = () => {
     setSearchQuery("");
