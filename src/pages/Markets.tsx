@@ -1217,9 +1217,12 @@ const Markets = () => {
                                     e.stopPropagation();
                                     toggleWatch({ symbol: item.symbol, name: item.name, type: item.type });
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
+                                  className={cn(
+                                    "transition-opacity duration-200",
+                                    isWatched(item.symbol) ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                                  )}
                                 >
-                                  <Star className={cn("watch-star w-3.5 h-3.5", isWatched(item.symbol) && "active opacity-100")} />
+                                  <Star className={cn("watch-star w-3.5 h-3.5", isWatched(item.symbol) && "active")} />
                                 </button>
                               </p>
                               <p className="truncate text-[0.82rem] text-muted-foreground">{item.name}</p>
