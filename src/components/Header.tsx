@@ -73,6 +73,7 @@ const Header = () => {
   };
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/50 backdrop-blur-[24px]">
       <div className="container relative flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo - left */}
@@ -245,6 +246,37 @@ const Header = () => {
         </div>
       </div>
     </header>
+    {/* Mobile bottom navigation — thumb-reachable section switcher */}
+    <nav
+      aria-label="Primary"
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border/60 bg-background/80 backdrop-blur-[24px] pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className="grid grid-cols-5">
+        {[
+          { label: "Home", href: "/", icon: TrendingUp },
+          { label: "Markets", href: "/markets", icon: BarChart3 },
+          { label: "Screener", href: "/screener", icon: SlidersHorizontal },
+          { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+          { label: "Chat", href: "/chat", icon: MessageSquare },
+        ].map((item) => {
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                active ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <item.icon className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+    </>
   );
 };
 
