@@ -235,6 +235,39 @@ const Screener = () => {
     return <span className={cn("font-mono text-xs font-semibold", tone)}>{sign}{pct.toFixed(1)}%</span>;
   };
 
+  // Headline reasons behind a rating — the top factors from the score inputs.
+  const ratingReasons = (r: ScreenerRow): string[] => {
+    const reasons: string[] = [];
+    const f = r.fundamental_score;
+    const t = r.technical_score;
+    if (f != null) {
+      reasons.push(
+        f >= 3 ? `Strong fundamentals (score ${f.toFixed(1)}/6)` :
+        f <= -3 ? `Weak fundamentals (score ${f.toFixed(1)}/6)` :
+        `Mixed fundamentals (score ${f.toFixed(1)}/6)`,
+      );
+    }
+    if (t != null) {
+      reasons.push(
+        t >= 3 ? `Bullish technicals — RSI/MACD/MA aligned (score ${t.toFixed(1)}/6)` :
+        t <= -3 ? `Bearish technicals — momentum breaking down (score ${t.toFixed(1)}/6)` :
+        `Neutral technicals (score ${t.toFixed(1)}/6)`,
+      );
+    }
+    if (r.rsi_14 != null) {
+      if (r.rsi_14 >= 70) reasons.push(`RSI ${r.rsi_14.toFixed(0)} — overbought territory`);
+      else if (r.rsi_14 <= 30) reasons.push(`RSI ${r.rsi_14.toFixed(0)} — oversold territory`);
+    }
+    if (r.pe_ratio != null && r.pe_ratio > 0) {
+      if (r.pe_ratio > 40) reasons.push(`Elevated valuation (P/E ${r.pe_ratio.toFixed(0)})`);
+      else if (r.pe_ratio < 15) reasons.push(`Attractive valuation (P/E ${r.pe_ratio.toFixed(0)})`);
+    }
+    if (r.revenue_growth != null && Math.abs(r.revenue_growth) >= 15) {
+      reasons.push(`Revenue ${r.revenue_growth > 0 ? "growing" : "shrinking"} ${Math.abs(r.revenue_growth).toFixed(0)}% YoY`);
+    }
+    return reasons.slice(0, 3);
+  };
+
   return (
     <div className="min-h-screen bg-background relative">
       <div className="fixed inset-0 pointer-events-none opacity-[0.16]" style={{ filter: "brightness(1.2) saturate(0.3) contrast(0.9)", backgroundImage: `url(${financeBg})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />
@@ -459,12 +492,40 @@ const Screener = () => {
                           {label === "—" ? (
                             <span className="text-xs text-muted-foreground">—</span>
                           ) : (
-                            <span className={cn(
-                              "inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border",
-                              tone === "buy" && "bg-success/10 text-success border-success/30",
-                              tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50",
-                              tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30",
-                            )}>{label}</span>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border transition-colors",
+                                    tone === "buy" && "bg-success/10 text-success border-success/30 hover:border-success/60",
+                                    tone === "hold" && "bg-muted/40 text-muted-foreground border-border/50 hover:border-border",
+                                    tone === "sell" && "bg-destructive/10 text-destructive border-destructive/30 hover:border-destructive/60",
+                                  )}
+                                >
+                                  {label}
+                                  <Info className="w-2.5 h-2.5 opacity-60" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="center"
+                                className="w-64 bg-popover border-border/60"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <p className="text-xs font-semibold text-foreground mb-2">Why {label}?</p>
+                                <ul className="space-y-1.5">
+                                  {ratingReasons(r).map((reason, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-primary" />
+                                      {reason}
+                                    </li>
+                                  ))}
+                                </ul>
+                                <p className="mt-3 text-[10px] text-muted-foreground/70 border-t border-border/40 pt-2">
+                                  Vantage rating: 60% fundamentals, 40% technicals.
+                                </p>
+                              </PopoverContent>
+                            </Popover>
                           )}
                         </td>
                         <td className="p-3 pr-4 text-right font-mono text-muted-foreground">{formatVolume(r.volume)}</td>
