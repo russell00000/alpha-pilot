@@ -1,4 +1,4 @@
-import { TrendingUp, Bell, User, Menu, Settings, ChevronDown, LogOut, LogIn } from "lucide-react";
+import { TrendingUp, Bell, User, Menu, Settings, ChevronDown, LogOut, LogIn, BarChart3, SlidersHorizontal, Briefcase, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -259,7 +259,7 @@ const Header = () => {
           { label: "Portfolio", href: "/portfolio", icon: Briefcase },
           { label: "Chat", href: "/chat", icon: MessageSquare },
         ].map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active = item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
