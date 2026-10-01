@@ -1395,3 +1395,28 @@
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   Live price flash — brief green/red tint when a quote ticks up/down.
+   Color-only (no transform) so panels stay perfectly still.
+   ========================================================================== */
+@keyframes price-flash-up {
+  0% { color: hsl(var(--success)); text-shadow: 0 0 14px hsl(var(--success) / 0.45); }
+  100% { color: inherit; text-shadow: none; }
+}
+@keyframes price-flash-down {
+  0% { color: hsl(var(--destructive)); text-shadow: 0 0 14px hsl(var(--destructive) / 0.45); }
+  100% { color: inherit; text-shadow: none; }
+}
+.price-flash-up { animation: price-flash-up 900ms ease-out; }
+.price-flash-down { animation: price-flash-down 900ms ease-out; }
+
+/* Watchlist star button */
+.watch-star { color: hsl(var(--muted-foreground) / 0.5); transition: color 200ms ease; }
+.watch-star:hover { color: hsl(var(--primary)); }
+.watch-star.active { color: hsl(var(--primary)); fill: hsl(var(--primary)); }
+
+/* Room for the mobile bottom nav so it never covers page content */
+@media (max-width: 767px) {
+  body { padding-bottom: 64px; }
+}

@@ -14,6 +14,8 @@ interface SearchSuggestionsProps {
   visible: boolean;
   query?: string;
   className?: string;
+  /** Index highlighted by keyboard navigation (-1 = none). */
+  activeIndex?: number;
 }
 
 const typeConfig: Record<
@@ -74,6 +76,7 @@ export function SearchSuggestions({
   visible,
   query,
   className,
+  activeIndex = -1,
 }: SearchSuggestionsProps) {
   if (!visible) return null;
 
@@ -129,7 +132,8 @@ export function SearchSuggestions({
               "border-b border-border/20 last:border-b-0",
               "transition-all duration-200 ease-out",
               "hover:bg-primary/[0.04]",
-              "focus:bg-primary/[0.04] focus:outline-none"
+              "focus:bg-primary/[0.04] focus:outline-none",
+              index === activeIndex && "bg-primary/[0.07]"
             )}
           >
             {/* Left accent bar on hover */}

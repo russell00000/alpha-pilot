@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Briefcase, PieChart, Layers } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Search, X, Loader2, Globe, BarChart3, Briefcase, PieChart, Layers, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,9 @@ import IndicesBar from "@/components/markets/IndicesBar";
 import SectorHeatMap from "@/components/markets/SectorHeatMap";
 import { useFinnhubQuotes } from "@/hooks/useFinnhubQuotes";
 import { useMarketClock } from "@/hooks/useMarketClock";
+import { useWatchlist } from "@/hooks/useWatchlist";
+
+const prefetchStockPage = () => { void import("@/pages/Stock"); };
 
 interface MarketData {
   symbol: string;
@@ -126,7 +129,17 @@ const popularSearches = [
 
 const Markets = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("stocks");
+  // Remember the last viewed tab so the page picks up where you left off.
+  const [activeTab, setActiveTabState] = useState(() => {
+    try { return localStorage.getItem("vantage:markets-tab") || "stocks"; } catch { return "stocks"; }
+  });
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabState(tab);
+    try { localStorage.setItem("vantage:markets-tab", tab); } catch { /* ignore */ }
+  }, []);
+  const { entries: watchlist, toggle: toggleWatch, isWatched } = useWatchlist();
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [liveData, setLiveData] = useState<MarketData[]>([]);
   const [isLoading, setIsLoading] = useState(false); // Start false - show content immediately
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -339,10 +352,42 @@ const Markets = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!showSuggestions || mergedSuggestions.length === 0) return;
+      e.preventDefault();
+      setActiveSuggestion((prev) => {
+        const next = e.key === "ArrowDown" ? prev + 1 : prev - 1;
+        if (next < 0) return mergedSuggestions.length - 1;
+        return next % mergedSuggestions.length;
+      });
+      return;
+    }
     if (e.key === "Enter") {
+      if (showSuggestions && activeSuggestion >= 0 && mergedSuggestions[activeSuggestion]) {
+        handleQuickSearch(mergedSuggestions[activeSuggestion].symbol);
+        setActiveSuggestion(-1);
+        return;
+      }
       handleSearch();
     }
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setActiveSuggestion(-1);
+    }
   };
+
+  // Press "/" anywhere on the page to jump straight to the search box.
+  useEffect(() => {
+    const onGlobalKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      e.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener("keydown", onGlobalKey);
+    return () => window.removeEventListener("keydown", onGlobalKey);
+  }, []);
 
   const clearSearch = () => {
     setSearchQuery("");
@@ -745,11 +790,13 @@ const Markets = () => {
           <div className="relative mt-6 w-full">
             <Search className="pointer-events-none absolute left-5 top-1/2 z-10 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Search any stock, ETF, or crypto (e.g., AAPL, TSLA, BTC)..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowSuggestions(true);
+                setActiveSuggestion(-1);
                 // Clear previous search results when typing again
                 if (searchResults.length > 0) {
                   setSearchResults([]);
@@ -785,6 +832,7 @@ const Markets = () => {
               onSelect={(asset) => handleQuickSearch(asset.symbol)}
               visible={showSuggestions && searchQuery.length > 0}
               query={searchQuery}
+              activeIndex={activeSuggestion}
             />
           </div>
 
@@ -802,7 +850,43 @@ const Markets = () => {
                 {item.symbol}
               </button>
             ))}
+            <span className="ml-auto hidden sm:inline-flex items-center rounded-md border border-border/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">/</span>
           </div>
+
+          {/* Watchlist strip — starred securities with live prices */}
+          {watchlist.length > 0 && searchResults.length === 0 && (
+            <div className="mt-5">
+              <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-primary">Watchlist</p>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {watchlist.map((entry) => {
+                  const quote = liveQuotes[entry.symbol];
+                  const cached = priceCache[entry.symbol];
+                  const pct = quote ? quote.dp : safeNumber(cached?.changePercent, 0);
+                  const price = quote ? formatPrice(quote.c) : cached?.price;
+                  const positive = pct >= 0;
+                  return (
+                    <button
+                      key={entry.symbol}
+                      onClick={() => navigate(`/stock/${entry.symbol}`)}
+                      onMouseEnter={prefetchStockPage}
+                      className="flex flex-shrink-0 items-center gap-2.5 rounded-full border border-border/30 bg-background/50 backdrop-blur-sm px-3.5 py-2 transition-colors duration-200 hover:border-primary/40"
+                    >
+                      <Star className="watch-star active w-3 h-3" />
+                      <span className="font-mono text-xs font-semibold text-foreground">{entry.symbol}</span>
+                      {price && price !== "—" && (
+                        <span className="font-mono text-xs text-muted-foreground tabular-nums">${price}</span>
+                      )}
+                      {(quote || cached) && (
+                        <span className={cn("font-mono text-[10px] tabular-nums", positive ? "text-success" : "text-destructive")}>
+                          {positive ? "+" : ""}{pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
 
@@ -1096,6 +1180,7 @@ const Markets = () => {
                         key={item.symbol}
                         className="group cursor-pointer border-b border-border/25 shadow-[inset_3px_0_0_0_transparent] transition-all duration-300 hover:bg-foreground/[0.035] hover:shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
                         onClick={() => navigate(`/stock/${item.symbol}`)}
+                        onMouseEnter={prefetchStockPage}
                       >
                         <td className="p-4 text-muted-foreground text-sm">{index + 1}</td>
                         <td className="p-4">
@@ -1124,7 +1209,22 @@ const Markets = () => {
                               </span>
                             </div>
                             <div className="min-w-0">
-                              <p className="font-mono text-[1rem] uppercase leading-tight text-primary">{item.symbol}</p>
+                              <p className="flex items-center gap-1.5 font-mono text-[1rem] uppercase leading-tight text-primary">
+                                {item.symbol}
+                                <button
+                                  aria-label={isWatched(item.symbol) ? `Remove ${item.symbol} from watchlist` : `Add ${item.symbol} to watchlist`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWatch({ symbol: item.symbol, name: item.name, type: item.type });
+                                  }}
+                                  className={cn(
+                                    "transition-opacity duration-200",
+                                    isWatched(item.symbol) ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                                  )}
+                                >
+                                  <Star className={cn("watch-star w-3.5 h-3.5", isWatched(item.symbol) && "active")} />
+                                </button>
+                              </p>
                               <p className="truncate text-[0.82rem] text-muted-foreground">{item.name}</p>
                             </div>
                           </div>
@@ -1134,7 +1234,14 @@ const Markets = () => {
                             <Loader2 className="w-4 h-4 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPrice ? (
                             <div className="flex items-center justify-end gap-2">
-                              <p className="font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums">
+                              <p
+                                key={`${item.symbol}-${item.price}`}
+                                className={cn(
+                                  "font-display text-[1.2rem] font-medium leading-none text-foreground tabular-nums",
+                                  item.tick === "up" && "price-flash-up",
+                                  item.tick === "down" && "price-flash-down",
+                                )}
+                              >
                                 ${item.price}
                               </p>
                               {item.delayed && (
