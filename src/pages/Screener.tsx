@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Filter, Search, TrendingUp, TrendingDown, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Filter, Search, TrendingUp, TrendingDown, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,19 +103,30 @@ const Screener = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Filters
-  const [query, setQuery] = useState("");
-  const [sector, setSector] = useState<string>("any");
-  const [assetType, setAssetType] = useState<AssetType>("any");
-  const [cap, setCap] = useState<MarketCapTier>("any");
-  const [minPrice, setMinPrice] = useState<string>("");
-  const [maxPrice, setMaxPrice] = useState<string>("");
-  const [minChange, setMinChange] = useState<string>("");
-  const [maxChange, setMaxChange] = useState<string>("");
-  const [maxPE, setMaxPE] = useState<string>("");
-  const [minDivYield, setMinDivYield] = useState<string>("");
-  const [rating, setRating] = useState<Rating>("any");
+  // Filters — restored from the last visit so the screen picks up where you left off.
+  const savedFilters = (() => {
+    try { return JSON.parse(localStorage.getItem("vantage:screener-filters") || "{}"); } catch { return {}; }
+  })();
+  const [query, setQuery] = useState<string>(savedFilters.query ?? "");
+  const [sector, setSector] = useState<string>(savedFilters.sector ?? "any");
+  const [assetType, setAssetType] = useState<AssetType>(savedFilters.assetType ?? "any");
+  const [cap, setCap] = useState<MarketCapTier>(savedFilters.cap ?? "any");
+  const [minPrice, setMinPrice] = useState<string>(savedFilters.minPrice ?? "");
+  const [maxPrice, setMaxPrice] = useState<string>(savedFilters.maxPrice ?? "");
+  const [minChange, setMinChange] = useState<string>(savedFilters.minChange ?? "");
+  const [maxChange, setMaxChange] = useState<string>(savedFilters.maxChange ?? "");
+  const [maxPE, setMaxPE] = useState<string>(savedFilters.maxPE ?? "");
+  const [minDivYield, setMinDivYield] = useState<string>(savedFilters.minDivYield ?? "");
+  const [rating, setRating] = useState<Rating>(savedFilters.rating ?? "any");
   const [showFilters, setShowFilters] = useState(true);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("vantage:screener-filters", JSON.stringify({
+        query, sector, assetType, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, rating,
+      }));
+    } catch { /* ignore */ }
+  }, [query, sector, assetType, cap, minPrice, maxPrice, minChange, maxChange, maxPE, minDivYield, rating]);
 
   // Sort & pagination
   const [sortKey, setSortKey] = useState<SortKey>("market_cap");
