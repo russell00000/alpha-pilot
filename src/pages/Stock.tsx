@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye, Newspaper } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, RefreshCw, Loader2, ExternalLink, Eye, Newspaper, Star } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -102,7 +102,10 @@ const Stock = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChart, setIsLoadingChart] = useState(true);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
-  const [activeRange, setActiveRange] = useState("1M");
+  // Remember the last chart timeframe across visits.
+  const [activeRange, setActiveRange] = useState(() => {
+    try { return localStorage.getItem("vantage:chart-range") || "1M"; } catch { return "1M"; }
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [insiderView, setInsiderView] = useState(false);
   const [forecast, setForecast] = useState<ForecastData | null>(null);
@@ -485,6 +488,7 @@ const Stock = () => {
 
   const handleRangeChange = (range: string) => {
     setActiveRange(range);
+    try { localStorage.setItem("vantage:chart-range", range); } catch { /* ignore */ }
   };
 
   const isPositive = stockData ? stockData.change >= 0 : true;
@@ -853,6 +857,13 @@ const Stock = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl font-bold text-foreground">{stockData.symbol}</h1>
+                  <button
+                    aria-label={isWatched(stockData.symbol) ? "Remove from watchlist" : "Add to watchlist"}
+                    onClick={() => toggleWatch({ symbol: stockData.symbol, name: stockData.name, type: stockData.type })}
+                    className="rounded-full p-1.5 transition-colors hover:bg-primary/10"
+                  >
+                    <Star className={cn("watch-star w-5 h-5", isWatched(stockData.symbol) && "active")} />
+                  </button>
                   <span className={cn(
                     "text-xs px-2 py-1 rounded-full",
                     stockData.type === "crypto" ? "bg-primary/10 text-primary" :
