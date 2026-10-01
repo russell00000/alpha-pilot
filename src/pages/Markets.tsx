@@ -790,11 +790,13 @@ const Markets = () => {
           <div className="relative mt-6 w-full">
             <Search className="pointer-events-none absolute left-5 top-1/2 z-10 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Search any stock, ETF, or crypto (e.g., AAPL, TSLA, BTC)..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowSuggestions(true);
+                setActiveSuggestion(-1);
                 // Clear previous search results when typing again
                 if (searchResults.length > 0) {
                   setSearchResults([]);
@@ -830,6 +832,7 @@ const Markets = () => {
               onSelect={(asset) => handleQuickSearch(asset.symbol)}
               visible={showSuggestions && searchQuery.length > 0}
               query={searchQuery}
+              activeIndex={activeSuggestion}
             />
           </div>
 
