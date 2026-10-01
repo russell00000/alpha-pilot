@@ -506,6 +506,30 @@ Return ONLY the JSON. Be decisive, specific, and grounded in the investing philo
       console.log("screener alignment skipped:", e);
     }
 
+    // Anchor all targets to the live price with a deterministic equation so
+    // stale model knowledge can never produce targets far from reality.
+    if (currentPrice > 0) {
+      const a: any = analysis;
+      const analystMean = Number(fundamentals?.targetMeanPrice) || 0;
+      const aiBase = Number(a.priceTarget) || 0;
+      const sane = (v: number) => v > 0 && v / currentPrice >= 0.6 && v / currentPrice <= 1.6;
+      const rec = String(a.recommendation || "HOLD").toUpperCase();
+      const recUpside = rec.includes("STRONG BUY") ? 0.25 : rec.includes("STRONG SELL") ? -0.2
+        : rec.includes("BUY") ? 0.12 : rec.includes("SELL") ? -0.1 : 0.03;
+      const base = sane(analystMean) ? analystMean : sane(aiBase) ? aiBase : currentPrice * (1 + recUpside);
+      const wasOff = !sane(aiBase);
+      const r = (n: number) => Number(n.toFixed(2));
+      const bull = Math.max(base * 1.2, currentPrice * 1.1);
+      const bear = Math.min(base * 0.75, currentPrice * 0.9);
+      a.priceTarget = r(base);
+      a.bullTarget = r(bull);
+      a.bearTarget = r(bear);
+      if (wasOff || !String(a.priceTargetRationale || "").includes("$")) {
+        const up = ((base - currentPrice) / currentPrice) * 100;
+        a.priceTargetRationale = `Targets are anchored to the live price of $${currentPrice.toFixed(2)}. Base target $${base.toFixed(2)} (${up >= 0 ? "+" : ""}${up.toFixed(1)}%) ${sane(analystMean) ? `uses the analyst mean target of $${analystMean.toFixed(2)}` : `applies a ${(recUpside * 100).toFixed(0)}% expected move consistent with the ${rec} rating`}. Bull case = max(base × 1.20, price × 1.10) = $${bull.toFixed(2)}; bear case = min(base × 0.75, price × 0.90) = $${bear.toFixed(2)}.`;
+      }
+    }
+
     cacheSet(analysisCacheKey, analysis);
 
     return new Response(
