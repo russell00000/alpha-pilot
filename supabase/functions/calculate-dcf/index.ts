@@ -1,0 +1,68 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3";
+import { calculateDcf, DcfInputError, type DcfData } from "./math.ts";
+import { parseTreasuryYield } from "./treasury.ts";
+
+const Schema = z.object({
+  ticker: z.string().trim().min(1).max(15).regex(/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/),
+  beta: z.number().finite(), equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
+}).strict();
+const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
+  headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+let yieldCache: { fetched: number; data: { date: string; rate: number; source: string } } | undefined;
+async function treasuryYield() {
+  if (yieldCache && Date.now() - yieldCache.fetched < 3600000) return yieldCache.data;
+  const currentYear = new Date().getUTCFullYear();
+  for (const year of [currentYear, currentYear - 1]) {
+    const source = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=${year}`;
+    const response = await fetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" }, signal: AbortSignal.timeout(20000) });
+    if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
+    const xml = await response.text();
+    try {
+      const data = { ...parseTreasuryYield(xml), source };
+      yieldCache = { fetched: Date.now(), data }; return data;
+    } catch { if (year === currentYear - 1) throw new Error("No Treasury 10-year yield is available."); }
+  }
+  throw new Error("No Treasury yield is available.");
+}
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return reply({ error: "Use POST with ticker and beta." }, 405);
+  const authorization = req.headers.get("Authorization");
+  if (!authorization?.startsWith("Bearer ")) return reply({ error: "Sign in to run a DCF." }, 401);
+  const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !key) return reply({ error: "DCF service is not configured." }, 503);
+  const client = createClient(url, key, { global: { headers: { Authorization: authorization } } });
+  const { data: claims, error: authError } = await client.auth.getClaims(authorization.slice(7));
+  if (authError || !claims?.claims?.sub) return reply({ error: "Invalid or expired sign-in." }, 401);
+  let body: unknown;
+  try { body = await req.json(); } catch { return reply({ error: "Invalid JSON body." }, 400); }
+  const parsed = Schema.safeParse(body);
+  if (!parsed.success) return reply({ error: "A valid ticker and numeric beta are required." }, 400);
+  const ticker = parsed.data.ticker.toUpperCase().replace(/\./g, "-");
+  try {
+    const { data: financials, error: financialError } = await client.functions.invoke("get-company-financials", { body: { ticker } });
+    if (financialError) {
+      const context = (financialError as { context?: Response }).context;
+      const detail = context ? await context.json().catch(() => null) : null;
+      return reply({ error: detail?.error ?? "Unable to load SEC financials." }, context?.status ?? 503);
+    }
+    // Validate audited inputs before spending requests on Treasury/quotes.
+    try { calculateDcf(financials as DcfData, { ...parsed.data, current_price: 1, risk_free_rate: 0.05, terminal_growth_rate: -0.99 }); }
+    catch (error) { if (error instanceof DcfInputError && error.missing_fields.length) throw error; }
+    const [treasury, quoteResponse] = await Promise.all([
+      treasuryYield(), client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [ticker] } }),
+    ]);
+    const quote = quoteResponse.data?.data?.find((row: { symbol: string }) => row.symbol === ticker);
+    if (quoteResponse.error || !Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
+    const result = calculateDcf(financials as DcfData, { ...parsed.data, risk_free_rate: treasury.rate, current_price: quote.c });
+    return reply({ ticker, company_name: financials.company_name, ...result, treasury,
+      market_price_source: "Finnhub", market_price_as_of: quote.t ? new Date(quote.t * 1000).toISOString() : null,
+      financial_inputs: { financials: financials.financials, history: financials.history },
+    });
+  } catch (error) {
+    if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields }, 422);
+    return reply({ error: error instanceof Error ? error.message : "DCF unavailable." }, 503);
+  }
+});
