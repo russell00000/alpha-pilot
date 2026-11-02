@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       try { historical_assumptions = historicalAssumptions(financials as DcfData); }
       catch (note) { preparation_note = note instanceof Error ? note.message : "Historical assumptions unavailable."; }
       return reply({ ticker, company_name: financials.company_name, treasury, cost_of_debt_input: costOfDebtInput,
-        historical_assumptions, preparation_note, beta_input, company_type });
+        historical_assumptions, preparation_note, beta_input, company_type, extraction_audit: financials.extraction_audit });
     }
     const beta = parsed.data.beta;
     if (beta === undefined) return reply({ error: "A numeric beta is required.", company_type }, 400);

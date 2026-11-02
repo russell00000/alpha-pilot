@@ -12,7 +12,7 @@ export const FIELD_TAGS = {
 } as const;
 export const LINKED_TAGS = {
   cogs: ["CostOfGoodsAndServicesSold", "CostOfRevenue"],
-  ppe: ["PropertyPlantAndEquipmentNet"],
+  ppe: ["PropertyPlantAndEquipmentNet", "PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetAfterAccumulatedDepreciationAndAmortization"],
   total_assets: ["Assets"], total_liabilities: ["Liabilities"],
   total_equity: ["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "StockholdersEquity"],
   retained_earnings: ["RetainedEarningsAccumulatedDeficit"],
