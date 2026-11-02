@@ -1,4 +1,6 @@
 # Vantage DCF Phase 1
+- [ ] Add and run a reusable authenticated ten-ticker batch report with beta 1.0 and existing defaults; show every row and failure reason.
+- [ ] Hard-block financial institutions / REITs (SIC 6000–6799) on calculate with 422; test boundaries and verify live blocked examples.
 - [x] Fix annual balance selection across tags (10-K/10-K/A, latest period then latest filing); signed-in Rivian UI shows FY2025 debt $4.475B from DebtInstrumentCarryingAmount, ending 2025-12-31, filed 2026-02-12, accession 0001874178-26-000008; raw dates expose the stale FY2023 complete pair.
 - [x] Add audited PP&E gross-minus-depreciation and debt/lease financing fallbacks; signed-in Rivian UI shows lease-inclusive net PP&E $5.119B, current financing $113M ($3M finance + $110M operating leases), noncurrent financing $4.531B, exact tags and attempted empty chains. 91 tests pass; both functions deployed; no page errors.
 - [x] Fix Treasury request identification (custom User-Agent repeatedly stalled; browser-compatible User-Agent returned in 0.43–0.51s), eliminate the remaining outer year fallback, and persist a service-only 24-hour yield cache with true refresh/observation timestamps. One refresh request, in-flight deduplication, explicit stale fallback, and 83 passing tests.

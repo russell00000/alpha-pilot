@@ -202,6 +202,18 @@ test("company type warnings flag financials and REITs by SIC range only", () => 
   expect(companyTypeWarnings(3571)).toEqual([]);
   expect(companyTypeWarnings(null)).toEqual([]);
 });
+for (const sic of [6000, 6021, 6798, 6799]) {
+  test(`standard DCF hard-blocks SIC ${sic} before calculating a number`, () => {
+    const data = fixture(); data.company_profile = { sic };
+    expect(() => calculateDcf(data, args)).toThrow("Standard DCF is not supported for financial institutions / REITs yet");
+  });
+}
+for (const sic of [5999, 6800, 3571, null]) {
+  test(`standard DCF remains available for SIC ${sic}`, () => {
+    const data = fixture(); data.company_profile = { sic };
+    expect(Number.isFinite(calculateDcf(data, args).implied_share_price)).toBe(true);
+  });
+}
 test("editable EBIT margin changes every projected EBIT and leaves historical margin intact", () => {
   const r = calculateDcf(fixture(), { ...args, ebit_margin: 0.3 });
   r.projections.forEach((row) => expect(row.operating_income).toBeCloseTo(row.revenue * 0.3, 12));

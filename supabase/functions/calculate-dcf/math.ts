@@ -3,6 +3,7 @@ export interface FinancialValue {
   tag: string; accession_number?: string | null;
 }
 export interface DcfData {
+  company_profile?: { sic: number | null };
   financials: Record<string, FinancialValue | null>;
   history: Record<string, FinancialValue[]>;
   linked_financials?: Record<string, FinancialValue | null>;
@@ -27,6 +28,9 @@ export function companyTypeWarnings(sic: number | null | undefined) {
   if (sic === 6798) warnings.push("REIT — FFO/AFFO-based valuation is the industry-standard approach, not EBIT-based FCFF.");
   else if (sic !== null && sic !== undefined && Number.isFinite(sic) && sic >= 6000 && sic <= 6799) warnings.push("Standard DCF may not be appropriate for financial companies — working capital and capex don't translate the same way; consider a dividend discount or P/B-based approach instead.");
   return warnings;
+}
+export function assertStandardDcfSupported(sic: number | null | undefined) {
+  if (companyTypeWarnings(sic).length) throw new DcfInputError("Standard DCF is not supported for financial institutions / REITs yet");
 }
 // Trailing three-year average annual share-count change; positive means
 // dilution, negative means buybacks. Defaults to 0 (flat) when four years of
@@ -74,6 +78,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
   revenue_growth_rate?: number; ebit_margin?: number; share_count_change?: number;
 }) {
+  assertStandardDcfSupported(data.company_profile?.sic);
   const { beta, risk_free_rate, current_price } = assumptions;
   const equity_risk_premium = assumptions.equity_risk_premium ?? 0.045;
   const terminal_growth_rate = assumptions.terminal_growth_rate ?? 0.025;
