@@ -42,7 +42,7 @@ function assumptionRows(result: Result, preparation: Preparation | null): [strin
     ["Share count change (per year)", pct(result.assumptions.share_count_change), differs(result.assumptions.share_count_change, hist?.share_count_change) ? "User override" : "Trailing three-year audited average"],
     ["Beta", result.assumptions.beta.toFixed(2), betaSource],
     ["Cost of debt", pct(result.assumptions.cost_of_debt), result.assumptions.cost_of_debt_estimated ? "Estimated — company does not separately disclose interest expense (user input)" : "SEC interest expense / total debt"],
-    ["Tax rate", result.assumptions.tax_rate_normalized ? "21.00%" : "Effective", result.assumptions.tax_rate_normalized ? "Normalized statutory rate — company reported a loss" : "Audited effective rate"],
+    ["Tax rate", result.assumptions.tax_rate_normalized ? "21.00%" : "Effective", result.assumptions.tax_rate_normalized ? result.warnings.find(warning => warning.startsWith("Tax rate normalized")) ?? "Normalized statutory rate" : "Audited effective rate"],
     ["Risk-free rate", pct(result.treasury.rate), `Treasury 10-year · observation ${result.treasury.date} · cache refreshed ${result.treasury.refreshed_at}${result.treasury.cache.stale ? " · Stale: refresh temporarily unavailable" : " · 24-hour cache"}`],
     ["Equity risk premium", "4.50%", "Default"],
     ["Terminal growth", "2.50%", "Default"],
