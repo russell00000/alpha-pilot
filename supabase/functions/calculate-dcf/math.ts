@@ -72,7 +72,7 @@ export function balanceCheck(assets: number, liabilities: number, equity: number
 export function calculateDcf(data: DcfData, assumptions: {
   beta: number; risk_free_rate: number; current_price: number;
   equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
-  revenue_growth_rate?: number; ebit_margin?: number;
+  revenue_growth_rate?: number; ebit_margin?: number; share_count_change?: number;
 }) {
   const { beta, risk_free_rate, current_price } = assumptions;
   const equity_risk_premium = assumptions.equity_risk_premium ?? 0.045;
@@ -110,12 +110,20 @@ export function calculateDcf(data: DcfData, assumptions: {
   };
   const pretax = value("pretax_income"), debt = value("total_debt"), shares = value("diluted_shares");
   if (pretax === 0 || debt <= 0 || shares <= 0) throw new DcfInputError("Pretax income must be nonzero; debt and diluted shares must be positive for these formulas.");
-  const tax_rate = value("income_tax_expense") / pretax;
-  const priorRevenue = revenueYears[3];
-  if (!priorRevenue) throw new DcfInputError("Three-year-prior revenue is missing.");
+  const warnings: string[] = [];
+  // A loss-making year would produce a negative or extreme effective tax rate;
+  // fall back to the normalized 21% statutory rate and say so.
+  const tax_rate_normalized = pretax < 0;
+  if (tax_rate_normalized) warnings.push("Tax rate normalized to the 21% statutory rate — the company reported a loss in the base year.");
+  const tax_rate = tax_rate_normalized ? 0.21 : value("income_tax_expense") / pretax;
+  const priorRevenue = revenueYears[3], priorYearRevenue = revenueYears[1];
+  if (!priorRevenue || !priorYearRevenue) throw new DcfInputError("Prior revenue years are missing.");
   const historical_cagr = (latest.value / priorRevenue.value) ** (1 / 3) - 1;
+  const latest_year_growth = latest.value / priorYearRevenue.value - 1;
   const historical_ebit_margin = revenueYears.reduce((sum, revenue, i) => sum + (ebitYears[i]?.value ?? NaN) / revenue.value, 0) / 4;
-  const revenue_growth_rate = assumptions.revenue_growth_rate ?? historical_cagr;
+  const revenue_growth_rate = assumptions.revenue_growth_rate ?? latest_year_growth;
+  const share_count_change = assumptions.share_count_change ?? shareCountChange(data);
+  if (!Number.isFinite(share_count_change) || share_count_change <= -1) throw new DcfInputError("Share count change must be greater than -100%.");
   const ebit_margin = assumptions.ebit_margin ?? historical_ebit_margin;
   if (!Number.isFinite(revenue_growth_rate) || revenue_growth_rate <= -1 || !Number.isFinite(ebit_margin)) throw new DcfInputError("Revenue growth must be greater than -100% and EBIT margin must be finite.");
   const change_nwc = balances[0] - balances[1];
