@@ -1,4 +1,6 @@
 # Vantage DCF Phase 1
+- [ ] Diagnose Rivian stalls, bound every pipeline fetch to 15 seconds, and verify five consecutive live runs with visible failures.
+- [ ] Reconcile Apple's audited diluted shares and show matching calculation/source provenance.
 - [x] Add authenticated SEC lookup and service-only raw-response caches.
 - [x] Extract nine requested financial fields with annual-period provenance and missing-field reporting.
 - [x] Run 18 extraction tests and verify all nine fields against live Apple SEC data.
