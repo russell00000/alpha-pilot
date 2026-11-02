@@ -19,9 +19,30 @@ export function debtCostInput(data: DcfData, riskFreeRate: number) {
   return { required: estimated, estimated, suggested_rate: estimated ? riskFreeRate + 0.01 : null,
     label: estimated ? "Estimated — company does not separately disclose interest expense" : "Calculated from audited interest expense and total debt" };
 }
+export function historicalAssumptions(data: DcfData) {
+  const latest = data.history.revenue?.[0];
+  if (!latest?.fiscal_year) throw new DcfInputError("Four annual revenue years are required.", ["revenue_history"]);
+  const rows = Array.from({ length: 4 }, (_, i) => {
+    const year = latest.fiscal_year as number - i;
+    const revenue = data.history.revenue.find((row) => row.fiscal_year === year);
+    const income = data.history.operating_income?.find((row) => row.fiscal_year === year && row.period.end === revenue?.period.end && row.period.start === revenue?.period.start);
+    if (!revenue || !Number.isFinite(revenue.value) || revenue.value <= 0 || !income || !Number.isFinite(income.value)) throw new DcfInputError("Four period-aligned annual revenue and EBIT years are required.", [`revenue_or_operating_income_${year}`]);
+    return { revenue: revenue.value, income: income.value };
+  });
+  const prior = rows[3];
+  if (!prior) throw new DcfInputError("Three-year-prior revenue is missing.");
+  return { revenue_growth_rate: (latest.value / prior.revenue) ** (1 / 3) - 1,
+    ebit_margin: rows.reduce((sum, row) => sum + row.income / row.revenue, 0) / 4 };
+}
+export function marketComparison(impliedPrice: number, marketPrice: number) {
+  if (![impliedPrice, marketPrice].every(Number.isFinite) || marketPrice <= 0) throw new DcfInputError("Invalid market comparison prices.");
+  return { difference_pct: (impliedPrice / marketPrice - 1) * 100,
+    deviation_warning: Math.abs(impliedPrice - marketPrice) > marketPrice * 0.4 };
+}
 export function calculateDcf(data: DcfData, assumptions: {
   beta: number; risk_free_rate: number; current_price: number;
   equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
+  revenue_growth_rate?: number; ebit_margin?: number;
 }) {
   const { beta, risk_free_rate, current_price } = assumptions;
   const equity_risk_premium = assumptions.equity_risk_premium ?? 0.045;
@@ -64,6 +85,9 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (!priorRevenue) throw new DcfInputError("Three-year-prior revenue is missing.");
   const historical_cagr = (latest.value / priorRevenue.value) ** (1 / 3) - 1;
   const historical_ebit_margin = revenueYears.reduce((sum, revenue, i) => sum + (ebitYears[i]?.value ?? NaN) / revenue.value, 0) / 4;
+  const revenue_growth_rate = assumptions.revenue_growth_rate ?? historical_cagr;
+  const ebit_margin = assumptions.ebit_margin ?? historical_ebit_margin;
+  if (!Number.isFinite(revenue_growth_rate) || revenue_growth_rate <= -1 || !Number.isFinite(ebit_margin)) throw new DcfInputError("Revenue growth must be greater than -100% and EBIT margin must be finite.");
   const change_nwc = balances[0] - balances[1];
   const da_ratio = value("depreciation_amortization") / latest.value;
   const capex_ratio = value("capex") / latest.value;
@@ -83,8 +107,8 @@ export function calculateDcf(data: DcfData, assumptions: {
   let prior = latest.value;
   const projections = Array.from({ length: 5 }, (_, index) => {
     const year = index + 1;
-    const revenue = prior * (1 + historical_cagr); prior = revenue;
-    const operating_income = revenue * historical_ebit_margin;
+    const revenue = prior * (1 + revenue_growth_rate); prior = revenue;
+    const operating_income = revenue * ebit_margin;
     const nopat = operating_income * (1 - tax_rate);
     const da = revenue * da_ratio, capex = revenue * capex_ratio, delta_nwc = revenue * change_nwc_ratio;
     const ufcf = nopat + da - capex - delta_nwc;
@@ -98,9 +122,9 @@ export function calculateDcf(data: DcfData, assumptions: {
   const equity_value = enterprise_value - debt + value("cash");
   const implied_share_price = equity_value / shares;
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
-  return { wacc, enterprise_value, equity_value, implied_share_price, difference_pct: (implied_share_price / current_price - 1) * 100,
+  return { wacc, enterprise_value, equity_value, implied_share_price, ...marketComparison(implied_share_price, current_price),
     current_price, fiscal_year: latest.fiscal_year, projections, terminal_value, discounted_terminal_value,
-    assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, cost_of_debt, cost_of_debt_estimated,
+    assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, revenue_growth_rate, ebit_margin, cost_of_debt, cost_of_debt_estimated,
       cost_of_debt_source: cost_of_debt_estimated ? "user_estimate" : "SEC interest expense / total debt" },
     derived: { tax_rate, historical_cagr, historical_ebit_margin, nwc_current: balances[0], nwc_prior: balances[1], change_nwc, da_ratio, capex_ratio, change_nwc_ratio, market_cap, cost_of_equity, cost_of_debt, after_tax_cost_of_debt, equity_weight, debt_weight },
   };

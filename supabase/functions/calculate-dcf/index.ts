@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { calculateDcf, debtCostInput, DcfInputError, type DcfData } from "./math.ts";
+import { calculateDcf, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
 import { parseTreasuryYield } from "./treasury.ts";
 
 const Schema = z.object({
@@ -9,6 +9,7 @@ const Schema = z.object({
   action: z.enum(["prepare", "calculate"]).default("calculate"),
   beta: z.number().finite().optional(), cost_of_debt: z.number().finite().min(0).max(1).optional(),
   equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
+  revenue_growth_rate: z.number().finite().gt(-1).optional(), ebit_margin: z.number().finite().optional(),
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -53,7 +54,8 @@ Deno.serve(async (req) => {
     }
     const treasury = await treasuryYield();
     const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
-    if (parsed.data.action === "prepare") return reply({ ticker, company_name: financials.company_name, treasury, cost_of_debt_input: costOfDebtInput });
+    if (parsed.data.action === "prepare") return reply({ ticker, company_name: financials.company_name, treasury, cost_of_debt_input: costOfDebtInput,
+      historical_assumptions: historicalAssumptions(financials as DcfData) });
     const beta = parsed.data.beta;
     if (beta === undefined) return reply({ error: "A numeric beta is required." }, 400);
     if (costOfDebtInput.required && parsed.data.cost_of_debt === undefined) return reply({ error: "Enter the estimated Cost of Debt before running DCF.", missing_fields: ["cost_of_debt"], treasury, cost_of_debt_input: costOfDebtInput }, 422);
