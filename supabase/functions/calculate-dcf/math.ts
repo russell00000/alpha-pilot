@@ -184,18 +184,17 @@ export function calculateDcf(data: DcfData, assumptions: {
     const income_tax_expense = pretax_income * tax_rate;
     const net_income = dollars(pretax_income - income_tax_expense);
     const operating_cash_flow = dollars(net_income + da - delta_nwc);
-    // Share issuance/buybacks are modeled at the current market price:
-    // issuance adds cash and equity, buybacks consume both, so the balance
-    // sheet still ties without any plug.
+    // Share count rolls forward for per-share transparency, but buyback and
+    // issuance cash flows are financing decisions: they are excluded from the
+    // unlevered model, so financing cash flow stays zero and no plug is needed.
     const projected_shares = priorShares * (1 + share_count_change);
-    const investing_cash_flow = -capex, financing_cash_flow = dollars((projected_shares - priorShares) * current_price);
+    const investing_cash_flow = -capex, financing_cash_flow = 0;
     const net_change_cash = dollars(operating_cash_flow + investing_cash_flow + financing_cash_flow);
     const ppe = dollars(priorPpe + capex - da), cash = dollars(priorCash + net_change_cash);
     const total_debt = priorDebt, retained_earnings = dollars(priorRetained + net_income);
-    const other_equity_year = dollars(priorOtherEquity + financing_cash_flow);
     const assets = dollars(cash + operating_assets + ppe + other_assets);
     const liabilities = dollars(operating_liabilities + total_debt + other_liabilities);
-    const equity = dollars(retained_earnings + other_equity_year);
+    const equity = dollars(retained_earnings + other_equity);
     const balance_check = balanceCheck(assets, liabilities, equity, year);
     if (ppe < 0 || cash < 0) throw new DcfInputError(`Year ${year} has negative ${ppe < 0 ? "PP&E" : "cash"}; add an explicit asset or financing assumption instead of using a balancing plug.`);
     // Unlevered FCF adds back after-tax interest; levered cash accumulation
@@ -203,7 +202,7 @@ export function calculateDcf(data: DcfData, assumptions: {
     const ufcf = operating_income * (1 - tax_rate) + da - capex - delta_nwc;
     const beginning_balances = { ppe: priorPpe, cash: priorCash, total_debt: priorDebt, retained_earnings: priorRetained, nwc: priorNwc, diluted_shares: priorShares };
     priorPpe = ppe; priorCash = cash; priorDebt = total_debt; priorRetained = retained_earnings; priorNwc = nwc;
-    priorShares = projected_shares; priorOtherEquity = other_equity_year;
+    priorShares = projected_shares;
     return { year, fiscal_year: latest.fiscal_year as number + year, revenue, revenue_growth_rate: growth_rate, operating_income, nopat, cogs: projected_cogs,
       interest_expense, pretax_income, income_tax_expense, net_income, depreciation_amortization: da, capex, change_nwc: delta_nwc,
       operating_cash_flow, investing_cash_flow, financing_cash_flow, net_change_cash, beginning_balances, diluted_shares: projected_shares,
