@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
 import { parseTreasuryYield } from "./treasury.ts";
+import { boundedFetch, DataTimeoutError, TEMPORARY_DATA_MESSAGE } from "../_shared/bounded-fetch.ts";
 
 const Schema = z.object({
   ticker: z.string().trim().min(1).max(15).regex(/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/),
@@ -16,16 +17,9 @@ const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body)
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 let yieldCache: { fetched: number; data: { date: string; rate: number; source: string } } | undefined;
 async function fetchTreasuryXml(source: string) {
-  // Treasury's site is intermittently slow; two bounded attempts beat one long one.
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await fetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" }, signal: AbortSignal.timeout(12000) });
-      if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
-      return await response.text();
-    } catch (error) { lastError = error; }
-  }
-  throw lastError instanceof Error ? lastError : new Error("Treasury yield request failed.");
+  const response = await boundedFetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" } });
+  if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
+  return await response.text();
 }
 async function treasuryYield() {
   if (yieldCache && Date.now() - yieldCache.fetched < 3600000) return yieldCache.data;
@@ -37,9 +31,9 @@ async function treasuryYield() {
       const data = { ...parseTreasuryYield(xml), source };
       yieldCache = { fetched: Date.now(), data }; return data;
     } catch (error) {
+      // Never retry a timed-out request across attempts/years.
+      if (error instanceof DataTimeoutError) throw error;
       if (year === currentYear - 1) {
-        // A stale cached yield is better than failing the valuation outright.
-        if (yieldCache) return yieldCache.data;
         throw error instanceof Error ? error : new Error("No Treasury 10-year yield is available.");
       }
     }
@@ -53,7 +47,7 @@ Deno.serve(async (req) => {
   if (!authorization?.startsWith("Bearer ")) return reply({ error: "Sign in to run a DCF." }, 401);
   const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_ANON_KEY");
   if (!url || !key) return reply({ error: "DCF service is not configured." }, 503);
-  const client = createClient(url, key, { global: { headers: { Authorization: authorization } } });
+  const client = createClient(url, key, { global: { headers: { Authorization: authorization }, fetch: boundedFetch } });
   const { data: claims, error: authError } = await client.auth.getClaims(authorization.slice(7));
   if (authError || !claims?.claims?.sub) return reply({ error: "Invalid or expired sign-in." }, 401);
   let body: unknown;
@@ -68,9 +62,12 @@ Deno.serve(async (req) => {
     if (financialError) {
       const context = (financialError as { context?: Response }).context;
       const detail = context ? await context.json().catch(() => null) : null;
-      return reply({ error: detail?.error ?? "Unable to load SEC financials." }, context?.status ?? 503);
+      return reply({ error: detail?.error ?? TEMPORARY_DATA_MESSAGE }, context?.status ?? 503);
     }
-    const treasury = await treasuryYield();
+    const treasuryStarted = Date.now();
+    let treasury;
+    try { treasury = await treasuryYield(); }
+    finally { console.info(JSON.stringify({ ticker, stage: "treasury", duration_ms: Date.now() - treasuryStarted })); }
     const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
     const sic = financials.company_profile?.sic ?? null;
     const company_type = { sic, sic_description: financials.company_profile?.sic_description ?? null, warnings: companyTypeWarnings(sic) };
@@ -81,18 +78,21 @@ Deno.serve(async (req) => {
       let beta_input: { suggested: number | null; source: string | null; peers_used?: number } = { suggested: null, source: null };
       try {
         const ownMetric = await client.functions.invoke("finnhub", { body: { action: "metrics", symbols: [ticker] } });
+        if (ownMetric.error || ownMetric.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
         const ownBeta = ownMetric.data?.data?.[0]?.beta;
         if (Number.isFinite(ownBeta) && ownBeta > 0) beta_input = { suggested: ownBeta, source: "company" };
         else {
           const peersResponse = await client.functions.invoke("finnhub", { body: { action: "peers", symbols: [ticker] } });
+          if (peersResponse.error || peersResponse.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
           const peerSymbols: string[] = peersResponse.data?.data?.[0]?.peers ?? [];
           if (peerSymbols.length) {
             const peerMetrics = await client.functions.invoke("finnhub", { body: { action: "metrics", symbols: peerSymbols.slice(0, 8) } });
+            if (peerMetrics.error || peerMetrics.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
             const betas = (peerMetrics.data?.data ?? []).map((row: { beta?: number | null }) => row.beta).filter((b: unknown) => Number.isFinite(b) && (b as number) > 0) as number[];
             if (betas.length) beta_input = { suggested: betas.reduce((sum, b) => sum + b, 0) / betas.length, source: "peer_average", peers_used: betas.length };
           }
         }
-      } catch (betaError) { console.error("beta suggestion failed:", betaError); }
+      } catch (betaError) { if (betaError instanceof DataTimeoutError) throw betaError; console.error("beta suggestion failed:", betaError); }
       // Historical prefills may be unavailable for companies with short or
       // irregular filings; the company-type warning must still reach the UI.
       let historical_assumptions: unknown = null, preparation_note: string | null = null;
@@ -106,7 +106,9 @@ Deno.serve(async (req) => {
     if (costOfDebtInput.required && parsed.data.cost_of_debt === undefined) return reply({ error: "Enter the estimated Cost of Debt before running DCF.", missing_fields: ["cost_of_debt"], treasury, cost_of_debt_input: costOfDebtInput, company_type }, 422);
     const quoteResponse = await client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [ticker] } });
     const quote = quoteResponse.data?.data?.find((row: { symbol: string }) => row.symbol === ticker);
-    if (quoteResponse.error || !Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
+    if (quoteResponse.data?.error) return reply({ error: quoteResponse.data.error, company_type }, 503);
+    if (quoteResponse.error) return reply({ error: TEMPORARY_DATA_MESSAGE, company_type }, 503);
+    if (!Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
     const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
     return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput, company_type,
       warnings: [...company_type.warnings, ...result.warnings],
@@ -115,6 +117,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields, company_type: caughtCompanyType ?? undefined }, 422);
-    return reply({ error: error instanceof Error ? error.message : "DCF unavailable." }, 503);
+    return reply({ error: error instanceof DataTimeoutError ? TEMPORARY_DATA_MESSAGE : error instanceof Error ? error.message : "DCF unavailable." }, 503);
   }
 });

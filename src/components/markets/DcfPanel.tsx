@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyType { sic: number | null; sic_description: string | null; warnings: string[] }
 interface Result {
+  share_count_basis: { value: number; fiscal_year: number; period: { start: string; end: string }; tag: string; accession_number: string; filed: string };
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
@@ -32,6 +33,8 @@ function assumptionRows(result: Result, preparation: Preparation | null): [strin
     : preparation?.beta_input.source === "company" ? "Company-reported beta"
     : preparation?.beta_input.source === "peer_average" ? `Peer group average (${preparation.beta_input.peers_used ?? 0} peers)` : "User input";
   return [
+    ["Base diluted shares (valuation denominator)", result.share_count_basis.value.toLocaleString("en-US"), `SEC FY${result.share_count_basis.fiscal_year} annual weighted average · ${result.share_count_basis.period.start}–${result.share_count_basis.period.end} · ${result.share_count_basis.tag} · 10-K ${result.share_count_basis.accession_number}, filed ${result.share_count_basis.filed}`],
+    ["Year-one diluted shares (projected)", result.projections[0]?.diluted_shares.toLocaleString("en-US", { maximumFractionDigits: 0 }) ?? "Unavailable", `FY${result.fiscal_year + 1} forecast = audited base shares × (1 + share count change); not used as the valuation denominator`],
     ["Revenue growth (year 1, fades to terminal)", pct(result.assumptions.revenue_growth_rate), differs(result.assumptions.revenue_growth_rate, hist?.revenue_growth_rate) ? "User override" : `Audited FY${result.fiscal_year} year-over-year growth`],
     ["EBIT margin (held flat)", pct(result.assumptions.ebit_margin), differs(result.assumptions.ebit_margin, hist?.ebit_margin) ? "User override" : "Four-year audited average"],
     ["Share count change (per year)", pct(result.assumptions.share_count_change), differs(result.assumptions.share_count_change, hist?.share_count_change) ? "User override" : "Trailing three-year audited average"],
@@ -62,11 +65,11 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
       try {
-        const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { action: "prepare", ticker } });
+        const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { timeout: 15000, body: { action: "prepare", ticker } });
         if (invokeError) {
           const response = (invokeError as { context?: Response }).context;
-          const detail = response ? await response.json().catch(() => null) : null;
-          throw new Error(detail?.error || invokeError.message);
+          const detail = response instanceof Response ? await response.json().catch(() => null) : null;
+          throw new Error(detail?.error || "Data temporarily unavailable, try again.");
         }
         if (!active) return;
         const prepared = data as Preparation;
@@ -92,16 +95,16 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
     setBusy(true); setError(""); setResult(null);
     try {
       if (!preparation?.historical_assumptions || !validProjectionInputs) throw new Error("Enter valid revenue growth, EBIT margin and share count assumptions.");
-      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { ticker, beta: Number(beta),
+      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { timeout: 15000, body: { ticker, beta: Number(beta),
         revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
         ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
         share_count_change: projectionRate(shareChange, preparation.historical_assumptions.share_count_change),
         ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
-        const detail = response ? await response.json().catch(() => null) : null;
+        const detail = response instanceof Response ? await response.json().catch(() => null) : null;
         const missing = detail?.missing_fields?.length ? ` Missing: ${detail.missing_fields.join(", ")}.` : "";
-        throw new Error((detail?.error || invokeError.message) + missing);
+        throw new Error((detail?.error || "Data temporarily unavailable, try again.") + missing);
       }
       setResult(data as Result);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to calculate DCF."); }

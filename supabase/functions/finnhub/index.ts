@@ -1,3 +1,4 @@
+import { boundedFetch, optionalData, DataTimeoutError } from "../_shared/bounded-fetch.ts";
 // Finnhub proxy — keeps the API key server-side while serving quotes,
 // fundamentals, crypto candles and index proxies to the client.
 const corsHeaders = {
@@ -19,7 +20,7 @@ const cached = async <T>(key: string, ttlMs: number, load: () => Promise<T>): Pr
 };
 
 const getJson = async (url: string): Promise<any> => {
-  const res = await fetch(url);
+  const res = await boundedFetch(url);
   if (!res.ok) throw new Error(`finnhub ${res.status}`);
   return await res.json();
 };
@@ -83,7 +84,7 @@ const cryptoQuote = (symbol: string) =>
     const from = now - 60 * 60 * 24 * 8;
     const candle = await getJson(
       `${BASE}/crypto/candle?symbol=${encodeURIComponent(pair)}&resolution=D&from=${from}&to=${now}&token=${KEY}`,
-    ).catch(() => null);
+    ).catch(optionalData);
     const closes: number[] = Array.isArray(candle?.c) ? candle.c : [];
     if (closes.length === 0) return await coingeckoQuote(symbol);
     const c = closes[closes.length - 1];
@@ -104,8 +105,8 @@ const cryptoQuote = (symbol: string) =>
 const metric = (symbol: string) =>
   cached(`m:${symbol}`, 6 * 60 * 60_000, async () => {
     const [profile, metrics] = await Promise.all([
-      getJson(`${BASE}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${KEY}`).catch(() => null),
-      getJson(`${BASE}/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${KEY}`).catch(() => null),
+      getJson(`${BASE}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${KEY}`).catch(optionalData),
+      getJson(`${BASE}/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${KEY}`).catch(optionalData),
     ]);
     const m = metrics?.metric ?? {};
     return {
@@ -122,7 +123,7 @@ const metric = (symbol: string) =>
 
 const peers = (symbol: string) =>
   cached(`p:${symbol}`, 24 * 60 * 60_000, async () => {
-    const list = await getJson(`${BASE}/stock/peers?symbol=${encodeURIComponent(symbol)}&token=${KEY}`).catch(() => null);
+    const list = await getJson(`${BASE}/stock/peers?symbol=${encodeURIComponent(symbol)}&token=${KEY}`).catch(optionalData);
     if (!Array.isArray(list)) return null;
     return { symbol, peers: list.filter((p: unknown) => typeof p === "string" && p !== symbol).slice(0, 12) };
   });
@@ -149,16 +150,16 @@ Deno.serve(async (req) => {
     let data: unknown = [];
 
     if (action === "quotes") {
-      data = (await pool(symbols, 12, (s) => quote(s).catch(() => null))).filter(Boolean);
+      data = (await pool(symbols, 12, (s) => quote(s).catch(optionalData))).filter(Boolean);
     } else if (action === "crypto") {
-      data = (await pool(symbols, 6, (s) => cryptoQuote(s).catch(() => null))).filter(Boolean);
+      data = (await pool(symbols, 6, (s) => cryptoQuote(s).catch(optionalData))).filter(Boolean);
     } else if (action === "metrics") {
-      data = (await pool(symbols, 8, (s) => metric(s).catch(() => null))).filter(Boolean);
+      data = (await pool(symbols, 8, (s) => metric(s).catch(optionalData))).filter(Boolean);
     } else if (action === "peers") {
-      data = (await pool(symbols, 4, (s) => peers(s).catch(() => null))).filter(Boolean);
+      data = (await pool(symbols, 4, (s) => peers(s).catch(optionalData))).filter(Boolean);
     } else if (action === "indices") {
       const quotes = await pool(INDEX_PROXIES, 4, async (i) => {
-        const q = await quote(i.proxy).catch(() => null);
+        const q = await quote(i.proxy).catch(optionalData);
         return q ? { key: i.key, label: i.label, proxy: i.proxy, ...q } : null;
       });
       data = quotes.filter(Boolean);
@@ -173,7 +174,7 @@ Deno.serve(async (req) => {
     console.error("finnhub error:", error);
     return new Response(
       JSON.stringify({ data: [], error: error instanceof Error ? error.message : "unknown error" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: error instanceof DataTimeoutError ? 503 : 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

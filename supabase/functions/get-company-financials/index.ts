@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { boundedFetch, DataTimeoutError } from "../_shared/bounded-fetch.ts";
 import { extractFinancials, normalizeTicker, type CompanyFacts } from "./financials.ts";
 
 const USER_AGENT = "Vantage DCF research-project dorioruss@gmail.com";
@@ -12,9 +13,8 @@ const reply = (data: unknown, status = 200) => new Response(JSON.stringify(data)
 const fresh = (date: string) => Date.now() - Date.parse(date) < CACHE_TTL_MS;
 
 async function fetchSec(url: string): Promise<unknown> {
-  const response = await fetch(url, {
+  const response = await boundedFetch(url, {
     headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-    signal: AbortSignal.timeout(20000),
   });
   if (!response.ok) throw new Error(`SEC request failed (${response.status}). Please try again later.`);
   return await response.json();
@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anonKey || !serviceKey) return reply({ error: "Financial-data service is not configured." }, 503);
-  const auth = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
+  const auth = createClient(url, anonKey, { global: { headers: { Authorization: authHeader }, fetch: boundedFetch } });
   const { data: claims, error: authError } = await auth.auth.getClaims(authHeader.slice(7));
   if (authError || !claims?.claims?.sub) return reply({ error: "Invalid or expired sign-in." }, 401);
   let body: unknown;
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) return reply({ error: "Send a valid stock ticker, for example AAPL." }, 400);
   const ticker = normalizeTicker(parsed.data.ticker);
-  const db = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const db = createClient(url, serviceKey, { auth: { persistSession: false }, global: { fetch: boundedFetch } });
   try {
     const { data: registry, error: registryError } = await db.from("sec_ticker_cache").select("raw_response,fetched_at").eq("id", "company_tickers").maybeSingle();
     if (registryError) throw new Error("Unable to read the SEC ticker cache.");
@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
       const sic = Number(profile?.sic);
       company_profile = { sic: Number.isFinite(sic) ? sic : null, sic_description: typeof profile?.sicDescription === "string" ? profile.sicDescription : null };
     } catch (profileError) {
+      if (profileError instanceof DataTimeoutError) throw profileError;
       console.error("company profile lookup failed:", profileError);
     }
     return reply({ ticker, cik, company_name: raw.entityName, company_profile, ...extractFinancials(raw),

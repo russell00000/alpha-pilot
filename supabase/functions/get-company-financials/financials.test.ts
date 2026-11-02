@@ -12,6 +12,17 @@ const facts = (entries: Record<string, Observation[]>, unit = "USD"): CompanyFac
 const field = (raw: CompanyFacts, key: string) => extractFinancials(raw).financials[key] as any;
 
 describe("SEC financial extraction contract", () => {
+  test("Apple FY2025 annual diluted shares preserve the 10-K period, not point-in-time or projected shares", () => {
+    const base = { fy: 2025, start: "2024-09-29", end: "2025-09-27", accn: "0000320193-25-000079", filed: "2025-10-31" };
+    const raw = facts({
+      WeightedAverageNumberOfDilutedSharesOutstanding: [annual(15004697000, base), annual(15408095000, { ...base, start: "2023-10-01", end: "2024-09-28" })],
+      CommonStockSharesOutstanding: [annual(14776353000, { ...base, start: undefined, end: "2025-10-17" })],
+    }, "shares");
+    raw.facts["us-gaap"].Revenues = { units: { USD: [annual(416161000000, base)] } };
+    const result = extractFinancials(raw);
+    expect(result.financials.diluted_shares).toMatchObject({ value: 15004697000, fiscal_year: 2025, accession_number: base.accn, period: { start: base.start, end: base.end } });
+    expect(result.history.diluted_shares[1]).toMatchObject({ value: 15408095000, fiscal_year: 2024 });
+  });
   for (const [key, tags] of Object.entries(FIELD_TAGS)) {
     test(`${key} uses only its requested first tag, correct unit and preserves its value`, () => {
       const unit = key === "diluted_shares" ? "shares" : "USD";

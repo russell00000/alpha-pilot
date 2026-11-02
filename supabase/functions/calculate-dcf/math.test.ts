@@ -6,6 +6,21 @@ const fixture = (): DcfData => ({ financials: {
   depreciation_amortization: item(10), capex: item(15), cash: item(20, 2025, true), total_debt: item(100, 2025, true), diluted_shares: item(10), income_tax_expense: item(5), pretax_income: item(20), interest_expense: item(4),
 }, linked_financials: { cogs: item(80), ppe: item(50, 2025, true), total_assets: item(200, 2025, true), total_liabilities: item(130, 2025, true), total_equity: item(70, 2025, true), retained_earnings: item(30, 2025, true), current_assets: item(60, 2025, true), current_liabilities: item(30, 2025, true), current_financing: item(10, 2025, true) }, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)], diluted_shares: [item(10), item(10, 2024), item(10, 2023), item(10, 2022)] } });
 const args = { beta: 1, risk_free_rate: 0.04, current_price: 100 };
+test("Apple share forecasts begin at 15.004697B; 14.59B is year one, never the valuation denominator", () => {
+  const data = fixture();
+  data.financials.diluted_shares = item(15004697000);
+  data.history.diluted_shares = [item(15004697000), item(15408095000, 2024), item(15812547000, 2023), item(16325819000, 2022)];
+  const result = calculateDcf(data, args);
+  expect(result.share_count_basis?.value).toBe(15004697000);
+  expect(result.projections[0].beginning_balances.diluted_shares).toBe(15004697000);
+  expect(result.projections[0].diluted_shares).toBeCloseTo(14588576190.824305, 4);
+  expect(result.derived.market_cap).toBe(15004697000 * args.current_price);
+  expect(result.implied_share_price).toBe(result.equity_value / 15004697000);
+});
+test("out-of-period diluted shares cannot be used for the valuation denominator", () => {
+  const data = fixture(); data.financials.diluted_shares = item(14590000000, 2024);
+  expect(() => calculateDcf(data, args)).toThrow("out-of-period");
+});
 test("tax, three-year CAGR, four-year average margin and change in NWC follow exact formulas", () => {
   const r = calculateDcf(fixture(), args);
   expect(r.derived.tax_rate).toBe(0.25);
