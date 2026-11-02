@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
-import { parseTreasuryYield } from "./treasury.ts";
+import { createTreasuryLoader } from "./treasury-cache.ts";
 import { boundedFetch, DataTimeoutError, TEMPORARY_DATA_MESSAGE } from "../_shared/bounded-fetch.ts";
 
 const Schema = z.object({
@@ -15,30 +15,25 @@ const Schema = z.object({
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
-let yieldCache: { fetched: number; data: { date: string; rate: number; source: string } } | undefined;
-async function fetchTreasuryXml(source: string) {
-  const response = await boundedFetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" } });
-  if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
-  return await response.text();
-}
-async function treasuryYield() {
-  if (yieldCache && Date.now() - yieldCache.fetched < 3600000) return yieldCache.data;
-  const currentYear = new Date().getUTCFullYear();
-  for (const year of [currentYear, currentYear - 1]) {
-    const source = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=${year}`;
-    try {
-      const xml = await fetchTreasuryXml(source);
-      const data = { ...parseTreasuryYield(xml), source };
-      yieldCache = { fetched: Date.now(), data }; return data;
-    } catch (error) {
-      // Never retry a timed-out request across attempts/years.
-      if (error instanceof DataTimeoutError) throw error;
-      if (year === currentYear - 1) {
-        throw error instanceof Error ? error : new Error("No Treasury 10-year yield is available.");
-      }
-    }
+let loadTreasury: ReturnType<typeof createTreasuryLoader> | undefined;
+function treasuryYield() {
+  if (!loadTreasury) {
+    const url = Deno.env.get("SUPABASE_URL"), serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !serviceKey) throw new Error("Treasury cache service is not configured.");
+    const db = createClient(url, serviceKey, { auth: { persistSession: false }, global: { fetch: boundedFetch } });
+    loadTreasury = createTreasuryLoader({
+      async read() {
+        const { data, error } = await db.from("treasury_yield_cache").select("rate,observation_date,source,refreshed_at").eq("id", "US10Y").maybeSingle();
+        if (error) throw new Error("Unable to read the Treasury yield cache.");
+        return data;
+      },
+      async write(value) {
+        const { error } = await db.from("treasury_yield_cache").upsert({ id: "US10Y", ...value });
+        if (error) throw new Error("Unable to persist the Treasury yield cache.");
+      },
+    }, boundedFetch);
   }
-  throw new Error("No Treasury yield is available.");
+  return loadTreasury();
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -57,6 +52,7 @@ Deno.serve(async (req) => {
   if (parsed.data.action === "calculate" && parsed.data.beta === undefined) return reply({ error: "A numeric beta is required." }, 400);
   const ticker = parsed.data.ticker.toUpperCase().replace(/\./g, "-");
   let caughtCompanyType: unknown = null;
+  let caughtTreasury: unknown = null;
   try {
     const { data: financials, error: financialError } = await client.functions.invoke("get-company-financials", { body: { ticker } });
     if (financialError) {
@@ -66,7 +62,7 @@ Deno.serve(async (req) => {
     }
     const treasuryStarted = Date.now();
     let treasury;
-    try { treasury = await treasuryYield(); }
+    try { treasury = await treasuryYield(); caughtTreasury = treasury; }
     finally { console.info(JSON.stringify({ ticker, stage: "treasury", duration_ms: Date.now() - treasuryStarted })); }
     const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
     const sic = financials.company_profile?.sic ?? null;
@@ -111,12 +107,12 @@ Deno.serve(async (req) => {
     if (!Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
     const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
     return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput, company_type,
-      warnings: [...company_type.warnings, ...result.warnings],
+      warnings: [...company_type.warnings, ...result.warnings, ...(treasury.cache.stale ? ["Treasury refresh temporarily unavailable — using the last successful yield; see its observation and refresh dates."] : [])],
       market_price_source: "Finnhub", market_price_as_of: quote.t ? new Date(quote.t * 1000).toISOString() : null,
       financial_inputs: { financials: financials.financials, history: financials.history, linked_financials: financials.linked_financials },
     });
   } catch (error) {
-    if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields, company_type: caughtCompanyType ?? undefined }, 422);
+    if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields, treasury: caughtTreasury ?? undefined, company_type: caughtCompanyType ?? undefined }, 422);
     return reply({ error: error instanceof DataTimeoutError ? TEMPORARY_DATA_MESSAGE : error instanceof Error ? error.message : "DCF unavailable." }, 503);
   }
 });
