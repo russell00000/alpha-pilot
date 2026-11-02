@@ -505,6 +505,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sec_company_facts_cache: {
+        Row: {
+          cik: string
+          fetched_at: string
+          raw_response: Json
+        }
+        Insert: {
+          cik: string
+          fetched_at?: string
+          raw_response: Json
+        }
+        Update: {
+          cik?: string
+          fetched_at?: string
+          raw_response?: Json
+        }
+        Relationships: []
+      }
+      sec_ticker_cache: {
+        Row: {
+          fetched_at: string
+          id: string
+          raw_response: Json
+        }
+        Insert: {
+          fetched_at?: string
+          id: string
+          raw_response: Json
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          raw_response?: Json
+        }
+        Relationships: []
+      }
       securities: {
         Row: {
           created_at: string
