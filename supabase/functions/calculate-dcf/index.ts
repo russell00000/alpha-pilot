@@ -15,18 +15,34 @@ const Schema = z.object({
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 let yieldCache: { fetched: number; data: { date: string; rate: number; source: string } } | undefined;
+async function fetchTreasuryXml(source: string) {
+  // Treasury's site is intermittently slow; two bounded attempts beat one long one.
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" }, signal: AbortSignal.timeout(12000) });
+      if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
+      return await response.text();
+    } catch (error) { lastError = error; }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Treasury yield request failed.");
+}
 async function treasuryYield() {
   if (yieldCache && Date.now() - yieldCache.fetched < 3600000) return yieldCache.data;
   const currentYear = new Date().getUTCFullYear();
   for (const year of [currentYear, currentYear - 1]) {
     const source = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=${year}`;
-    const response = await fetch(source, { headers: { "User-Agent": "Vantage DCF research-project dorioruss@gmail.com", Accept: "application/xml" }, signal: AbortSignal.timeout(20000) });
-    if (!response.ok) throw new Error(`Treasury yield request failed (${response.status}).`);
-    const xml = await response.text();
     try {
+      const xml = await fetchTreasuryXml(source);
       const data = { ...parseTreasuryYield(xml), source };
       yieldCache = { fetched: Date.now(), data }; return data;
-    } catch { if (year === currentYear - 1) throw new Error("No Treasury 10-year yield is available."); }
+    } catch (error) {
+      if (year === currentYear - 1) {
+        // A stale cached yield is better than failing the valuation outright.
+        if (yieldCache) return yieldCache.data;
+        throw error instanceof Error ? error : new Error("No Treasury 10-year yield is available.");
+      }
+    }
   }
   throw new Error("No Treasury yield is available.");
 }
