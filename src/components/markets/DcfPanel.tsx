@@ -53,8 +53,12 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         const prepared = data as Preparation;
         setPreparation(prepared);
         setCostOfDebt(prepared.cost_of_debt_input.suggested_rate === null ? "" : (prepared.cost_of_debt_input.suggested_rate * 100).toFixed(2));
-        setGrowth((prepared.historical_assumptions.revenue_growth_rate * 100).toFixed(4));
-        setMargin((prepared.historical_assumptions.ebit_margin * 100).toFixed(4));
+        if (prepared.historical_assumptions) {
+          setGrowth((prepared.historical_assumptions.revenue_growth_rate * 100).toFixed(4));
+          setMargin((prepared.historical_assumptions.ebit_margin * 100).toFixed(4));
+          setShareChange((prepared.historical_assumptions.share_count_change * 100).toFixed(4));
+        }
+        if (prepared.beta_input.suggested !== null) setBeta(prepared.beta_input.suggested.toFixed(2));
       } catch (err) { if (active) setError(err instanceof Error ? err.message : "Unable to load DCF inputs."); }
       finally { if (active) setPreparing(false); }
     }, 400);
@@ -62,16 +66,17 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   }, [ticker]);
   const requiresDebtCost = preparation?.cost_of_debt_input.required ?? false;
   const validDebtCost = Boolean(costOfDebt.trim()) && Number.isFinite(Number(costOfDebt)) && Number(costOfDebt) >= 0 && Number(costOfDebt) <= 100;
-  const validProjectionInputs = Boolean(growth.trim()) && Boolean(margin.trim()) && Number.isFinite(Number(growth)) && Number(growth) > -100 && Number.isFinite(Number(margin));
+  const validProjectionInputs = Boolean(growth.trim()) && Boolean(margin.trim()) && Boolean(shareChange.trim()) && Number.isFinite(Number(growth)) && Number(growth) > -100 && Number.isFinite(Number(margin)) && Number.isFinite(Number(shareChange)) && Number(shareChange) > -100;
   // An unchanged displayed prefill must use the original full-precision rate.
   const projectionRate = (text: string, historical: number) => text === (historical * 100).toFixed(4) ? historical : Number(text) / 100;
   const run = async () => {
     setBusy(true); setError(""); setResult(null);
     try {
-      if (!preparation || !validProjectionInputs) throw new Error("Enter valid revenue growth and EBIT margin assumptions.");
+      if (!preparation?.historical_assumptions || !validProjectionInputs) throw new Error("Enter valid revenue growth, EBIT margin and share count assumptions.");
       const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { ticker, beta: Number(beta),
         revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
         ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
+        share_count_change: projectionRate(shareChange, preparation.historical_assumptions.share_count_change),
         ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
