@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
-import { calculateDcf, debtCostInput, historicalAssumptions, marketComparison, DcfInputError, type DcfData, type FinancialValue } from "./math";
+import { balanceCheck, calculateDcf, debtCostInput, historicalAssumptions, marketComparison, DcfInputError, type DcfData, type FinancialValue } from "./math";
 import { parseTreasuryYield } from "./treasury";
 const item = (value: number, year = 2025, instant = false): FinancialValue => ({ value, fiscal_year: year, tag: "test", period: { start: instant ? null : `${year}-01-01`, end: `${year}-12-31` } });
 const fixture = (): DcfData => ({ financials: {
   depreciation_amortization: item(10), capex: item(15), cash: item(20, 2025, true), total_debt: item(100, 2025, true), diluted_shares: item(10), income_tax_expense: item(5), pretax_income: item(20), interest_expense: item(4),
-}, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)] } });
+}, linked_financials: { cogs: item(80), ppe: item(50, 2025, true), total_assets: item(200, 2025, true), total_liabilities: item(130, 2025, true), total_equity: item(70, 2025, true), retained_earnings: item(30, 2025, true), current_assets: item(60, 2025, true), current_liabilities: item(30, 2025, true), current_financing: item(10, 2025, true) }, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)] } });
 const args = { beta: 1, risk_free_rate: 0.04, current_price: 100 };
 test("tax, three-year CAGR, four-year average margin and change in NWC follow exact formulas", () => {
   const r = calculateDcf(fixture(), args);
@@ -23,19 +23,19 @@ test("CAPM, debt costs, diluted-share market cap, weights and WACC use requested
   expect(r.derived.market_cap).toBe(1000);
   expect(r.wacc).toBeCloseTo((1000 / 1100) * 0.085 + (100 / 1100) * 0.03, 12);
 });
-test("five projections hold latest revenue ratios and discount each FCF plus Gordon terminal value", () => {
+test("ten projections link days-based working capital and discount each unlevered FCF plus unchanged Gordon formula", () => {
   const r = calculateDcf(fixture(), args);
-  expect(r.projections).toHaveLength(5);
+  expect(r.projections).toHaveLength(10);
   r.projections.forEach((p, i) => {
     const revenue = 133.1 * 1.1 ** (i + 1);
-    const fcf = revenue * 0.2 * 0.75 + revenue * 10 / 133.1 - revenue * 15 / 133.1 - revenue * 5 / 133.1;
+    const fcf = revenue * 0.2 * 0.75 + p.depreciation_amortization - p.capex - p.change_nwc;
     expect(p.revenue).toBeCloseTo(revenue, 9);
     expect(p.ufcf).toBeCloseTo(fcf, 9);
     expect(p.discounted_ufcf).toBeCloseTo(fcf / (1 + r.wacc) ** (i + 1), 9);
   });
-  const expectedTerminal = r.projections[4].ufcf * 1.025 / (r.wacc - 0.025);
+  const expectedTerminal = r.projections[9].ufcf * 1.025 / (r.wacc - 0.025);
   expect(r.terminal_value).toBeCloseTo(expectedTerminal, 9);
-  expect(r.enterprise_value).toBeCloseTo(r.projections.reduce((sum, p) => sum + p.discounted_ufcf, 0) + expectedTerminal / (1 + r.wacc) ** 5, 9);
+  expect(r.enterprise_value).toBeCloseTo(r.projections.reduce((sum, p) => sum + p.discounted_ufcf, 0) + expectedTerminal / (1 + r.wacc) ** 10, 9);
   expect(r.equity_value).toBeCloseTo(r.enterprise_value - 100 + 20, 9);
   expect(r.implied_share_price).toBeCloseTo(r.equity_value / 10, 9);
   expect(r.difference_pct).toBeCloseTo((r.implied_share_price / 100 - 1) * 100, 9);
@@ -121,9 +121,72 @@ test("editable EBIT margin changes every projected EBIT and leaves historical ma
   expect(r.assumptions.ebit_margin).toBe(0.3);
 });
 test("zero growth and zero margin are valid overrides, not replaced with historical values", () => {
-  const r = calculateDcf(fixture(), { ...args, revenue_growth_rate: 0, ebit_margin: 0 });
+  const data = fixture(); data.financials.cash = item(1000, 2025, true);
+  if (data.linked_financials) { data.linked_financials.current_assets = item(1040, 2025, true); data.linked_financials.total_assets = item(1180, 2025, true); data.linked_financials.total_equity = item(1050, 2025, true); }
+  const r = calculateDcf(data, { ...args, revenue_growth_rate: 0, ebit_margin: 0 });
   expect(r.projections[4].revenue).toBe(133.1);
   expect(r.projections[4].operating_income).toBe(0);
+});
+test("PP&E carries prior balance plus CapEx minus depreciation in all ten years", () => {
+  const r = calculateDcf(fixture(), args);
+  let prior = 50;
+  for (const p of r.projections) {
+    expect(p.beginning_balances.ppe).toBe(prior);
+    expect(p.balance_sheet.ppe).toBeCloseTo(prior + p.capex - p.depreciation_amortization, 2);
+    prior = p.balance_sheet.ppe;
+  }
+});
+test("cash carries net cash flow from operations investing and financing, without plugs", () => {
+  const r = calculateDcf(fixture(), args);
+  let prior = 20;
+  for (const p of r.projections) {
+    expect(p.beginning_balances.cash).toBe(prior);
+    expect(p.net_change_cash).toBeCloseTo(p.operating_cash_flow + p.investing_cash_flow + p.financing_cash_flow, 2);
+    expect(p.balance_sheet.cash).toBeCloseTo(prior + p.net_change_cash, 2);
+    expect(p.financing_cash_flow).toBe(0);
+    prior = p.balance_sheet.cash;
+  }
+});
+test("debt is carried flat and beginning-debt interest feeds pretax income and net income", () => {
+  const r = calculateDcf(fixture(), args);
+  for (const p of r.projections) {
+    expect(p.beginning_balances.total_debt).toBe(100);
+    expect(p.balance_sheet.total_debt).toBe(100);
+    expect(p.interest_expense).toBe(4);
+    expect(p.pretax_income).toBeCloseTo(p.operating_income - 4, 12);
+    expect(p.net_income).toBeCloseTo((p.operating_income - 4) * 0.75, 2);
+  }
+});
+test("working capital excludes cash and current financing and holds historical day counts constant", () => {
+  const r = calculateDcf(fixture(), args);
+  expect(r.derived.operating_asset_days).toBeCloseTo(40 / 133.1 * 365, 12);
+  expect(r.derived.operating_liability_days).toBeCloseTo(20 / 80 * 365, 12);
+  let prior = 20;
+  for (const p of r.projections) {
+    expect(p.balance_sheet.operating_assets).toBeCloseTo(p.revenue / 133.1 * 40, 2);
+    expect(p.balance_sheet.operating_liabilities).toBeCloseTo(p.cogs / 80 * 20, 2);
+    expect(p.change_nwc).toBeCloseTo(p.balance_sheet.nwc - prior, 2);
+    prior = p.balance_sheet.nwc;
+  }
+});
+test("retained earnings carries forward by net income and all ten years independently balance", () => {
+  const r = calculateDcf(fixture(), args);
+  let prior = 30;
+  for (const p of r.projections) {
+    expect(p.balance_sheet.retained_earnings).toBeCloseTo(prior + p.net_income, 2);
+    expect(p.balance_sheet.assets).toBeCloseTo(p.balance_sheet.liabilities + p.balance_sheet.equity, 2);
+    expect(p.balance_check.gap).toBe(0);
+    prior = p.balance_sheet.retained_earnings;
+  }
+});
+test("a broken opening balance or annual balance check blocks the model instead of manufacturing equity", () => {
+  const data = fixture(); if (data.linked_financials) data.linked_financials.total_assets = item(201, 2025, true);
+  expect(() => calculateDcf(data, args)).toThrow("does not balance");
+  expect(() => balanceCheck(201, 130, 70, 7)).toThrow("year 7");
+});
+test("missing or mismatched audited starting balances block linked projections", () => {
+  const data = fixture(); if (data.linked_financials) data.linked_financials.ppe = null;
+  expect(() => calculateDcf(data, args)).toThrow("audited opening balance");
 });
 test("invalid growth and nonfinite margins are rejected", () => {
   for (const revenue_growth_rate of [-1, -1.1, NaN, Infinity]) expect(() => calculateDcf(fixture(), { ...args, revenue_growth_rate })).toThrow("Revenue growth");

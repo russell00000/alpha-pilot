@@ -10,6 +10,8 @@ interface Result {
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
   treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number };
+  projections: { year: number; fiscal_year: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
+  model_notes: string[];
 }
 interface Preparation {
   ticker: string; treasury: { rate: number; date: string };
@@ -131,6 +133,20 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         </div>}
         <p className="mt-3 text-xs text-muted-foreground">Revenue growth {(result.assumptions.revenue_growth_rate * 100).toFixed(4)}% · EBIT margin {(result.assumptions.ebit_margin * 100).toFixed(4)}% · Equity risk premium 4.5% · Terminal growth 2.5%</p>
         <p className="mt-2 text-xs text-muted-foreground">Market price source: {result.market_price_source}{result.market_price_as_of ? ` · As of ${new Date(result.market_price_as_of).toLocaleString()}` : ""}</p>
+        <h3 className="mt-5 text-sm font-medium text-foreground">Projected balance checks</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>{["Fiscal year", "Assets", "Liabilities + Equity", "Difference", "Check"].map((heading) => <th key={heading} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
+            <tbody>{result.projections.map((row) => <tr key={row.year}>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2">FY{row.fiscal_year}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{money(row.balance_check.assets)}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{money(row.balance_check.liabilities + row.balance_check.equity)}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{money(row.balance_check.gap)}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 text-success">{row.balance_check.balanced ? "Balanced" : "Error"}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        <div className="mt-3 space-y-1 text-xs text-muted-foreground">{result.model_notes.map((note) => <p key={note}>{note}</p>)}</div>
       </>}
     </section>
   );
