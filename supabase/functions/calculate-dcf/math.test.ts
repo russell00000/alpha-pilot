@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
-import { balanceCheck, calculateDcf, debtCostInput, historicalAssumptions, marketComparison, DcfInputError, type DcfData, type FinancialValue } from "./math";
+import { balanceCheck, calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, marketComparison, shareCountChange, DcfInputError, type DcfData, type FinancialValue } from "./math";
 import { parseTreasuryYield } from "./treasury";
 const item = (value: number, year = 2025, instant = false): FinancialValue => ({ value, fiscal_year: year, tag: "test", period: { start: instant ? null : `${year}-01-01`, end: `${year}-12-31` } });
 const fixture = (): DcfData => ({ financials: {
   depreciation_amortization: item(10), capex: item(15), cash: item(20, 2025, true), total_debt: item(100, 2025, true), diluted_shares: item(10), income_tax_expense: item(5), pretax_income: item(20), interest_expense: item(4),
-}, linked_financials: { cogs: item(80), ppe: item(50, 2025, true), total_assets: item(200, 2025, true), total_liabilities: item(130, 2025, true), total_equity: item(70, 2025, true), retained_earnings: item(30, 2025, true), current_assets: item(60, 2025, true), current_liabilities: item(30, 2025, true), current_financing: item(10, 2025, true) }, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)] } });
+}, linked_financials: { cogs: item(80), ppe: item(50, 2025, true), total_assets: item(200, 2025, true), total_liabilities: item(130, 2025, true), total_equity: item(70, 2025, true), retained_earnings: item(30, 2025, true), current_assets: item(60, 2025, true), current_liabilities: item(30, 2025, true), current_financing: item(10, 2025, true) }, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)], diluted_shares: [item(10), item(10, 2024), item(10, 2023), item(10, 2022)] } });
 const args = { beta: 1, risk_free_rate: 0.04, current_price: 100 };
 test("tax, three-year CAGR, four-year average margin and change in NWC follow exact formulas", () => {
   const r = calculateDcf(fixture(), args);

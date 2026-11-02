@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
   if (!parsed.success) return reply({ error: "Invalid DCF inputs: use a valid ticker, numeric beta and a Cost of Debt between 0 and 100%." }, 400);
   if (parsed.data.action === "calculate" && parsed.data.beta === undefined) return reply({ error: "A numeric beta is required." }, 400);
   const ticker = parsed.data.ticker.toUpperCase().replace(/\./g, "-");
+  let caughtCompanyType: unknown = null;
   try {
     const { data: financials, error: financialError } = await client.functions.invoke("get-company-financials", { body: { ticker } });
     if (financialError) {
