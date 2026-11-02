@@ -126,10 +126,15 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (!Number.isFinite(share_count_change) || share_count_change <= -1) throw new DcfInputError("Share count change must be greater than -100%.");
   const ebit_margin = assumptions.ebit_margin ?? historical_ebit_margin;
   if (!Number.isFinite(revenue_growth_rate) || revenue_growth_rate <= -1 || !Number.isFinite(ebit_margin)) throw new DcfInputError("Revenue growth must be greater than -100% and EBIT margin must be finite.");
+  // Near-term growth fades linearly to the terminal rate by year ten.
+  const growthFor = (year: number) => revenue_growth_rate + (terminal_growth_rate - revenue_growth_rate) * (year - 1) / 9;
   const change_nwc = balances[0] - balances[1];
   const da_ratio = value("depreciation_amortization") / latest.value;
   const capex_ratio = value("capex") / latest.value;
   const change_nwc_ratio = change_nwc / latest.value;
+  const base_ebit = ebitYears[0]?.value ?? NaN;
+  const base_ufcf = base_ebit * (1 - tax_rate) + value("depreciation_amortization") - value("capex") - change_nwc;
+  if (base_ebit < 0 || base_ufcf < 0) warnings.push("Base-year EBIT or unlevered free cash flow is negative — growth-rate projection from a negative base is unreliable. Review the assumptions manually before trusting this output.");
   const linked = (name: string) => {
     const item = data.linked_financials?.[name];
     if (!item || !Number.isFinite(item.value) || item.fiscal_year !== latest.fiscal_year || item.period.end !== latest.period.end || (latest.accession_number && item.accession_number !== latest.accession_number)) throw new DcfInputError("Missing or out-of-period audited opening balance for linked statements.", [name]);
