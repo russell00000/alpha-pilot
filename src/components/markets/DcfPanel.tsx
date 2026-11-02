@@ -5,18 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
+interface CompanyType { sic: number | null; sic_description: string | null; warnings: string[] }
 interface Result {
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
-  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number };
-  projections: { year: number; fiscal_year: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
-  model_notes: string[];
+  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean };
+  projections: { year: number; fiscal_year: number; revenue_growth_rate: number; diluted_shares: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
+  model_notes: string[]; warnings: string[]; company_type: CompanyType;
 }
 interface Preparation {
   ticker: string; treasury: { rate: number; date: string };
   cost_of_debt_input: { required: boolean; estimated: boolean; suggested_rate: number | null; label: string };
-  historical_assumptions: { revenue_growth_rate: number; ebit_margin: number };
+  historical_assumptions: { revenue_growth_rate: number; ebit_margin: number; share_count_change: number } | null;
+  preparation_note: string | null;
+  beta_input: { suggested: number | null; source: string | null; peers_used?: number };
+  company_type: CompanyType;
 }
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const largeMoney = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(value);
@@ -31,9 +35,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   const [costOfDebt, setCostOfDebt] = useState("");
   const [growth, setGrowth] = useState("");
   const [margin, setMargin] = useState("");
+  const [shareChange, setShareChange] = useState("");
   useEffect(() => {
     let active = true;
-    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin("");
+    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta("");
     setPreparing(Boolean(ticker));
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
