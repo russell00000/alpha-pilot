@@ -29,8 +29,8 @@ describe("SEC financial extraction contract", () => {
   });
   test("missing fields are null and explicitly listed, never estimated", () => {
     const result = extractFinancials(facts({}));
-    expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt"]);
-    expect(Object.values(result.financials)).toEqual(Array(10).fill(null));
+    expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt", "revenue_history", "operating_income_history", "current_assets_history", "current_liabilities_history"]);
+    expect(Object.values(result.financials)).toEqual(Array(11).fill(null));
   });
   test("quarters, 10-Qs, and amendments do not replace annual 10-K values", () => {
     const raw = facts({ OperatingIncomeLoss: [annual(40), annual(2, { start: "2025-07-01" }), annual(3, { form: "10-Q" }), annual(4, { form: "10-K/A", filed: "2025-12-01" })] });
@@ -83,5 +83,15 @@ describe("SEC financial extraction contract", () => {
     const result = extractFinancials(facts({ DebtCurrent: [debt(0)], DebtNoncurrent: [debt(0)] }));
     expect((result.financials.total_debt as any).value).toBe(0);
     expect(result.missing_fields).not.toContain("total_debt");
+  });
+  test("history returns four unique annual years and two fiscal-year-end balances", () => {
+    const years = [2025, 2024, 2023, 2022];
+    const annualRows = years.map((year) => annual(year, { fy: year, start: `${year - 1}-10-01`, end: `${year}-09-30`, accn: `${year}-filing` }));
+    const balances = annualRows.slice(0, 2).map((row) => ({ ...row, start: undefined }));
+    const result = extractFinancials(facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [...annualRows, annualRows[0]], OperatingIncomeLoss: annualRows, AssetsCurrent: balances, LiabilitiesCurrent: balances }));
+    expect(result.history.revenue.map((row) => row.fiscal_year)).toEqual(years);
+    expect(result.history.operating_income).toHaveLength(4);
+    expect(result.history.current_assets.map((row) => row.fiscal_year)).toEqual([2025, 2024]);
+    expect(result.history.current_liabilities).toHaveLength(2);
   });
 });
