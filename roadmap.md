@@ -1,4 +1,6 @@
 # Vantage DCF Phase 1
+- [ ] Fix annual balance selection across tags (10-K/10-K/A, latest period then latest filing) and verify real Rivian debt dates onscreen.
+- [ ] Add audited PP&E gross-minus-depreciation and debt/lease financing fallbacks; show attempted tags and real selected Rivian balances onscreen.
 - [x] Fix Treasury request identification (custom User-Agent repeatedly stalled; browser-compatible User-Agent returned in 0.43–0.51s), eliminate the remaining outer year fallback, and persist a service-only 24-hour yield cache with true refresh/observation timestamps. One refresh request, in-flight deduplication, explicit stale fallback, and 83 passing tests.
 - [x] Run fresh AAPL and RIVN back-to-back: AAPL calculated $123.43 in 1.57s; RIVN preparation succeeded in 1.44s and fresh calculation returned an independent audited-input block in 1.38s. Both reused 4.94%, refreshed 2026-11-02T20:02:22.931Z, observation 2026-10-30; database and signed-in UI verified, no page errors.
 - [ ] Complete a valid fresh Rivian valuation — blocked by missing FY2025 debt (only FY2023 extracted), plus missing same-filing PP&E/current-financing inputs; do not substitute guessed balances or bypass the audited completeness gate.
