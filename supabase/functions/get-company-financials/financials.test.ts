@@ -29,7 +29,7 @@ describe("SEC financial extraction contract", () => {
   });
   test("missing fields are null and explicitly listed, never estimated", () => {
     const result = extractFinancials(facts({}));
-    expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt", "revenue_history", "operating_income_history", "current_assets_history", "current_liabilities_history"]);
+    expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt", "revenue_history", "operating_income_history", "current_assets_history", "current_liabilities_history", "diluted_shares_history"]);
     expect(Object.values(result.financials)).toEqual(Array(11).fill(null));
   });
   test("quarters, 10-Qs, and amendments do not replace annual 10-K values", () => {
