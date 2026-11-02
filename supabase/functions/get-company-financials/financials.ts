@@ -109,10 +109,12 @@ export function extractFinancials(raw: CompanyFacts) {
     };
   }
   if (financials.total_debt === null) missing_fields.push("total_debt");
-  const historyFor = (field: "revenue" | "operating_income" | "current_assets" | "current_liabilities", limit: number) => {
+  const historyFor = (field: "revenue" | "operating_income" | "current_assets" | "current_liabilities" | "diluted_shares", limit: number) => {
     const tags = field === "current_assets" ? ["AssetsCurrent"] : field === "current_liabilities" ? ["LiabilitiesCurrent"] : FIELD_TAGS[field];
     const tag = tags.find((candidate) => gaap[candidate] !== undefined);
-    const rows = tag ? (gaap[tag]?.units.USD ?? []).filter((row) => isAnnual(row, field === "current_assets" || field === "current_liabilities")) : [];
+    const unit = field === "diluted_shares" ? "shares" : "USD";
+    const instant = field === "current_assets" || field === "current_liabilities";
+    const rows = tag ? (gaap[tag]?.units[unit] ?? []).filter((row) => isAnnual(row, instant)) : [];
     rows.sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? ""));
     const unique = new Map<string, ReturnType<typeof provenance>>();
     for (const row of rows) {
