@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { calculateDcf, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
+import { calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
 import { parseTreasuryYield } from "./treasury.ts";
 
 const Schema = z.object({
@@ -10,6 +10,7 @@ const Schema = z.object({
   beta: z.number().finite().optional(), cost_of_debt: z.number().finite().min(0).max(1).optional(),
   equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
   revenue_growth_rate: z.number().finite().gt(-1).optional(), ebit_margin: z.number().finite().optional(),
+  share_count_change: z.number().finite().gt(-1).optional(),
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
