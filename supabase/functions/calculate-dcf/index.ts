@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
+import { assertStandardDcfSupported, calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
 import { createTreasuryLoader } from "./treasury-cache.ts";
 import { boundedFetch, DataTimeoutError, TEMPORARY_DATA_MESSAGE } from "../_shared/bounded-fetch.ts";
 
@@ -60,14 +60,15 @@ Deno.serve(async (req) => {
       const detail = context ? await context.json().catch(() => null) : null;
       return reply({ error: detail?.error ?? TEMPORARY_DATA_MESSAGE }, context?.status ?? 503);
     }
+    const sic = financials.company_profile?.sic ?? null;
+    const company_type = { sic, sic_description: financials.company_profile?.sic_description ?? null, warnings: companyTypeWarnings(sic) };
+    caughtCompanyType = company_type;
+    if (parsed.data.action === "calculate") assertStandardDcfSupported(sic);
     const treasuryStarted = Date.now();
     let treasury;
     try { treasury = await treasuryYield(); caughtTreasury = treasury; }
     finally { console.info(JSON.stringify({ ticker, stage: "treasury", duration_ms: Date.now() - treasuryStarted })); }
     const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
-    const sic = financials.company_profile?.sic ?? null;
-    const company_type = { sic, sic_description: financials.company_profile?.sic_description ?? null, warnings: companyTypeWarnings(sic) };
-    caughtCompanyType = company_type;
     if (parsed.data.action === "prepare") {
       // Beta anchors to the company's own data first, then its peer group —
       // never a flat 1.0. Suggestions prefill the input; the user still confirms.
