@@ -94,4 +94,26 @@ describe("SEC financial extraction contract", () => {
     expect(result.history.current_assets.map((row) => row.fiscal_year)).toEqual([2025, 2024]);
     expect(result.history.current_liabilities).toHaveLength(2);
   });
+  test("interest expense uses the first latest-year fallback even when all tags report data", () => {
+    const result = field(facts({ Revenues: [annual(100)], InterestExpense: [annual(4)], InterestExpenseDebt: [annual(5)], InterestExpenseOther: [annual(6)] }), "interest_expense");
+    expect(result).toMatchObject({ value: 4, tag: "InterestExpense", fiscal_year: 2025 });
+  });
+  test("stale first interest tag falls back to latest-year InterestExpenseDebt", () => {
+    const result = extractFinancials(facts({ Revenues: [annual(100)], InterestExpense: [annual(4, { start: "2023-10-01", end: "2024-09-30", fy: 2024, accn: "2024-filing" })], InterestExpenseDebt: [annual(5)], InterestExpenseOther: [annual(6)] }));
+    expect(result.financials.interest_expense).toMatchObject({ value: 5, tag: "InterestExpenseDebt", fiscal_year: 2025 });
+    expect(result.missing_fields).not.toContain("interest_expense");
+  });
+  test("empty or quarterly interest concepts fall back to InterestExpenseOther", () => {
+    const result = field(facts({ Revenues: [annual(100)], InterestExpense: [], InterestExpenseDebt: [annual(9, { form: "10-Q" })], InterestExpenseOther: [annual(6)] }), "interest_expense");
+    expect(result).toMatchObject({ value: 6, tag: "InterestExpenseOther" });
+  });
+  test("all stale interest fallbacks remain null and listed as missing", () => {
+    const stale = annual(4, { start: "2023-10-01", end: "2024-09-30", fy: 2024, accn: "2024-filing" });
+    const result = extractFinancials(facts({ Revenues: [annual(100)], InterestExpense: [stale], InterestExpenseDebt: [stale], InterestExpenseOther: [stale] }));
+    expect(result.financials.interest_expense).toBeNull();
+    expect(result.missing_fields).toContain("interest_expense");
+  });
+  test("reported zero interest is a valid first fallback, not a missing estimate", () => {
+    expect(field(facts({ Revenues: [annual(100)], InterestExpense: [annual(0)], InterestExpenseDebt: [annual(5)] }), "interest_expense")).toMatchObject({ value: 0, tag: "InterestExpense" });
+  });
 });
