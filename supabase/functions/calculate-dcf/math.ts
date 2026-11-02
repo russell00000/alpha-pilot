@@ -20,6 +20,26 @@ export function debtCostInput(data: DcfData, riskFreeRate: number) {
   return { required: estimated, estimated, suggested_rate: estimated ? riskFreeRate + 0.01 : null,
     label: estimated ? "Estimated — company does not separately disclose interest expense" : "Calculated from audited interest expense and total debt" };
 }
+// SIC 6000-6799 covers banks, insurers and other financial institutions;
+// 6798 is REITs. Pure classifier so warnings are testable and UI-agnostic.
+export function companyTypeWarnings(sic: number | null | undefined) {
+  const warnings: string[] = [];
+  if (sic === 6798) warnings.push("REIT — FFO/AFFO-based valuation is the industry-standard approach, not EBIT-based FCFF.");
+  else if (sic !== null && sic !== undefined && Number.isFinite(sic) && sic >= 6000 && sic <= 6799) warnings.push("Standard DCF may not be appropriate for financial companies — working capital and capex don't translate the same way; consider a dividend discount or P/B-based approach instead.");
+  return warnings;
+}
+// Trailing three-year average annual share-count change; positive means
+// dilution, negative means buybacks. Defaults to 0 (flat) when four years of
+// share history are unavailable — never an assumed buyback.
+export function shareCountChange(data: DcfData) {
+  const latest = data.history.revenue?.[0];
+  const shares = data.history.diluted_shares ?? [];
+  if (!latest?.fiscal_year) return 0;
+  const rows = Array.from({ length: 4 }, (_, i) => shares.find((row) => row.fiscal_year === (latest.fiscal_year as number) - i));
+  if (rows.some((row) => !row || !Number.isFinite(row.value) || row.value <= 0)) return 0;
+  const changes = [0, 1, 2].map((i) => (rows[i] as FinancialValue).value / (rows[i + 1] as FinancialValue).value - 1);
+  return changes.reduce((sum, change) => sum + change, 0) / changes.length;
+}
 export function historicalAssumptions(data: DcfData) {
   const latest = data.history.revenue?.[0];
   if (!latest?.fiscal_year) throw new DcfInputError("Four annual revenue years are required.", ["revenue_history"]);
@@ -30,10 +50,13 @@ export function historicalAssumptions(data: DcfData) {
     if (!revenue || !Number.isFinite(revenue.value) || revenue.value <= 0 || !income || !Number.isFinite(income.value)) throw new DcfInputError("Four period-aligned annual revenue and EBIT years are required.", [`revenue_or_operating_income_${year}`]);
     return { revenue: revenue.value, income: income.value };
   });
-  const prior = rows[3];
-  if (!prior) throw new DcfInputError("Three-year-prior revenue is missing.");
-  return { revenue_growth_rate: (latest.value / prior.revenue) ** (1 / 3) - 1,
-    ebit_margin: rows.reduce((sum, row) => sum + row.income / row.revenue, 0) / 4 };
+  const priorYear = rows[1];
+  if (!priorYear) throw new DcfInputError("Prior-year revenue is missing.");
+  // Near-term growth anchors to the company's own most recent year, not a
+  // fixed constant or a smoothed CAGR applied across all companies.
+  return { revenue_growth_rate: latest.value / priorYear.revenue - 1,
+    ebit_margin: rows.reduce((sum, row) => sum + row.income / row.revenue, 0) / 4,
+    share_count_change: shareCountChange(data) };
 }
 export function marketComparison(impliedPrice: number, marketPrice: number) {
   if (![impliedPrice, marketPrice].every(Number.isFinite) || marketPrice <= 0) throw new DcfInputError("Invalid market comparison prices.");
