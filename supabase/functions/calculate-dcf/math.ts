@@ -5,6 +5,7 @@ export interface FinancialValue {
 export interface DcfData {
   financials: Record<string, FinancialValue | null>;
   history: Record<string, FinancialValue[]>;
+  linked_financials?: Record<string, FinancialValue | null>;
 }
 export class DcfInputError extends Error {
   constructor(message: string, public missing_fields: string[] = []) { super(message); }
@@ -38,6 +39,12 @@ export function marketComparison(impliedPrice: number, marketPrice: number) {
   if (![impliedPrice, marketPrice].every(Number.isFinite) || marketPrice <= 0) throw new DcfInputError("Invalid market comparison prices.");
   return { difference_pct: (impliedPrice / marketPrice - 1) * 100,
     deviation_warning: Math.abs(impliedPrice - marketPrice) > marketPrice * 0.4 };
+}
+const dollars = (value: number) => Math.round(value * 100) / 100;
+export function balanceCheck(assets: number, liabilities: number, equity: number, year: number) {
+  const gap = dollars(assets - liabilities - equity) || 0;
+  if (![assets, liabilities, equity].every(Number.isFinite) || gap !== 0) throw new DcfInputError(`Balance sheet does not balance in year ${year}: Assets minus Liabilities and Equity = ${gap}.`);
+  return { balanced: true, gap, assets, liabilities, equity };
 }
 export function calculateDcf(data: DcfData, assumptions: {
   beta: number; risk_free_rate: number; current_price: number;
@@ -92,6 +99,24 @@ export function calculateDcf(data: DcfData, assumptions: {
   const da_ratio = value("depreciation_amortization") / latest.value;
   const capex_ratio = value("capex") / latest.value;
   const change_nwc_ratio = change_nwc / latest.value;
+  const linked = (name: string) => {
+    const item = data.linked_financials?.[name];
+    if (!item || !Number.isFinite(item.value) || item.fiscal_year !== latest.fiscal_year || item.period.end !== latest.period.end || (latest.accession_number && item.accession_number !== latest.accession_number)) throw new DcfInputError("Missing or out-of-period audited opening balance for linked statements.", [name]);
+    return item.value;
+  };
+  const opening_assets = linked("total_assets"), opening_liabilities = linked("total_liabilities"), opening_equity = linked("total_equity");
+  balanceCheck(opening_assets, opening_liabilities, opening_equity, 0);
+  const opening_ppe = linked("ppe"), opening_retained_earnings = linked("retained_earnings");
+  const cogs = linked("cogs"), current_financing = linked("current_financing");
+  const opening_operating_assets = linked("current_assets") - value("cash");
+  const opening_operating_liabilities = linked("current_liabilities") - current_financing;
+  if (cogs <= 0 || opening_operating_assets < 0 || opening_operating_liabilities < 0) throw new DcfInputError("Invalid COGS or operating working-capital opening balances.");
+  const operating_asset_days = opening_operating_assets / latest.value * 365;
+  const operating_liability_days = opening_operating_liabilities / cogs * 365;
+  const cogs_ratio = cogs / latest.value;
+  const other_assets = opening_assets - linked("current_assets") - opening_ppe;
+  const other_liabilities = opening_liabilities - opening_operating_liabilities - debt;
+  const other_equity = opening_equity - opening_retained_earnings;
   const cost_of_equity = risk_free_rate + beta * equity_risk_premium;
   const cost_of_debt_estimated = !hasCurrentInterest(data);
   if (cost_of_debt_estimated && (assumptions.cost_of_debt === undefined || !Number.isFinite(assumptions.cost_of_debt) || assumptions.cost_of_debt < 0 || assumptions.cost_of_debt > 1)) {
@@ -104,28 +129,57 @@ export function calculateDcf(data: DcfData, assumptions: {
   const wacc = equity_weight * cost_of_equity + debt_weight * after_tax_cost_of_debt;
   if (!Number.isFinite(wacc) || wacc <= -1) throw new DcfInputError("WACC is invalid.");
   if (terminal_growth_rate >= wacc) throw new DcfInputError("Terminal growth rate must be strictly below WACC.");
-  let prior = latest.value;
-  const projections = Array.from({ length: 5 }, (_, index) => {
+  let prior = latest.value, priorPpe = opening_ppe, priorCash = value("cash"), priorDebt = debt, priorRetained = opening_retained_earnings;
+  let priorNwc = opening_operating_assets - opening_operating_liabilities;
+  const projections = Array.from({ length: 10 }, (_, index) => {
     const year = index + 1;
     const revenue = prior * (1 + revenue_growth_rate); prior = revenue;
     const operating_income = revenue * ebit_margin;
     const nopat = operating_income * (1 - tax_rate);
-    const da = revenue * da_ratio, capex = revenue * capex_ratio, delta_nwc = revenue * change_nwc_ratio;
-    const ufcf = nopat + da - capex - delta_nwc;
-    return { year, fiscal_year: latest.fiscal_year as number + year, revenue, operating_income, nopat, depreciation_amortization: da, capex, change_nwc: delta_nwc, ufcf, discounted_ufcf: ufcf / (1 + wacc) ** year };
+    const da = dollars(revenue * da_ratio), capex = dollars(revenue * capex_ratio);
+    const projected_cogs = revenue * cogs_ratio;
+    const operating_assets = dollars(revenue / 365 * operating_asset_days);
+    const operating_liabilities = dollars(projected_cogs / 365 * operating_liability_days);
+    const nwc = dollars(operating_assets - operating_liabilities), delta_nwc = dollars(nwc - priorNwc);
+    const interest_expense = dollars(priorDebt * cost_of_debt);
+    const pretax_income = operating_income - interest_expense;
+    const income_tax_expense = pretax_income * tax_rate;
+    const net_income = dollars(pretax_income - income_tax_expense);
+    const operating_cash_flow = dollars(net_income + da - delta_nwc);
+    const investing_cash_flow = -capex, financing_cash_flow = 0;
+    const net_change_cash = dollars(operating_cash_flow + investing_cash_flow + financing_cash_flow);
+    const ppe = dollars(priorPpe + capex - da), cash = dollars(priorCash + net_change_cash);
+    const total_debt = priorDebt, retained_earnings = dollars(priorRetained + net_income);
+    const assets = dollars(cash + operating_assets + ppe + other_assets);
+    const liabilities = dollars(operating_liabilities + total_debt + other_liabilities);
+    const equity = dollars(retained_earnings + other_equity);
+    const balance_check = balanceCheck(assets, liabilities, equity, year);
+    if (ppe < 0 || cash < 0) throw new DcfInputError(`Year ${year} has negative ${ppe < 0 ? "PP&E" : "cash"}; add an explicit asset or financing assumption instead of using a balancing plug.`);
+    // Unlevered FCF adds back after-tax interest; levered cash accumulation
+    // must not be discounted at WACC or added again to today's equity bridge.
+    const ufcf = operating_income * (1 - tax_rate) + da - capex - delta_nwc;
+    const beginning_balances = { ppe: priorPpe, cash: priorCash, total_debt: priorDebt, retained_earnings: priorRetained, nwc: priorNwc };
+    priorPpe = ppe; priorCash = cash; priorDebt = total_debt; priorRetained = retained_earnings; priorNwc = nwc;
+    return { year, fiscal_year: latest.fiscal_year as number + year, revenue, operating_income, nopat, cogs: projected_cogs,
+      interest_expense, pretax_income, income_tax_expense, net_income, depreciation_amortization: da, capex, change_nwc: delta_nwc,
+      operating_cash_flow, investing_cash_flow, financing_cash_flow, net_change_cash, beginning_balances,
+      balance_sheet: { cash, operating_assets, ppe, other_assets, assets, operating_liabilities, total_debt, other_liabilities, liabilities, retained_earnings, other_equity, equity, nwc },
+      balance_check, ufcf, discounted_ufcf: ufcf / (1 + wacc) ** year };
   });
-  const fifth = projections[4];
-  if (!fifth) throw new DcfInputError("Year five projection is missing.");
-  const terminal_value = fifth.ufcf * (1 + terminal_growth_rate) / (wacc - terminal_growth_rate);
-  const discounted_terminal_value = terminal_value / (1 + wacc) ** 5;
+  const finalYear = projections[9];
+  if (!finalYear) throw new DcfInputError("Year ten projection is missing.");
+  const terminal_value = finalYear.ufcf * (1 + terminal_growth_rate) / (wacc - terminal_growth_rate);
+  const discounted_terminal_value = terminal_value / (1 + wacc) ** 10;
   const enterprise_value = projections.reduce((sum, row) => sum + row.discounted_ufcf, 0) + discounted_terminal_value;
   const equity_value = enterprise_value - debt + value("cash");
   const implied_share_price = equity_value / shares;
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
   return { wacc, enterprise_value, equity_value, implied_share_price, ...marketComparison(implied_share_price, current_price),
     current_price, fiscal_year: latest.fiscal_year, projections, terminal_value, discounted_terminal_value,
+    model_notes: ["Dividends and buybacks are not modeled; future addition.", "Debt, other assets, other liabilities and non-retained equity are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax uses the existing effective rate, including modeled tax benefits on losses."],
+    opening_balance_check: balanceCheck(opening_assets, opening_liabilities, opening_equity, 0),
     assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, revenue_growth_rate, ebit_margin, cost_of_debt, cost_of_debt_estimated,
       cost_of_debt_source: cost_of_debt_estimated ? "user_estimate" : "SEC interest expense / total debt" },
-    derived: { tax_rate, historical_cagr, historical_ebit_margin, nwc_current: balances[0], nwc_prior: balances[1], change_nwc, da_ratio, capex_ratio, change_nwc_ratio, market_cap, cost_of_equity, cost_of_debt, after_tax_cost_of_debt, equity_weight, debt_weight },
+    derived: { tax_rate, historical_cagr, historical_ebit_margin, nwc_current: balances[0], nwc_prior: balances[1], change_nwc, da_ratio, capex_ratio, change_nwc_ratio, operating_asset_days, operating_liability_days, cogs_ratio, market_cap, cost_of_equity, cost_of_debt, after_tax_cost_of_debt, equity_weight, debt_weight },
   };
 }

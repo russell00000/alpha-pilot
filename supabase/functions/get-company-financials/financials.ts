@@ -10,6 +10,14 @@ export const FIELD_TAGS = {
   pretax_income: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"],
   interest_expense: ["InterestExpense", "InterestExpenseDebt", "InterestExpenseOther"],
 } as const;
+export const LINKED_TAGS = {
+  cogs: ["CostOfGoodsAndServicesSold", "CostOfRevenue"],
+  ppe: ["PropertyPlantAndEquipmentNet"],
+  total_assets: ["Assets"], total_liabilities: ["Liabilities"],
+  total_equity: ["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "StockholdersEquity"],
+  retained_earnings: ["RetainedEarningsAccumulatedDeficit"],
+  current_assets: ["AssetsCurrent"], current_liabilities: ["LiabilitiesCurrent"],
+} as const;
 
 export interface Observation {
   val: number; start?: string; end: string; form: string;
@@ -137,5 +145,30 @@ export function extractFinancials(raw: CompanyFacts) {
   const missingInterest = missing_fields.indexOf("interest_expense");
   if (financials.interest_expense && missingInterest >= 0) missing_fields.splice(missingInterest, 1);
   if (!financials.interest_expense && missingInterest < 0) missing_fields.push("interest_expense");
-  return { financials, history, missing_fields };
+  // Opening balances must belong to the same 10-K as latest revenue.
+  const linked_missing_fields: string[] = [];
+  const aligned = (tag: string, instant = true) => (gaap[tag]?.units.USD ?? [])
+    .filter((row) => isAnnual(row, instant) && Boolean(latestRevenue) && row.end === latestRevenue?.period.end && row.accn === latestRevenue?.accession_number && (instant || row.start === latestRevenue?.period.start))
+    .sort((a, b) => (b.filed ?? "").localeCompare(a.filed ?? ""))[0];
+  const linked_financials: Record<string, ReturnType<typeof provenance> | null> = {};
+  for (const [name, tags] of Object.entries(LINKED_TAGS)) {
+    linked_financials[name] = null;
+    for (const tag of tags) {
+      const row = aligned(tag, name !== "cogs");
+      if (row) { linked_financials[name] = provenance(row, tag); break; }
+    }
+    if (!linked_financials[name]) linked_missing_fields.push(name);
+  }
+  // DebtCurrent is a combined current-financing figure. Otherwise use the
+  // disclosed long-term current portion plus disclosed short-term borrowings.
+  const combinedCurrent = aligned("DebtCurrent");
+  const longCurrent = aligned("LongTermDebtCurrent");
+  const shortTag = ["ShortTermBorrowings", "CommercialPaper"].find((tag) => aligned(tag));
+  const shortCurrent = shortTag ? aligned(shortTag) : undefined;
+  linked_financials.current_financing = combinedCurrent ? provenance(combinedCurrent, "DebtCurrent") : longCurrent ? {
+    ...provenance(longCurrent, shortCurrent ? `LongTermDebtCurrent + ${shortTag}` : "LongTermDebtCurrent"),
+    value: longCurrent.val + (shortCurrent?.val ?? 0),
+  } : null;
+  if (!linked_financials.current_financing) linked_missing_fields.push("current_financing");
+  return { financials, history, missing_fields, linked_financials, linked_missing_fields };
 }

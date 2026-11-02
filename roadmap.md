@@ -21,7 +21,7 @@
 - [x] Verify signed-in AAPL default and 10% growth results — historical growth 1.8125%, margin 30.8978%, beta 1, estimated debt cost 5.94%, quote $336.99; default $94.70 vs 10% growth $135.16 (+42.72%); both warnings visible. Quote service temporarily unavailable during initial attempts; completed live verification with background ticker polling paused, no mocked prices or results, no page errors.
 
 # Ten-year linked three-statement model
-- [ ] Resolve requested preserved fade/Exit Multiple formulas: current engine contains five constant-growth/margin years and Gordon Growth only; no fade or Exit Multiple implementation exists to preserve.
-- [ ] Extend audited opening balances for linked PP&E, cash, debt, retained earnings, assets/liabilities/equity and COGS; define operating working-capital treatment without cash/debt double counting.
-- [ ] Implement ten-year roll-forwards, days schedules, net income/cash flow links and annual balance checks with tests.
-- [ ] Display annual balance checks and omitted distribution assumptions; rerun authenticated AAPL and compare implied price on identical inputs, isolating horizon from linkage effects.
+- [x] Resolve baseline: user chose ten constant-growth/margin years with Gordon Growth; fade and Exit Multiple deferred.
+- [x] Extend same-filing audited opening balances for PP&E, retained earnings, assets/liabilities/equity, COGS and current financing; exclude cash/current financing from operating days schedules.
+- [x] Implement ten-year roll-forwards, days schedules, net income/cash flow links and annual balance checks — 62 tests passed; no balancing plugs.
+- [x] Display annual balance checks and omitted distributions; signed-in AAPL live result $98.61, all FY2026–2035 checks $0.00, no page errors. Identical prior inputs: five-year static $94.69958, ten-year static $92.62991, ten-year linked $98.61246; linkage-only +$5.98256, net vs prior +$3.91288. Flat debt yields constant $5.3862732B interest, which now feeds net income/cash flow but is added back after tax for unlevered DCF.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractFinancials, FIELD_TAGS, normalizeTicker, type CompanyFacts, type Observation } from "./financials";
+import { extractFinancials, FIELD_TAGS, LINKED_TAGS, normalizeTicker, type CompanyFacts, type Observation } from "./financials";
 
 const annual = (val: number, overrides: Partial<Observation> = {}): Observation => ({
   val, start: "2024-10-01", end: "2025-09-30", form: "10-K", fp: "FY", fy: 2025,
@@ -115,5 +115,26 @@ describe("SEC financial extraction contract", () => {
   });
   test("reported zero interest is a valid first fallback, not a missing estimate", () => {
     expect(field(facts({ Revenues: [annual(100)], InterestExpense: [annual(0)], InterestExpenseDebt: [annual(5)] }), "interest_expense")).toMatchObject({ value: 0, tag: "InterestExpense" });
+  });
+  test("linked balances select only latest revenue's annual filing and preserve provenance", () => {
+    const raw = facts({ Revenues: [annual(100)], PropertyPlantAndEquipmentNet: [annual(50, { start: undefined }), annual(999, { start: undefined, accn: "other-filing", filed: "2025-12-01" })], CostOfGoodsAndServicesSold: [annual(60)] });
+    const result = extractFinancials(raw);
+    expect(result.linked_financials.ppe).toMatchObject({ value: 50, accession_number: "2025-filing", fiscal_year: 2025 });
+    expect(result.linked_financials.cogs).toMatchObject({ value: 60, tag: "CostOfGoodsAndServicesSold" });
+  });
+  test("linked COGS fallback skips stale preferred concept", () => {
+    const result = extractFinancials(facts({ Revenues: [annual(100)], CostOfGoodsAndServicesSold: [annual(60, { accn: "old-filing", end: "2024-09-30" })], CostOfRevenue: [annual(70)] }));
+    expect(result.linked_financials.cogs).toMatchObject({ value: 70, tag: "CostOfRevenue" });
+  });
+  test("current financing excludes disclosed short borrowings without adding combined debt twice", () => {
+    const result = extractFinancials(facts({ Revenues: [annual(100)], LongTermDebtCurrent: [annual(12, { start: undefined })], CommercialPaper: [annual(8, { start: undefined })] }));
+    expect(result.linked_financials.current_financing?.value).toBe(20);
+    const combined = extractFinancials(facts({ Revenues: [annual(100)], DebtCurrent: [annual(25, { start: undefined })], LongTermDebtCurrent: [annual(12, { start: undefined })], CommercialPaper: [annual(8, { start: undefined })] }));
+    expect(combined.linked_financials.current_financing?.value).toBe(25);
+  });
+  test("missing linked opening balances remain null rather than manufactured zero", () => {
+    const result = extractFinancials(facts({ Revenues: [annual(100)] }));
+    expect(result.linked_missing_fields).toEqual([...Object.keys(LINKED_TAGS), "current_financing"]);
+    expect(result.linked_financials.total_equity).toBeNull();
   });
 });

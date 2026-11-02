@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
     return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput,
       market_price_source: "Finnhub", market_price_as_of: quote.t ? new Date(quote.t * 1000).toISOString() : null,
-      financial_inputs: { financials: financials.financials, history: financials.history },
+      financial_inputs: { financials: financials.financials, history: financials.history, linked_financials: financials.linked_financials },
     });
   } catch (error) {
     if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields }, 422);
