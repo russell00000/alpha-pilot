@@ -19,3 +19,9 @@
 - [x] Add current-market comparison and strict >40% absolute-deviation warning using the existing ticker quote source.
 - [x] Test unchanged historical defaults, overrides and warning boundaries — 51 tests passed; identical prior inputs reproduce 94.69854225837166 exactly ($94.70).
 - [x] Verify signed-in AAPL default and 10% growth results — historical growth 1.8125%, margin 30.8978%, beta 1, estimated debt cost 5.94%, quote $336.99; default $94.70 vs 10% growth $135.16 (+42.72%); both warnings visible. Quote service temporarily unavailable during initial attempts; completed live verification with background ticker polling paused, no mocked prices or results, no page errors.
+
+# Ten-year linked three-statement model
+- [ ] Resolve requested preserved fade/Exit Multiple formulas: current engine contains five constant-growth/margin years and Gordon Growth only; no fade or Exit Multiple implementation exists to preserve.
+- [ ] Extend audited opening balances for linked PP&E, cash, debt, retained earnings, assets/liabilities/equity and COGS; define operating working-capital treatment without cash/debt double counting.
+- [ ] Implement ten-year roll-forwards, days schedules, net income/cash flow links and annual balance checks with tests.
+- [ ] Display annual balance checks and omitted distribution assumptions; rerun authenticated AAPL and compare implied price on identical inputs, isolating horizon from linkage effects.
