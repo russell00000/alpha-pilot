@@ -195,6 +195,30 @@ test("negative base-year EBIT warns instead of silently projecting from a negati
   expect(r.warnings.some((warning) => warning.includes("negative base"))).toBe(true);
   expect(Number.isFinite(r.implied_share_price)).toBe(true);
 });
+test("profitable company with a one-time tax benefit normalizes negative effective tax to 21% visibly", () => {
+  const data = fixture(); data.financials.income_tax_expense = item(-2);
+  const r = calculateDcf(data, args);
+  expect(r.derived.tax_rate).toBe(0.21);
+  expect(r.assumptions.tax_rate_normalized).toBe(true);
+  expect(r.warnings.some(w => w.includes("outside a representative range") && w.includes("-10.00%"))).toBe(true);
+  expect(r.projections[0].nopat).toBeCloseTo(r.projections[0].operating_income * 0.79, 10);
+});
+test("effective tax above 40% normalizes to 21% with a visible reason", () => {
+  const data = fixture(); data.financials.income_tax_expense = item(8.01);
+  const r = calculateDcf(data, args);
+  expect(r.derived.tax_rate).toBe(0.21);
+  expect(r.assumptions.tax_rate_normalized).toBe(true);
+  expect(r.warnings.some(w => w.includes("outside a representative range"))).toBe(true);
+});
+for (const incomeTax of [0, 8]) {
+  test(`effective tax boundary ${incomeTax / 20 * 100}% is preserved without normalization`, () => {
+    const data = fixture(); data.financials.income_tax_expense = item(incomeTax);
+    const r = calculateDcf(data, args);
+    expect(r.derived.tax_rate).toBe(incomeTax / 20);
+    expect(r.assumptions.tax_rate_normalized).toBe(false);
+    expect(r.warnings.some(w => w.includes("Tax rate normalized"))).toBe(false);
+  });
+}
 test("company type warnings flag financials and REITs by SIC range only", () => {
   expect(companyTypeWarnings(6021)[0]).toContain("financial companies");
   expect(companyTypeWarnings(6798)[0]).toContain("REIT");
