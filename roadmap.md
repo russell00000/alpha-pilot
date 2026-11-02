@@ -10,4 +10,6 @@
 - [x] Add exact DCF engine, Treasury yield lookup, existing live quotes, and formula/validation tests; 34 tests passed.
 - [x] Add beta input, Run DCF, and plain result cards on Markets.
 - [x] Verify authenticated AAPL page flow: beta 1.0 returns an explicit missing FY2025 InterestExpense error, not a fabricated valuation. Treasury parsing verified at 4.94% dated October 30, 2026.
-- [ ] Confirm numeric AAPL WACC, enterprise value and implied price — blocked by missing FY2025 InterestExpense under the specified SEC tag; requires an audited value or an approved additional source/tag.
+- [x] Add latest-year interest-expense fallbacks and explicit editable Cost of Debt estimate at Treasury yield + 1.0% when interest is unavailable.
+- [x] Test fallback ordering, required estimate input, audited-data precedence and estimate-based WACC — 45 tests passed.
+- [x] Verify authenticated AAPL estimate prefill and full DCF — editable 5.94% = Treasury 4.94% (2026-10-30) + 1.00%, estimate label visible before and after calculation; beta 1.0, FY2025, market price $337.31; WACC 9.3621%, EV $1,475,666,932,928.56, equity $1,420,922,932,928.56, implied price $94.70; no page errors.

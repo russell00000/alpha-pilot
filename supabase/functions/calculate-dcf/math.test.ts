@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { calculateDcf, DcfInputError, type DcfData, type FinancialValue } from "./math";
+import { calculateDcf, debtCostInput, DcfInputError, type DcfData, type FinancialValue } from "./math";
 import { parseTreasuryYield } from "./treasury";
 const item = (value: number, year = 2025, instant = false): FinancialValue => ({ value, fiscal_year: year, tag: "test", period: { start: instant ? null : `${year}-01-01`, end: `${year}-12-31` } });
 const fixture = (): DcfData => ({ financials: {
@@ -47,10 +47,45 @@ test("terminal growth equal to WACC is hard blocked", () => {
 test("terminal growth greater than WACC is hard blocked", () => {
   expect(() => calculateDcf(fixture(), { ...args, terminal_growth_rate: 0.5 })).toThrow("strictly below WACC");
 });
-test("stale interest expense is blocked, not applied to latest fiscal year", () => {
+test("stale interest expense requires explicit debt cost, not an older audited value", () => {
   const data = fixture(); data.financials.interest_expense = item(4, 2023);
   try { calculateDcf(data, args); throw new Error("Expected missing input failure"); }
-  catch (error) { expect(error).toBeInstanceOf(DcfInputError); expect((error as DcfInputError).missing_fields).toContain("interest_expense"); }
+  catch (error) { expect(error).toBeInstanceOf(DcfInputError); expect((error as DcfInputError).missing_fields).toContain("cost_of_debt"); }
+});
+test("suggested debt cost is current risk-free rate plus exactly 1.0 percentage point", () => {
+  const data = fixture(); data.financials.interest_expense = null;
+  const input = debtCostInput(data, 0.0494);
+  expect(input.required).toBe(true);
+  expect(input.estimated).toBe(true);
+  expect(input.suggested_rate).toBeCloseTo(0.0594, 12);
+});
+test("missing interest never silently substitutes the suggested debt cost", () => {
+  const data = fixture(); data.financials.interest_expense = null;
+  expect(() => calculateDcf(data, args)).toThrow("Enter Cost of Debt");
+});
+test("edited cost of debt flows into after-tax cost and WACC with visible estimate provenance", () => {
+  const data = fixture(); data.financials.interest_expense = null;
+  const r = calculateDcf(data, { ...args, cost_of_debt: 0.06 });
+  expect(r.derived.cost_of_debt).toBe(0.06);
+  expect(r.derived.after_tax_cost_of_debt).toBeCloseTo(0.045, 12);
+  expect(r.wacc).toBeCloseTo((1000 / 1100) * 0.085 + (100 / 1100) * 0.045, 12);
+  expect(r.assumptions.cost_of_debt_estimated).toBe(true);
+  expect(r.assumptions.cost_of_debt_source).toBe("user_estimate");
+  expect(data.financials.interest_expense).toBeNull();
+});
+test("audited current-year interest takes precedence over any estimate input", () => {
+  const r = calculateDcf(fixture(), { ...args, cost_of_debt: 0.5 });
+  expect(r.derived.cost_of_debt).toBe(0.04);
+  expect(r.assumptions.cost_of_debt_estimated).toBe(false);
+  expect(debtCostInput(fixture(), 0.04).required).toBe(false);
+});
+test("negative nonfinite and over-100-percent debt cost estimates are rejected", () => {
+  const data = fixture(); data.financials.interest_expense = null;
+  for (const cost_of_debt of [-0.01, NaN, Infinity, 1.01]) expect(() => calculateDcf(data, { ...args, cost_of_debt })).toThrow("Enter Cost of Debt");
+});
+test("other missing audited inputs still block even with an explicit debt cost", () => {
+  const data = fixture(); data.financials.interest_expense = null; data.financials.capex = null;
+  expect(() => calculateDcf(data, { ...args, cost_of_debt: 0.05 })).toThrow("missing or out-of-period");
 });
 test("missing history and zero debt block undefined formulas", () => {
   const data = fixture(); data.history.revenue.pop();

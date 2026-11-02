@@ -9,9 +9,19 @@ export interface DcfData {
 export class DcfInputError extends Error {
   constructor(message: string, public missing_fields: string[] = []) { super(message); }
 }
+export function hasCurrentInterest(data: DcfData) {
+  const latest = data.history.revenue?.[0], interest = data.financials.interest_expense;
+  return Boolean(latest && interest && Number.isFinite(interest.value) && interest.fiscal_year === latest.fiscal_year && interest.period.end === latest.period.end && interest.period.start === latest.period.start);
+}
+export function debtCostInput(data: DcfData, riskFreeRate: number) {
+  if (!Number.isFinite(riskFreeRate) || riskFreeRate < 0) throw new DcfInputError("Invalid risk-free rate.");
+  const estimated = !hasCurrentInterest(data);
+  return { required: estimated, estimated, suggested_rate: estimated ? riskFreeRate + 0.01 : null,
+    label: estimated ? "Estimated — company does not separately disclose interest expense" : "Calculated from audited interest expense and total debt" };
+}
 export function calculateDcf(data: DcfData, assumptions: {
   beta: number; risk_free_rate: number; current_price: number;
-  equity_risk_premium?: number; terminal_growth_rate?: number;
+  equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
 }) {
   const { beta, risk_free_rate, current_price } = assumptions;
   const equity_risk_premium = assumptions.equity_risk_premium ?? 0.045;
@@ -21,7 +31,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   const ebit = data.history.operating_income ?? [];
   const latest = revenues[0];
   if (!latest?.fiscal_year) throw new DcfInputError("Four annual revenue years are required.", ["revenue_history"]);
-  const fields = ["depreciation_amortization", "capex", "cash", "total_debt", "diluted_shares", "income_tax_expense", "pretax_income", "interest_expense"];
+  const fields = ["depreciation_amortization", "capex", "cash", "total_debt", "diluted_shares", "income_tax_expense", "pretax_income"];
   const missing = fields.filter((name) => !data.financials[name] || data.financials[name]?.period.end !== latest.period.end || data.financials[name]?.fiscal_year !== latest.fiscal_year);
   const revenueYears: FinancialValue[] = [], ebitYears: FinancialValue[] = [];
   for (let i = 0; i < 4; i++) {
@@ -59,7 +69,11 @@ export function calculateDcf(data: DcfData, assumptions: {
   const capex_ratio = value("capex") / latest.value;
   const change_nwc_ratio = change_nwc / latest.value;
   const cost_of_equity = risk_free_rate + beta * equity_risk_premium;
-  const cost_of_debt = value("interest_expense") / debt;
+  const cost_of_debt_estimated = !hasCurrentInterest(data);
+  if (cost_of_debt_estimated && (assumptions.cost_of_debt === undefined || !Number.isFinite(assumptions.cost_of_debt) || assumptions.cost_of_debt < 0 || assumptions.cost_of_debt > 1)) {
+    throw new DcfInputError("Enter Cost of Debt (0–100%) because current-year interest expense is not disclosed.", ["cost_of_debt"]);
+  }
+  const cost_of_debt = cost_of_debt_estimated ? (assumptions.cost_of_debt ?? NaN) : value("interest_expense") / debt;
   const after_tax_cost_of_debt = cost_of_debt * (1 - tax_rate);
   const market_cap = current_price * shares;
   const equity_weight = market_cap / (market_cap + debt), debt_weight = 1 - equity_weight;
@@ -86,7 +100,8 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
   return { wacc, enterprise_value, equity_value, implied_share_price, difference_pct: (implied_share_price / current_price - 1) * 100,
     current_price, fiscal_year: latest.fiscal_year, projections, terminal_value, discounted_terminal_value,
-    assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate },
+    assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, cost_of_debt, cost_of_debt_estimated,
+      cost_of_debt_source: cost_of_debt_estimated ? "user_estimate" : "SEC interest expense / total debt" },
     derived: { tax_rate, historical_cagr, historical_ebit_margin, nwc_current: balances[0], nwc_prior: balances[1], change_nwc, da_ratio, capex_ratio, change_nwc_ratio, market_cap, cost_of_equity, cost_of_debt, after_tax_cost_of_debt, equity_weight, debt_weight },
   };
 }
