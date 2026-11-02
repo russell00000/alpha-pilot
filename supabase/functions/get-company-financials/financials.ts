@@ -8,7 +8,7 @@ export const FIELD_TAGS = {
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"],
   income_tax_expense: ["IncomeTaxExpenseBenefit"],
   pretax_income: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"],
-  interest_expense: ["InterestExpense"],
+  interest_expense: ["InterestExpense", "InterestExpenseDebt", "InterestExpenseOther"],
 } as const;
 
 export interface Observation {
@@ -122,10 +122,20 @@ export function extractFinancials(raw: CompanyFacts) {
     current_assets: historyFor("current_assets", 2), current_liabilities: historyFor("current_liabilities", 2),
   };
   const latestRevenue = history.revenue[0];
-  const interest = financials.interest_expense;
-  if (interest && latestRevenue && interest.period.end !== latestRevenue.period.end) {
-    financials.interest_expense = null;
-    if (!missing_fields.includes("interest_expense")) missing_fields.push("interest_expense");
+  // Unlike other fields, each interest fallback must have a valid latest-year
+  // annual value, not merely an existing concept or an older observation.
+  financials.interest_expense = null;
+  for (const tag of FIELD_TAGS.interest_expense) {
+    const rows = (gaap[tag]?.units.USD ?? []).filter((row) => isAnnual(row, false))
+      .sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? ""));
+    const selected = rows.find((row) => {
+      const item = provenance(row, tag);
+      return !latestRevenue || (item.fiscal_year === latestRevenue.fiscal_year && item.period.end === latestRevenue.period.end && item.period.start === latestRevenue.period.start);
+    });
+    if (selected) { financials.interest_expense = provenance(selected, tag); break; }
   }
+  const missingInterest = missing_fields.indexOf("interest_expense");
+  if (financials.interest_expense && missingInterest >= 0) missing_fields.splice(missingInterest, 1);
+  if (!financials.interest_expense && missingInterest < 0) missing_fields.push("interest_expense");
   return { financials, history, missing_fields };
 }

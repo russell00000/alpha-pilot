@@ -1,12 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { calculateDcf, DcfInputError, type DcfData } from "./math.ts";
+import { calculateDcf, debtCostInput, DcfInputError, type DcfData } from "./math.ts";
 import { parseTreasuryYield } from "./treasury.ts";
 
 const Schema = z.object({
   ticker: z.string().trim().min(1).max(15).regex(/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/),
-  beta: z.number().finite(), equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
+  action: z.enum(["prepare", "calculate"]).default("calculate"),
+  beta: z.number().finite().optional(), cost_of_debt: z.number().finite().min(0).max(1).optional(),
+  equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -39,7 +41,8 @@ Deno.serve(async (req) => {
   let body: unknown;
   try { body = await req.json(); } catch { return reply({ error: "Invalid JSON body." }, 400); }
   const parsed = Schema.safeParse(body);
-  if (!parsed.success) return reply({ error: "A valid ticker and numeric beta are required." }, 400);
+  if (!parsed.success) return reply({ error: "Invalid DCF inputs: use a valid ticker, numeric beta and a Cost of Debt between 0 and 100%." }, 400);
+  if (parsed.data.action === "calculate" && parsed.data.beta === undefined) return reply({ error: "A numeric beta is required." }, 400);
   const ticker = parsed.data.ticker.toUpperCase().replace(/\./g, "-");
   try {
     const { data: financials, error: financialError } = await client.functions.invoke("get-company-financials", { body: { ticker } });
@@ -48,16 +51,17 @@ Deno.serve(async (req) => {
       const detail = context ? await context.json().catch(() => null) : null;
       return reply({ error: detail?.error ?? "Unable to load SEC financials." }, context?.status ?? 503);
     }
-    // Validate audited inputs before spending requests on Treasury/quotes.
-    try { calculateDcf(financials as DcfData, { ...parsed.data, current_price: 1, risk_free_rate: 0.05, terminal_growth_rate: -0.99 }); }
-    catch (error) { if (error instanceof DcfInputError && error.missing_fields.length) throw error; }
-    const [treasury, quoteResponse] = await Promise.all([
-      treasuryYield(), client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [ticker] } }),
-    ]);
+    const treasury = await treasuryYield();
+    const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
+    if (parsed.data.action === "prepare") return reply({ ticker, company_name: financials.company_name, treasury, cost_of_debt_input: costOfDebtInput });
+    const beta = parsed.data.beta;
+    if (beta === undefined) return reply({ error: "A numeric beta is required." }, 400);
+    if (costOfDebtInput.required && parsed.data.cost_of_debt === undefined) return reply({ error: "Enter the estimated Cost of Debt before running DCF.", missing_fields: ["cost_of_debt"], treasury, cost_of_debt_input: costOfDebtInput }, 422);
+    const quoteResponse = await client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [ticker] } });
     const quote = quoteResponse.data?.data?.find((row: { symbol: string }) => row.symbol === ticker);
     if (quoteResponse.error || !Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
-    const result = calculateDcf(financials as DcfData, { ...parsed.data, risk_free_rate: treasury.rate, current_price: quote.c });
-    return reply({ ticker, company_name: financials.company_name, ...result, treasury,
+    const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
+    return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput,
       market_price_source: "Finnhub", market_price_as_of: quote.t ? new Date(quote.t * 1000).toISOString() : null,
       financial_inputs: { financials: financials.financials, history: financials.history },
     });
