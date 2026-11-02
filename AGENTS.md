@@ -1,6 +1,8 @@
 
 - Never animate background layers or write CSS variables to <html> every frame — frosted-glass panels re-blur on each change, causing site-wide jank.
 - Keep SEC financial extraction in the get-company-financials edge function with a pure, locally tested parser; server-side identification and service-only caches prevent browser SEC restrictions and unauditable financial guesses.
+- Use the shared bounded-fetch wrapper for DCF pipeline requests (including SDK transport and body reads); never retry timed-out upstream requests or swallow their errors, so slow providers fail visibly.
+- Expose the exact audited share-count denominator and provenance from pure DCF math; distinguish base annual weighted-average diluted shares from projected shares to prevent source/forecast confusion.
 - Keep DCF math pure in calculate-dcf with period-aligned SEC inputs; only missing interest expense may use an explicit user-confirmed cost-of-debt assumption, marked estimated in preparation and results. The edge function supplies Treasury yields and the existing Finnhub quote proxy to keep estimates distinguishable from audited data.
 - Derive DCF historical assumption prefills and price-deviation flags in the pure math module; preserve full-precision defaults and distinguish user projection assumptions from extracted financial inputs so editing never changes audited history.
 - Linked projections use audited same-filing opening balances, beginning-debt interest, operating days excluding cash/current financing, and cent-precision roll-forwards with independent balance checks; never use cash/equity plugs, and discount unlevered FCF rather than levered cash flow to avoid double-counting financing.

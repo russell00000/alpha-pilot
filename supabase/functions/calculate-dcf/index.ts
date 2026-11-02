@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     if (financialError) {
       const context = (financialError as { context?: Response }).context;
       const detail = context ? await context.json().catch(() => null) : null;
-      return reply({ error: detail?.error ?? "Unable to load SEC financials." }, context?.status ?? 503);
+      return reply({ error: detail?.error ?? TEMPORARY_DATA_MESSAGE }, context?.status ?? 503);
     }
     const treasuryStarted = Date.now();
     let treasury;
@@ -78,13 +78,16 @@ Deno.serve(async (req) => {
       let beta_input: { suggested: number | null; source: string | null; peers_used?: number } = { suggested: null, source: null };
       try {
         const ownMetric = await client.functions.invoke("finnhub", { body: { action: "metrics", symbols: [ticker] } });
+        if (ownMetric.error || ownMetric.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
         const ownBeta = ownMetric.data?.data?.[0]?.beta;
         if (Number.isFinite(ownBeta) && ownBeta > 0) beta_input = { suggested: ownBeta, source: "company" };
         else {
           const peersResponse = await client.functions.invoke("finnhub", { body: { action: "peers", symbols: [ticker] } });
+          if (peersResponse.error || peersResponse.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
           const peerSymbols: string[] = peersResponse.data?.data?.[0]?.peers ?? [];
           if (peerSymbols.length) {
             const peerMetrics = await client.functions.invoke("finnhub", { body: { action: "metrics", symbols: peerSymbols.slice(0, 8) } });
+            if (peerMetrics.error || peerMetrics.data?.error === TEMPORARY_DATA_MESSAGE) throw new DataTimeoutError();
             const betas = (peerMetrics.data?.data ?? []).map((row: { beta?: number | null }) => row.beta).filter((b: unknown) => Number.isFinite(b) && (b as number) > 0) as number[];
             if (betas.length) beta_input = { suggested: betas.reduce((sum, b) => sum + b, 0) / betas.length, source: "peer_average", peers_used: betas.length };
           }
@@ -104,7 +107,8 @@ Deno.serve(async (req) => {
     const quoteResponse = await client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [ticker] } });
     const quote = quoteResponse.data?.data?.find((row: { symbol: string }) => row.symbol === ticker);
     if (quoteResponse.data?.error) return reply({ error: quoteResponse.data.error, company_type }, 503);
-    if (quoteResponse.error || !Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
+    if (quoteResponse.error) return reply({ error: TEMPORARY_DATA_MESSAGE, company_type }, 503);
+    if (!Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
     const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
     return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput, company_type,
       warnings: [...company_type.warnings, ...result.warnings],
