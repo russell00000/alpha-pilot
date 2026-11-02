@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { calculateDcf, debtCostInput, DcfInputError, type DcfData, type FinancialValue } from "./math";
+import { calculateDcf, debtCostInput, historicalAssumptions, marketComparison, DcfInputError, type DcfData, type FinancialValue } from "./math";
 import { parseTreasuryYield } from "./treasury";
 const item = (value: number, year = 2025, instant = false): FinancialValue => ({ value, fiscal_year: year, tag: "test", period: { start: instant ? null : `${year}-01-01`, end: `${year}-12-31` } });
 const fixture = (): DcfData => ({ financials: {
@@ -98,4 +98,42 @@ test("Treasury chooses latest valid dated ten-year observation and converts perc
   expect(yieldData.date).toBe("2026-10-30");
   expect(yieldData.rate).toBeCloseTo(0.0494, 12);
   expect(() => parseTreasuryYield("<feed/>" )).toThrow("no valid");
+});
+test("historical prefills preserve the default calculation exactly", () => {
+  const data = fixture(), historical = historicalAssumptions(data);
+  expect(historical.revenue_growth_rate).toBeCloseTo(0.1, 12);
+  expect(historical.ebit_margin).toBeCloseTo(0.2, 12);
+  const original = calculateDcf(data, args);
+  const explicit = calculateDcf(data, { ...args, ...historical });
+  expect(explicit.implied_share_price).toBe(original.implied_share_price);
+  expect(explicit.enterprise_value).toBe(original.enterprise_value);
+});
+test("editable revenue growth applies to each of the five projections without altering history", () => {
+  const data = fixture(), r = calculateDcf(data, { ...args, revenue_growth_rate: 0.08 });
+  r.projections.forEach((row, i) => expect(row.revenue).toBeCloseTo(133.1 * 1.08 ** (i + 1), 9));
+  expect(r.derived.historical_cagr).toBeCloseTo(0.1, 12);
+  expect(r.assumptions.revenue_growth_rate).toBe(0.08);
+});
+test("editable EBIT margin changes every projected EBIT and leaves historical margin intact", () => {
+  const r = calculateDcf(fixture(), { ...args, ebit_margin: 0.3 });
+  r.projections.forEach((row) => expect(row.operating_income).toBeCloseTo(row.revenue * 0.3, 12));
+  expect(r.derived.historical_ebit_margin).toBeCloseTo(0.2, 12);
+  expect(r.assumptions.ebit_margin).toBe(0.3);
+});
+test("zero growth and zero margin are valid overrides, not replaced with historical values", () => {
+  const r = calculateDcf(fixture(), { ...args, revenue_growth_rate: 0, ebit_margin: 0 });
+  expect(r.projections[4].revenue).toBe(133.1);
+  expect(r.projections[4].operating_income).toBe(0);
+});
+test("invalid growth and nonfinite margins are rejected", () => {
+  for (const revenue_growth_rate of [-1, -1.1, NaN, Infinity]) expect(() => calculateDcf(fixture(), { ...args, revenue_growth_rate })).toThrow("Revenue growth");
+  expect(() => calculateDcf(fixture(), { ...args, ebit_margin: NaN })).toThrow("EBIT margin");
+});
+test("price deviation warning applies strictly above 40 percent in either direction", () => {
+  expect(marketComparison(140, 100).deviation_warning).toBe(false);
+  expect(marketComparison(60, 100).deviation_warning).toBe(false);
+  expect(marketComparison(140.01, 100).deviation_warning).toBe(true);
+  expect(marketComparison(59.99, 100).deviation_warning).toBe(true);
+  expect(marketComparison(100, 100).deviation_warning).toBe(false);
+  expect(marketComparison(90, 100).difference_pct).toBeCloseTo(-10, 12);
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calculator, Loader2 } from "lucide-react";
+import { AlertTriangle, Calculator, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 interface Result {
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
-  fiscal_year: number; treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean };
+  fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
+  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number };
 }
 interface Preparation {
   ticker: string; treasury: { rate: number; date: string };
   cost_of_debt_input: { required: boolean; estimated: boolean; suggested_rate: number | null; label: string };
+  historical_assumptions: { revenue_growth_rate: number; ebit_margin: number };
 }
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const largeMoney = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(value);
@@ -25,9 +27,11 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   const [preparing, setPreparing] = useState(false);
   const [preparation, setPreparation] = useState<Preparation | null>(null);
   const [costOfDebt, setCostOfDebt] = useState("");
+  const [growth, setGrowth] = useState("");
+  const [margin, setMargin] = useState("");
   useEffect(() => {
     let active = true;
-    setResult(null); setError(""); setPreparation(null); setCostOfDebt("");
+    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin("");
     setPreparing(Boolean(ticker));
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
@@ -42,6 +46,8 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         const prepared = data as Preparation;
         setPreparation(prepared);
         setCostOfDebt(prepared.cost_of_debt_input.suggested_rate === null ? "" : (prepared.cost_of_debt_input.suggested_rate * 100).toFixed(2));
+        setGrowth((prepared.historical_assumptions.revenue_growth_rate * 100).toFixed(4));
+        setMargin((prepared.historical_assumptions.ebit_margin * 100).toFixed(4));
       } catch (err) { if (active) setError(err instanceof Error ? err.message : "Unable to load DCF inputs."); }
       finally { if (active) setPreparing(false); }
     }, 400);
@@ -49,10 +55,17 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   }, [ticker]);
   const requiresDebtCost = preparation?.cost_of_debt_input.required ?? false;
   const validDebtCost = Boolean(costOfDebt.trim()) && Number.isFinite(Number(costOfDebt)) && Number(costOfDebt) >= 0 && Number(costOfDebt) <= 100;
+  const validProjectionInputs = Boolean(growth.trim()) && Boolean(margin.trim()) && Number.isFinite(Number(growth)) && Number(growth) > -100 && Number.isFinite(Number(margin));
+  // An unchanged displayed prefill must use the original full-precision rate.
+  const projectionRate = (text: string, historical: number) => text === (historical * 100).toFixed(4) ? historical : Number(text) / 100;
   const run = async () => {
     setBusy(true); setError(""); setResult(null);
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { ticker, beta: Number(beta), ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
+      if (!preparation || !validProjectionInputs) throw new Error("Enter valid revenue growth and EBIT margin assumptions.");
+      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { ticker, beta: Number(beta),
+        revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
+        ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
+        ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
         const detail = response ? await response.json().catch(() => null) : null;
@@ -74,11 +87,19 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
           <Label htmlFor="dcf-beta" className="text-xs text-muted-foreground">Beta</Label>
           <Input id="dcf-beta" type="number" step="0.01" value={beta} onChange={(e) => { setBeta(e.target.value); setResult(null); }} disabled={busy} required placeholder="e.g. 1.0" className="mt-1" />
         </div>
+        <div className="w-48">
+          <Label htmlFor="dcf-growth" className="text-xs text-muted-foreground">Revenue Growth Rate (%)</Label>
+          <Input id="dcf-growth" type="number" step="0.01" required value={growth} onChange={(e) => { setGrowth(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
+        </div>
+        <div className="w-36">
+          <Label htmlFor="dcf-margin" className="text-xs text-muted-foreground">EBIT Margin (%)</Label>
+          <Input id="dcf-margin" type="number" step="0.01" required value={margin} onChange={(e) => { setMargin(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
+        </div>
         {requiresDebtCost && <div className="w-40">
           <Label htmlFor="dcf-cost-of-debt" className="text-xs text-muted-foreground">Cost of Debt (%)</Label>
           <Input id="dcf-cost-of-debt" type="number" min="0" max="100" step="0.01" required value={costOfDebt} onChange={(e) => { setCostOfDebt(e.target.value); setResult(null); }} disabled={busy} aria-describedby="dcf-debt-estimate" className="mt-1" />
         </div>}
-        <Button onClick={run} disabled={busy || preparing || !preparation || preparation.ticker !== ticker || !ticker || !beta.trim() || !Number.isFinite(Number(beta)) || (requiresDebtCost && !validDebtCost)}>
+        <Button onClick={run} disabled={busy || preparing || !preparation || preparation.ticker !== ticker || !ticker || !beta.trim() || !Number.isFinite(Number(beta)) || !validProjectionInputs || (requiresDebtCost && !validDebtCost)}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}Run DCF
         </Button>
       </div>
@@ -91,19 +112,25 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
       {result && <>
         <p className="mt-4 text-xs text-muted-foreground">{result.ticker} · FY{result.fiscal_year} · Beta {result.assumptions.beta} · Treasury yield as of {result.treasury.date}</p>
         {result.assumptions.cost_of_debt_estimated && <p className="mt-2 text-xs text-muted-foreground">Estimated — company does not separately disclose interest expense · Cost of Debt used: {(result.assumptions.cost_of_debt * 100).toFixed(2)}% (user input)</p>}
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
             ["WACC", `${(result.wacc * 100).toFixed(2)}%`],
             ["Enterprise Value", largeMoney(result.enterprise_value)],
             ["Equity Value", largeMoney(result.equity_value)],
             ["Implied Share Price", money(result.implied_share_price)],
+            ["Current Market Price", money(result.current_price)],
             ["Difference from Market", `${result.difference_pct > 0 ? "+" : ""}${result.difference_pct.toFixed(2)}%`],
           ].map(([label, value]) => <div key={label} className="rounded-md border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-2 break-words font-mono text-xl text-foreground">{value}</p>
           </div>)}
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Market price {money(result.current_price)} · Equity risk premium 4.5% · Terminal growth 2.5%</p>
+        {result.deviation_warning && <div role="alert" className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground"><AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />&gt;40% deviation from current price</div>
+          <p className="mt-2 text-sm text-muted-foreground">The implied share price of {money(result.implied_share_price)} is {Math.abs(result.difference_pct).toFixed(2)}% {result.difference_pct < 0 ? "below" : "above"} the current market price of {money(result.current_price)}. This valuation is highly sensitive to growth, margins and discount-rate assumptions.</p>
+        </div>}
+        <p className="mt-3 text-xs text-muted-foreground">Revenue growth {(result.assumptions.revenue_growth_rate * 100).toFixed(4)}% · EBIT margin {(result.assumptions.ebit_margin * 100).toFixed(4)}% · Equity risk premium 4.5% · Terminal growth 2.5%</p>
+        <p className="mt-2 text-xs text-muted-foreground">Market price source: {result.market_price_source}{result.market_price_as_of ? ` · As of ${new Date(result.market_price_as_of).toLocaleString()}` : ""}</p>
       </>}
     </section>
   );
