@@ -29,8 +29,8 @@ describe("SEC financial extraction contract", () => {
   });
   test("missing fields are null and explicitly listed, never estimated", () => {
     const result = extractFinancials(facts({}));
-    expect(result.missing_fields).toEqual(Object.keys(FIELD_TAGS));
-    expect(Object.values(result.financials)).toEqual(Array(9).fill(null));
+    expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt"]);
+    expect(Object.values(result.financials)).toEqual(Array(10).fill(null));
   });
   test("quarters, 10-Qs, and amendments do not replace annual 10-K values", () => {
     const raw = facts({ OperatingIncomeLoss: [annual(40), annual(2, { start: "2025-07-01" }), annual(3, { form: "10-Q" }), annual(4, { form: "10-K/A", filed: "2025-12-01" })] });
@@ -55,5 +55,33 @@ describe("SEC financial extraction contract", () => {
   test("ticker input is normalized for SEC share classes", () => {
     expect(normalizeTicker(" aapl ")).toBe("AAPL");
     expect(normalizeTicker("brk.b")).toBe("BRK-B");
+  });
+  const debt = (val: number, overrides: Partial<Observation> = {}) => annual(val, { start: undefined, ...overrides });
+  test("total debt prefers the first complete long-term debt pair and sums both", () => {
+    const result = field(facts({ LongTermDebtCurrent: [debt(12)], LongTermDebtNoncurrent: [debt(78)], DebtCurrent: [debt(30)], DebtNoncurrent: [debt(60)], LongTermDebt: [debt(500)] }), "total_debt");
+    expect(result).toMatchObject({ value: 90, tag: "LongTermDebtCurrent + LongTermDebtNoncurrent", fiscal_year: 2025, accession_number: "2025-filing" });
+    expect(result.components.map((item: any) => item.value)).toEqual([12, 78]);
+  });
+  test("total debt falls back to DebtCurrent plus DebtNoncurrent if first pair is incomplete", () => {
+    const result = field(facts({ LongTermDebtCurrent: [debt(12)], DebtCurrent: [debt(20)], DebtNoncurrent: [debt(80)], LongTermDebt: [debt(999)] }), "total_debt");
+    expect(result).toMatchObject({ value: 100, tag: "DebtCurrent + DebtNoncurrent" });
+  });
+  test("total debt falls back to the combined LongTermDebt figure when pairs have no annual data", () => {
+    const result = field(facts({ LongTermDebtCurrent: [debt(12, { form: "10-Q" })], LongTermDebtNoncurrent: [debt(80)], DebtCurrent: [], DebtNoncurrent: [], LongTermDebt: [debt(95)] }), "total_debt");
+    expect(result).toMatchObject({ value: 95, tag: "LongTermDebt" });
+  });
+  test("total debt is null and missing when no complete pair or combined value exists", () => {
+    const result = extractFinancials(facts({ LongTermDebtCurrent: [debt(12)] }));
+    expect(result.financials.total_debt).toBeNull();
+    expect(result.missing_fields).toContain("total_debt");
+  });
+  test("debt components from different dates or filings are never summed", () => {
+    const result = field(facts({ LongTermDebtCurrent: [debt(12)], LongTermDebtNoncurrent: [debt(80, { end: "2024-09-30" })], DebtCurrent: [debt(20)], DebtNoncurrent: [debt(90, { accn: "different-filing" })], LongTermDebt: [debt(110)] }), "total_debt");
+    expect(result).toMatchObject({ value: 110, tag: "LongTermDebt" });
+  });
+  test("explicitly reported zero debt remains zero, not missing", () => {
+    const result = extractFinancials(facts({ DebtCurrent: [debt(0)], DebtNoncurrent: [debt(0)] }));
+    expect((result.financials.total_debt as any).value).toBe(0);
+    expect(result.missing_fields).not.toContain("total_debt");
   });
 });

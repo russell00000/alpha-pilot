@@ -46,6 +46,18 @@ export function extractFinancials(raw: CompanyFacts) {
       }
     }
   }
+  const provenance = (selected: Observation, tag: string, unit = "USD") => {
+    const currentEnd = selected.accn ? accessionEnds.get(selected.accn) : undefined;
+    const comparativeOffset = currentEnd ? Number(currentEnd.slice(0, 4)) - Number(selected.end.slice(0, 4)) : 0;
+    return {
+      value: selected.val, unit, tag, taxonomy: "us-gaap",
+      fiscal_year: selected.fy === undefined ? null : selected.fy - comparativeOffset,
+      filing_fiscal_year: selected.fy ?? null,
+      period: { start: selected.start ?? null, end: selected.end },
+      form: selected.form, fiscal_period: selected.fp, filed: selected.filed ?? null,
+      accession_number: selected.accn ?? null, frame: selected.frame ?? null,
+    };
+  };
   const missing_fields: string[] = [];
   const financials = Object.fromEntries(Object.entries(FIELD_TAGS).map(([field, tags]) => {
     const tag = tags.find((candidate) => gaap[candidate] !== undefined);
@@ -57,16 +69,36 @@ export function extractFinancials(raw: CompanyFacts) {
       missing_fields.push(field);
       return [field, null];
     }
-    const currentEnd = selected.accn ? accessionEnds.get(selected.accn) : undefined;
-    const comparativeOffset = currentEnd ? Number(currentEnd.slice(0, 4)) - Number(selected.end.slice(0, 4)) : 0;
-    return [field, {
-      value: selected.val, unit, tag, taxonomy: "us-gaap",
-      fiscal_year: selected.fy === undefined ? null : selected.fy - comparativeOffset,
-      filing_fiscal_year: selected.fy ?? null,
-      period: { start: selected.start ?? null, end: selected.end },
-      form: selected.form, fiscal_period: selected.fp, filed: selected.filed ?? null,
-      accession_number: selected.accn ?? null, frame: selected.frame ?? null,
-    }];
+    return [field, provenance(selected, tag, unit)];
   }));
+  const annualDebt = (tag: string) => (gaap[tag]?.units.USD ?? [])
+    .filter((row) => isAnnual(row, true))
+    .sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? "") || (b.accn ?? "").localeCompare(a.accn ?? ""));
+  financials.total_debt = null;
+  for (const [currentTag, noncurrentTag] of [
+    ["LongTermDebtCurrent", "LongTermDebtNoncurrent"],
+    ["DebtCurrent", "DebtNoncurrent"],
+  ]) {
+    const noncurrentRows = annualDebt(noncurrentTag);
+    for (const current of annualDebt(currentTag)) {
+      const noncurrent = noncurrentRows.find((row) => Boolean(current.accn) && row.accn === current.accn && row.end === current.end);
+      if (!noncurrent || !Number.isFinite(current.val + noncurrent.val)) continue;
+      financials.total_debt = {
+        ...provenance(current, `${currentTag} + ${noncurrentTag}`),
+        value: current.val + noncurrent.val,
+        components: [provenance(current, currentTag), provenance(noncurrent, noncurrentTag)],
+      };
+      break;
+    }
+    if (financials.total_debt !== null) break;
+  }
+  if (financials.total_debt === null) {
+    const combined = annualDebt("LongTermDebt")[0];
+    if (combined) financials.total_debt = {
+      ...provenance(combined, "LongTermDebt"),
+      components: [provenance(combined, "LongTermDebt")],
+    };
+  }
+  if (financials.total_debt === null) missing_fields.push("total_debt");
   return { financials, missing_fields };
 }
