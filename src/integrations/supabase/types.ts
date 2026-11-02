@@ -688,6 +688,30 @@ export type Database = {
         }
         Relationships: []
       }
+      treasury_yield_cache: {
+        Row: {
+          id: string
+          observation_date: string
+          rate: number
+          refreshed_at: string
+          source: string
+        }
+        Insert: {
+          id: string
+          observation_date: string
+          rate: number
+          refreshed_at: string
+          source: string
+        }
+        Update: {
+          id?: string
+          observation_date?: string
+          rate?: number
+          refreshed_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
