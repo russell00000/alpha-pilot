@@ -118,9 +118,12 @@ export function calculateDcf(data: DcfData, assumptions: {
   const warnings: string[] = [];
   // A loss-making year would produce a negative or extreme effective tax rate;
   // fall back to the normalized 21% statutory rate and say so.
-  const tax_rate_normalized = pretax < 0;
-  if (tax_rate_normalized) warnings.push("Tax rate normalized to the 21% statutory rate — the company reported a loss in the base year.");
-  const tax_rate = tax_rate_normalized ? 0.21 : value("income_tax_expense") / pretax;
+  const reported_tax_rate = value("income_tax_expense") / pretax;
+  const tax_rate_normalized = pretax < 0 || reported_tax_rate < 0 || reported_tax_rate > 0.4;
+  if (tax_rate_normalized) warnings.push(pretax < 0
+    ? "Tax rate normalized to the 21% statutory rate — the company reported a loss in the base year."
+    : `Tax rate normalized to the 21% statutory rate — reported effective tax rate was outside a representative range (0–40%): ${(reported_tax_rate * 100).toFixed(2)}%.`);
+  const tax_rate = tax_rate_normalized ? 0.21 : reported_tax_rate;
   const priorRevenue = revenueYears[3], priorYearRevenue = revenueYears[1];
   if (!priorRevenue || !priorYearRevenue) throw new DcfInputError("Prior revenue years are missing.");
   const historical_cagr = (latest.value / priorRevenue.value) ** (1 / 3) - 1;

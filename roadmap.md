@@ -1,4 +1,5 @@
 # Vantage DCF Phase 1
+- [ ] Normalize effective tax rates below 0% or above 40% to 21% with visible reason; test profitable tax-benefit and boundary cases, rerun the batch.
 - [ ] Add and run a reusable authenticated ten-ticker batch report with beta 1.0 and existing defaults; show every row and failure reason.
 - [ ] Hard-block financial institutions / REITs (SIC 6000–6799) on calculate with 422; test boundaries and verify live blocked examples.
 - [x] Fix annual balance selection across tags (10-K/10-K/A, latest period then latest filing); signed-in Rivian UI shows FY2025 debt $4.475B from DebtInstrumentCarryingAmount, ending 2025-12-31, filed 2026-02-12, accession 0001874178-26-000008; raw dates expose the stale FY2023 complete pair.
