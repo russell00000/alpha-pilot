@@ -167,7 +167,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (terminal_growth_rate >= wacc) throw new DcfInputError("Terminal growth rate must be strictly below WACC.");
   let prior = latest.value, priorPpe = opening_ppe, priorCash = value("cash"), priorDebt = debt, priorRetained = opening_retained_earnings;
   let priorNwc = opening_operating_assets - opening_operating_liabilities;
-  let priorShares = shares, priorOtherEquity = other_equity;
+  let priorShares = shares;
   const projections = Array.from({ length: 10 }, (_, index) => {
     const year = index + 1;
     const growth_rate = growthFor(year);
@@ -206,7 +206,7 @@ export function calculateDcf(data: DcfData, assumptions: {
     return { year, fiscal_year: latest.fiscal_year as number + year, revenue, revenue_growth_rate: growth_rate, operating_income, nopat, cogs: projected_cogs,
       interest_expense, pretax_income, income_tax_expense, net_income, depreciation_amortization: da, capex, change_nwc: delta_nwc,
       operating_cash_flow, investing_cash_flow, financing_cash_flow, net_change_cash, beginning_balances, diluted_shares: projected_shares,
-      balance_sheet: { cash, operating_assets, ppe, other_assets, assets, operating_liabilities, total_debt, other_liabilities, liabilities, retained_earnings, other_equity: other_equity_year, equity, nwc },
+      balance_sheet: { cash, operating_assets, ppe, other_assets, assets, operating_liabilities, total_debt, other_liabilities, liabilities, retained_earnings, other_equity, equity, nwc },
       balance_check, ufcf, discounted_ufcf: ufcf / (1 + wacc) ** year };
   });
   const finalYear = projections[9];
@@ -219,7 +219,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
   return { wacc, enterprise_value, equity_value, implied_share_price, ...marketComparison(implied_share_price, current_price),
     current_price, fiscal_year: latest.fiscal_year, projections, terminal_value, discounted_terminal_value, warnings,
-    model_notes: ["Dividends are not modeled; future addition.", "Near-term revenue growth fades linearly to the terminal growth rate by year ten.", "Share count rolls forward at the trailing three-year average annual change; issuance and buybacks are financing cash flows at the current market price. Implied price uses current shares outstanding.", "Debt, other assets and other liabilities are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax uses the audited effective rate, or the normalized 21% statutory rate when the base year is a loss."],
+    model_notes: ["Dividends are not modeled; future addition.", "Near-term revenue growth fades linearly to the terminal growth rate by year ten.", "Share count rolls forward at the trailing three-year average annual change for per-share transparency; buyback and issuance cash flows are financing decisions and are not modeled, consistent with the unlevered FCF approach. Implied price uses current shares outstanding.", "Debt, other assets and other liabilities are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax uses the audited effective rate, or the normalized 21% statutory rate when the base year is a loss."],
     opening_balance_check: balanceCheck(opening_assets, opening_liabilities, opening_equity, 0),
     assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, revenue_growth_rate, ebit_margin, share_count_change, cost_of_debt, cost_of_debt_estimated, tax_rate_normalized,
       cost_of_debt_source: cost_of_debt_estimated ? "user_estimate" : "SEC interest expense / total debt" },

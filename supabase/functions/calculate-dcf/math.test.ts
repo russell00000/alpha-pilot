@@ -128,7 +128,7 @@ test("near-term growth fades linearly from the latest-year rate to the terminal 
   expect(r.projections[4]?.revenue_growth_rate).toBeCloseTo(0.1 + (0.025 - 0.1) * 4 / 9, 12);
   expect(r.projections[9]?.revenue_growth_rate).toBeCloseTo(0.025, 12);
 });
-test("share count rolls forward at the trailing three-year average and dilution adds financing cash while the balance sheet ties", () => {
+test("share count rolls forward at the trailing three-year average while financing cash stays out of the unlevered model", () => {
   const data = fixture();
   data.history.diluted_shares = [item(11), item(10.5, 2024), item(10.2, 2023), item(10, 2022)];
   const expectedChange = (11 / 10.5 - 1 + 10.5 / 10.2 - 1 + 10.2 / 10 - 1) / 3;
@@ -138,19 +138,22 @@ test("share count rolls forward at the trailing three-year average and dilution 
   let prior = 10;
   for (const p of r.projections) {
     expect(p.diluted_shares).toBeCloseTo(prior * (1 + expectedChange), 9);
-    expect(p.financing_cash_flow).toBeCloseTo((p.diluted_shares - prior) * 100, 2);
+    expect(p.financing_cash_flow).toBe(0);
     expect(p.balance_check.gap).toBe(0);
     prior = p.diluted_shares;
   }
 });
-test("buybacks consume cash and equity without breaking the balance check", () => {
+test("a buyback-pace share history rolls the count down without touching cash or the balance check", () => {
   const data = fixture();
   data.history.diluted_shares = [item(10), item(10.1, 2024), item(10.2, 2023), item(10.3, 2022)];
   const r = calculateDcf(data, args);
   expect(r.assumptions.share_count_change).toBeLessThan(0);
+  let prior = 10;
   for (const p of r.projections) {
-    expect(p.financing_cash_flow).toBeLessThan(0);
+    expect(p.diluted_shares).toBeLessThan(prior);
+    expect(p.financing_cash_flow).toBe(0);
     expect(p.balance_check.gap).toBe(0);
+    prior = p.diluted_shares;
   }
 });
 test("flat share history and missing share history both default to zero change, never an assumed buyback", () => {
