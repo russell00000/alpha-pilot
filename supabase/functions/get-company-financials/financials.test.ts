@@ -27,6 +27,14 @@ describe("SEC financial extraction contract", () => {
   test("D&A uses its second requested tag when the first is absent", () => {
     expect(field(facts({ DepreciationAmortizationAndAccretionNet: [annual(22)] }), "depreciation_amortization").tag).toBe("DepreciationAmortizationAndAccretionNet");
   });
+  test("diluted share history carries four annual years in shares units", () => {
+    const rows = [2025, 2024, 2023, 2022].map((year) => annual(15e9 - (2025 - year) * 1e9, { fy: year, end: `${year}-09-30`, start: `${year - 1}-10-01` }));
+    const result = extractFinancials(facts({ WeightedAverageNumberOfDilutedSharesOutstanding: rows }, "shares"));
+    expect(result.history.diluted_shares).toHaveLength(4);
+    expect(result.history.diluted_shares[0]?.unit).toBe("shares");
+    expect(result.history.diluted_shares.map((row) => row.fiscal_year)).toEqual([2025, 2024, 2023, 2022]);
+    expect(result.missing_fields).not.toContain("diluted_shares_history");
+  });
   test("missing fields are null and explicitly listed, never estimated", () => {
     const result = extractFinancials(facts({}));
     expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt", "revenue_history", "operating_income_history", "current_assets_history", "current_liabilities_history", "diluted_shares_history"]);
