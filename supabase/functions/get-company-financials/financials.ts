@@ -121,5 +121,11 @@ export function extractFinancials(raw: CompanyFacts) {
     revenue: historyFor("revenue", 4), operating_income: historyFor("operating_income", 4),
     current_assets: historyFor("current_assets", 2), current_liabilities: historyFor("current_liabilities", 2),
   };
+  const latestRevenue = history.revenue[0];
+  const interest = financials.interest_expense;
+  if (interest && latestRevenue && interest.period.end !== latestRevenue.period.end) {
+    financials.interest_expense = null;
+    if (!missing_fields.includes("interest_expense")) missing_fields.push("interest_expense");
+  }
   return { financials, history, missing_fields };
 }
