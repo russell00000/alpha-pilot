@@ -167,9 +167,11 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (terminal_growth_rate >= wacc) throw new DcfInputError("Terminal growth rate must be strictly below WACC.");
   let prior = latest.value, priorPpe = opening_ppe, priorCash = value("cash"), priorDebt = debt, priorRetained = opening_retained_earnings;
   let priorNwc = opening_operating_assets - opening_operating_liabilities;
+  let priorShares = shares, priorOtherEquity = other_equity;
   const projections = Array.from({ length: 10 }, (_, index) => {
     const year = index + 1;
-    const revenue = prior * (1 + revenue_growth_rate); prior = revenue;
+    const growth_rate = growthFor(year);
+    const revenue = prior * (1 + growth_rate); prior = revenue;
     const operating_income = revenue * ebit_margin;
     const nopat = operating_income * (1 - tax_rate);
     const da = dollars(revenue * da_ratio), capex = dollars(revenue * capex_ratio);
