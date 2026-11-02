@@ -28,7 +28,7 @@ describe("SEC financial extraction contract", () => {
     expect(field(facts({ DepreciationAmortizationAndAccretionNet: [annual(22)] }), "depreciation_amortization").tag).toBe("DepreciationAmortizationAndAccretionNet");
   });
   test("diluted share history carries four annual years in shares units", () => {
-    const rows = [2025, 2024, 2023, 2022].map((year) => annual(15e9 - (2025 - year) * 1e9, { fy: year, end: `${year}-09-30`, start: `${year - 1}-10-01` }));
+    const rows = [2025, 2024, 2023, 2022].map((year) => annual(15e9 - (2025 - year) * 1e9, { fy: year, end: `${year}-09-30`, start: `${year - 1}-10-01`, accn: `${year}-filing` }));
     const result = extractFinancials(facts({ WeightedAverageNumberOfDilutedSharesOutstanding: rows }, "shares"));
     expect(result.history.diluted_shares).toHaveLength(4);
     expect(result.history.diluted_shares[0]?.unit).toBe("shares");

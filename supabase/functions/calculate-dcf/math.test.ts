@@ -145,7 +145,7 @@ test("share count rolls forward at the trailing three-year average and dilution 
 });
 test("buybacks consume cash and equity without breaking the balance check", () => {
   const data = fixture();
-  data.history.diluted_shares = [item(10), item(10.5, 2024), item(11, 2023), item(11.5, 2022)];
+  data.history.diluted_shares = [item(10), item(10.1, 2024), item(10.2, 2023), item(10.3, 2022)];
   const r = calculateDcf(data, args);
   expect(r.assumptions.share_count_change).toBeLessThan(0);
   for (const p of r.projections) {
@@ -194,8 +194,9 @@ test("zero growth and zero margin are valid overrides, not replaced with histori
   const data = fixture(); data.financials.cash = item(1000, 2025, true);
   if (data.linked_financials) { data.linked_financials.current_assets = item(1040, 2025, true); data.linked_financials.total_assets = item(1180, 2025, true); data.linked_financials.total_equity = item(1050, 2025, true); }
   const r = calculateDcf(data, { ...args, revenue_growth_rate: 0, ebit_margin: 0 });
-  expect(r.projections[4].revenue).toBe(133.1);
-  expect(r.projections[4].operating_income).toBe(0);
+  expect(r.projections[0].revenue).toBe(133.1);
+  expect(r.projections[0].operating_income).toBe(0);
+  expect(r.projections[9].revenue_growth_rate).toBeCloseTo(0.025, 12);
 });
 test("PP&E carries prior balance plus CapEx minus depreciation in all ten years", () => {
   const r = calculateDcf(fixture(), args);
