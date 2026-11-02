@@ -33,13 +33,15 @@ export function normalizeTicker(value: string) {
 }
 
 function isAnnual(row: Observation, instant: boolean) {
-  if (row.form !== "10-K" || row.fp !== "FY" || !Number.isFinite(row.val)) return false;
+  if (!["10-K", "10-K/A"].includes(row.form) || row.fp !== "FY" || !Number.isFinite(row.val)) return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(row.end)) return false;
   if (instant) return !row.start;
   if (!row.start) return false;
   const days = (Date.parse(row.end) - Date.parse(row.start)) / 86400000;
   return days >= 300 && days <= 400;
 }
+
+const newest = (a: Observation, b: Observation) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? "") || (b.fy ?? 0) - (a.fy ?? 0) || (b.accn ?? "").localeCompare(a.accn ?? "");
 
 export function extractFinancials(raw: CompanyFacts) {
   const gaap = raw.facts["us-gaap"] ?? {};
@@ -73,7 +75,7 @@ export function extractFinancials(raw: CompanyFacts) {
     const unit = field === "diluted_shares" ? "shares" : "USD";
     const candidates = tag ? gaap[tag]?.units[unit] ?? [] : [];
     const selected = candidates.filter((row) => isAnnual(row, field === "cash"))
-      .sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? "") || (b.accn ?? "").localeCompare(a.accn ?? ""))[0];
+      .sort(newest)[0];
     if (!selected || !tag) {
       missing_fields.push(field);
       return [field, null];
@@ -82,31 +84,26 @@ export function extractFinancials(raw: CompanyFacts) {
   }));
   const annualDebt = (tag: string) => (gaap[tag]?.units.USD ?? [])
     .filter((row) => isAnnual(row, true))
-    .sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? "") || (b.accn ?? "").localeCompare(a.accn ?? ""));
+    .sort(newest);
+  // Choose period first, then fallback chain within that period. A complete
+  // stale pair must never beat a newer audited combined debt observation.
+  const debtTags = ["LongTermDebtCurrent", "LongTermDebtNoncurrent", "DebtCurrent", "DebtNoncurrent", "LongTermDebt", "DebtInstrumentCarryingAmount"];
+  const latestDebtEnd = debtTags.flatMap(annualDebt).sort(newest)[0]?.end;
   financials.total_debt = null;
-  for (const [currentTag, noncurrentTag] of [
-    ["LongTermDebtCurrent", "LongTermDebtNoncurrent"],
-    ["DebtCurrent", "DebtNoncurrent"],
-  ]) {
-    const noncurrentRows = annualDebt(noncurrentTag);
-    for (const current of annualDebt(currentTag)) {
-      const noncurrent = noncurrentRows.find((row) => Boolean(current.accn) && row.accn === current.accn && row.end === current.end);
-      if (!noncurrent || !Number.isFinite(current.val + noncurrent.val)) continue;
-      financials.total_debt = {
-        ...provenance(current, `${currentTag} + ${noncurrentTag}`),
-        value: current.val + noncurrent.val,
-        components: [provenance(current, currentTag), provenance(noncurrent, noncurrentTag)],
-      };
+  for (const [currentTag, noncurrentTag] of [["LongTermDebtCurrent", "LongTermDebtNoncurrent"], ["DebtCurrent", "DebtNoncurrent"]]) {
+    for (const current of annualDebt(currentTag).filter(row => row.end === latestDebtEnd)) {
+      const noncurrent = annualDebt(noncurrentTag).find(row => Boolean(current.accn) && row.accn === current.accn && row.end === current.end);
+      if (!noncurrent) continue;
+      financials.total_debt = { ...provenance(current, `${currentTag} + ${noncurrentTag}`), value: current.val + noncurrent.val,
+        components: [provenance(current, currentTag), provenance(noncurrent, noncurrentTag)] };
       break;
     }
-    if (financials.total_debt !== null) break;
+    if (financials.total_debt) break;
   }
-  if (financials.total_debt === null) {
-    const combined = annualDebt("LongTermDebt")[0];
-    if (combined) financials.total_debt = {
-      ...provenance(combined, "LongTermDebt"),
-      components: [provenance(combined, "LongTermDebt")],
-    };
+  for (const tag of ["LongTermDebt", "DebtInstrumentCarryingAmount"]) {
+    if (financials.total_debt) break;
+    const row = annualDebt(tag).find(row => row.end === latestDebtEnd);
+    if (row) financials.total_debt = { ...provenance(row, tag), components: [provenance(row, tag)] };
   }
   if (financials.total_debt === null) missing_fields.push("total_debt");
   const historyFor = (field: "revenue" | "operating_income" | "current_assets" | "current_liabilities" | "diluted_shares", limit: number) => {
@@ -115,7 +112,7 @@ export function extractFinancials(raw: CompanyFacts) {
     const unit = field === "diluted_shares" ? "shares" : "USD";
     const instant = field === "current_assets" || field === "current_liabilities";
     const rows = tag ? (gaap[tag]?.units[unit] ?? []).filter((row) => isAnnual(row, instant)) : [];
-    rows.sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? ""));
+    rows.sort(newest);
     const unique = new Map<string, ReturnType<typeof provenance>>();
     for (const row of rows) {
       if (!tag) continue;
@@ -138,7 +135,7 @@ export function extractFinancials(raw: CompanyFacts) {
   financials.interest_expense = null;
   for (const tag of FIELD_TAGS.interest_expense) {
     const rows = (gaap[tag]?.units.USD ?? []).filter((row) => isAnnual(row, false))
-      .sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? ""));
+      .sort(newest);
     const selected = rows.find((row) => {
       const item = provenance(row, tag);
       return !latestRevenue || (item.fiscal_year === latestRevenue.fiscal_year && item.period.end === latestRevenue.period.end && item.period.start === latestRevenue.period.start);
@@ -162,16 +159,47 @@ export function extractFinancials(raw: CompanyFacts) {
     }
     if (!linked_financials[name]) linked_missing_fields.push(name);
   }
-  // DebtCurrent is a combined current-financing figure. Otherwise use the
-  // disclosed long-term current portion plus disclosed short-term borrowings.
-  const combinedCurrent = aligned("DebtCurrent");
-  const longCurrent = aligned("LongTermDebtCurrent");
-  const shortTag = ["ShortTermBorrowings", "CommercialPaper"].find((tag) => aligned(tag));
-  const shortCurrent = shortTag ? aligned(shortTag) : undefined;
-  linked_financials.current_financing = combinedCurrent ? provenance(combinedCurrent, "DebtCurrent") : longCurrent ? {
-    ...provenance(longCurrent, shortCurrent ? `LongTermDebtCurrent + ${shortTag}` : "LongTermDebtCurrent"),
-    value: longCurrent.val + (shortCurrent?.val ?? 0),
-  } : null;
+  const sumAligned = (tags: string[]) => {
+    const components = tags.flatMap(tag => { const row = aligned(tag); return row ? [provenance(row, tag)] : []; });
+    if (!components.length) return null;
+    return { ...components[0], tag: components.map(item => item.tag).join(" + "),
+      value: components.reduce((sum, item) => sum + item.value, 0), components };
+  };
+  const currentDebtTag = aligned("DebtCurrent") ? "DebtCurrent" : "LongTermDebtCurrent";
+  const shortTag = ["ShortTermBorrowings", "CommercialPaper"].find(tag => aligned(tag));
+  const currentTags = [currentDebtTag, "FinanceLeaseLiabilityCurrent", "OperatingLeaseLiabilityCurrent", ...(currentDebtTag !== "DebtCurrent" && shortTag ? [shortTag] : [])];
+  const noncurrentTags = [aligned("DebtNoncurrent") ? "DebtNoncurrent" : "LongTermDebtNoncurrent", "FinanceLeaseLiabilityNoncurrent"];
+  linked_financials.current_financing = sumAligned(currentTags);
+  linked_financials.noncurrent_financing = sumAligned(noncurrentTags);
   if (!linked_financials.current_financing) linked_missing_fields.push("current_financing");
-  return { financials, history, missing_fields, linked_financials, linked_missing_fields };
+  const grossTag = "PropertyPlantAndEquipmentGross";
+  const depreciationTags = ["AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment", "AccumulatedDepreciationDepletionAndAmortization"];
+  if (!linked_financials.ppe) {
+    const gross = aligned(grossTag);
+    const depTag = depreciationTags.find(tag => aligned(tag));
+    const dep = depTag ? aligned(depTag) : undefined;
+    if (gross && dep && depTag && gross.val >= dep.val) {
+      linked_financials.ppe = { ...provenance(gross, `${grossTag} - ${depTag}`), value: gross.val - dep.val };
+    }
+  }
+  if (linked_financials.ppe) {
+    const index = linked_missing_fields.indexOf("ppe");
+    if (index >= 0) linked_missing_fields.splice(index, 1);
+  }
+  const auditTags = (tags: string[]) => [...new Set(tags)].map(tag => {
+    const rows = gaap[tag]?.units.USD ?? [];
+    const selected = aligned(tag);
+    return { tag, raw_end_dates: rows.map(row => row.end), annual_candidates: rows.filter(row => isAnnual(row, true)).map(row => provenance(row, tag)),
+      selected: selected ? provenance(selected, tag) : null,
+      status: !rows.length ? "Empty / not reported" : selected ? "Same-filing annual value selected" : "No value in latest annual filing" };
+  });
+  const extraction_audit = {
+    annual_period: latestRevenue ? { end: latestRevenue.period.end, fiscal_year: latestRevenue.fiscal_year, accession_number: latestRevenue.accession_number, filed: latestRevenue.filed } : null,
+    selection_rule: "10-K / 10-K/A only; latest period end first, then latest filed date, filing fiscal year and accession. Components must share the same period and filing; opening balances match revenue's filing. Never use stale complete pairs over newer debt data.",
+    total_debt: { selected: financials.total_debt, tags: auditTags(debtTags) },
+    ppe: { selected: linked_financials.ppe, tags: auditTags([...LINKED_TAGS.ppe, grossTag, ...depreciationTags]) },
+    current_financing: { selected: linked_financials.current_financing, tags: auditTags([...currentTags, "DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings", "CommercialPaper"]) },
+    noncurrent_financing: { selected: linked_financials.noncurrent_financing, tags: auditTags([...noncurrentTags, "DebtNoncurrent", "LongTermDebtNoncurrent"]) },
+  };
+  return { financials, history, missing_fields, linked_financials, linked_missing_fields, extraction_audit };
 }
