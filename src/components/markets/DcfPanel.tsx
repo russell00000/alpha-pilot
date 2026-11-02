@@ -98,6 +98,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-28">
           <Label htmlFor="dcf-beta" className="text-xs text-muted-foreground">Beta</Label>
           <Input id="dcf-beta" type="number" step="0.01" value={beta} onChange={(e) => { setBeta(e.target.value); setResult(null); }} disabled={busy} required placeholder="e.g. 1.0" className="mt-1" />
+          {preparation?.beta_input.suggested !== null && preparation?.beta_input.suggested !== undefined && <p className="mt-1 text-[10px] text-muted-foreground">{preparation.beta_input.source === "company" ? "Company-reported beta" : `Peer average (${preparation.beta_input.peers_used ?? 0} peers)`} — editable</p>}
         </div>
         <div className="w-48">
           <Label htmlFor="dcf-growth" className="text-xs text-muted-foreground">Revenue Growth Rate (%)</Label>
@@ -106,6 +107,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-36">
           <Label htmlFor="dcf-margin" className="text-xs text-muted-foreground">EBIT Margin (%)</Label>
           <Input id="dcf-margin" type="number" step="0.01" required value={margin} onChange={(e) => { setMargin(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
+        </div>
+        <div className="w-44">
+          <Label htmlFor="dcf-share-change" className="text-xs text-muted-foreground">Share Count Change (%/yr)</Label>
+          <Input id="dcf-share-change" type="number" step="0.01" required value={shareChange} onChange={(e) => { setShareChange(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
         </div>
         {requiresDebtCost && <div className="w-40">
           <Label htmlFor="dcf-cost-of-debt" className="text-xs text-muted-foreground">Cost of Debt (%)</Label>
@@ -116,6 +121,8 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         </Button>
       </div>
       {preparing && <p role="status" className="mt-3 text-xs text-muted-foreground">Loading annual financial inputs and Treasury yield…</p>}
+      {preparation?.company_type.warnings.map((warning) => <div key={warning} role="alert" className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground"><span className="font-medium">{preparation.company_type.sic_description ?? "Company type"} notice:</span> {warning}</div>)}
+      {preparation?.preparation_note && <p role="alert" className="mt-3 text-xs text-destructive">{preparation.preparation_note}</p>}
       {requiresDebtCost && <div id="dcf-debt-estimate" className="mt-3 text-xs text-muted-foreground">
         <p>{preparation?.cost_of_debt_input.label}</p>
         <p className="mt-1">Suggested Cost of Debt: Treasury 10-year yield {((preparation?.treasury.rate ?? 0) * 100).toFixed(2)}% + 1.00% · As of {preparation?.treasury.date}</p>
