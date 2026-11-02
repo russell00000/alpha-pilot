@@ -17,6 +17,7 @@ import SectorHeatMap from "@/components/markets/SectorHeatMap";
 import { useFinnhubQuotes } from "@/hooks/useFinnhubQuotes";
 import { useMarketClock } from "@/hooks/useMarketClock";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import DcfPanel from "@/components/markets/DcfPanel";
 
 const prefetchStockPage = () => { void import("@/pages/Stock"); };
 
@@ -835,6 +836,8 @@ const Markets = () => {
               activeIndex={activeSuggestion}
             />
           </div>
+
+          <DcfPanel ticker={/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/.test(searchQuery.trim()) ? searchQuery.trim().toUpperCase() : ""} />
 
           {/* Popular Searches */}
           <div className="mt-4 flex flex-wrap items-center gap-2">

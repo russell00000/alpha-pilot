@@ -8,6 +8,7 @@ export const FIELD_TAGS = {
   diluted_shares: ["WeightedAverageNumberOfDilutedSharesOutstanding"],
   income_tax_expense: ["IncomeTaxExpenseBenefit"],
   pretax_income: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"],
+  interest_expense: ["InterestExpense"],
 } as const;
 
 export interface Observation {
@@ -100,5 +101,31 @@ export function extractFinancials(raw: CompanyFacts) {
     };
   }
   if (financials.total_debt === null) missing_fields.push("total_debt");
-  return { financials, missing_fields };
+  const historyFor = (field: "revenue" | "operating_income" | "current_assets" | "current_liabilities", limit: number) => {
+    const tags = field === "current_assets" ? ["AssetsCurrent"] : field === "current_liabilities" ? ["LiabilitiesCurrent"] : FIELD_TAGS[field];
+    const tag = tags.find((candidate) => gaap[candidate] !== undefined);
+    const rows = tag ? (gaap[tag]?.units.USD ?? []).filter((row) => isAnnual(row, field === "current_assets" || field === "current_liabilities")) : [];
+    rows.sort((a, b) => b.end.localeCompare(a.end) || (b.filed ?? "").localeCompare(a.filed ?? ""));
+    const unique = new Map<string, ReturnType<typeof provenance>>();
+    for (const row of rows) {
+      if (!tag) continue;
+      const item = provenance(row, tag);
+      const key = String(item.fiscal_year ?? row.end);
+      if (!unique.has(key)) unique.set(key, item);
+    }
+    const values = [...unique.values()].slice(0, limit);
+    if (values.length < limit) missing_fields.push(`${field}_history`);
+    return values;
+  };
+  const history = {
+    revenue: historyFor("revenue", 4), operating_income: historyFor("operating_income", 4),
+    current_assets: historyFor("current_assets", 2), current_liabilities: historyFor("current_liabilities", 2),
+  };
+  const latestRevenue = history.revenue[0];
+  const interest = financials.interest_expense;
+  if (interest && latestRevenue && interest.period.end !== latestRevenue.period.end) {
+    financials.interest_expense = null;
+    if (!missing_fields.includes("interest_expense")) missing_fields.push("interest_expense");
+  }
+  return { financials, history, missing_fields };
 }
