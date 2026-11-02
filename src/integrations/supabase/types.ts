@@ -523,6 +523,24 @@ export type Database = {
         }
         Relationships: []
       }
+      sec_company_profile_cache: {
+        Row: {
+          cik: string
+          fetched_at: string
+          raw_response: Json
+        }
+        Insert: {
+          cik: string
+          fetched_at?: string
+          raw_response: Json
+        }
+        Update: {
+          cik?: string
+          fetched_at?: string
+          raw_response?: Json
+        }
+        Relationships: []
+      }
       sec_ticker_cache: {
         Row: {
           fetched_at: string

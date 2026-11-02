@@ -119,7 +119,7 @@ export function extractFinancials(raw: CompanyFacts) {
     const unique = new Map<string, ReturnType<typeof provenance>>();
     for (const row of rows) {
       if (!tag) continue;
-      const item = provenance(row, tag);
+      const item = provenance(row, tag, unit);
       const key = String(item.fiscal_year ?? row.end);
       if (!unique.has(key)) unique.set(key, item);
     }
@@ -130,6 +130,7 @@ export function extractFinancials(raw: CompanyFacts) {
   const history = {
     revenue: historyFor("revenue", 4), operating_income: historyFor("operating_income", 4),
     current_assets: historyFor("current_assets", 2), current_liabilities: historyFor("current_liabilities", 2),
+    diluted_shares: historyFor("diluted_shares", 4),
   };
   const latestRevenue = history.revenue[0];
   // Unlike other fields, each interest fallback must have a valid latest-year
