@@ -59,6 +59,8 @@ test("missing history and zero debt block undefined formulas", () => {
   expect(() => calculateDcf(zero, args)).toThrow("must be positive");
 });
 test("Treasury chooses latest valid dated ten-year observation and converts percent to decimal", () => {
-  expect(parseTreasuryYield('<feed><entry><d:NEW_DATE>2026-10-29T00:00:00</d:NEW_DATE><d:BC_10YEAR>4.8</d:BC_10YEAR></entry><entry><d:NEW_DATE>2026-10-30T00:00:00</d:NEW_DATE><d:BC_10YEAR>4.94</d:BC_10YEAR></entry></feed>')).toEqual({ date: "2026-10-30", rate: 0.0494 });
+  const yieldData = parseTreasuryYield('<feed><entry><d:NEW_DATE>2026-10-29T00:00:00</d:NEW_DATE><d:BC_10YEAR>4.8</d:BC_10YEAR></entry><entry><d:NEW_DATE>2026-10-30T00:00:00</d:NEW_DATE><d:BC_10YEAR>4.94</d:BC_10YEAR></entry></feed>');
+  expect(yieldData.date).toBe("2026-10-30");
+  expect(yieldData.rate).toBeCloseTo(0.0494, 12);
   expect(() => parseTreasuryYield("<feed/>" )).toThrow("no valid");
 });
