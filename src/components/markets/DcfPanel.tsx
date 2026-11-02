@@ -24,6 +24,25 @@ interface Preparation {
 }
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const largeMoney = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(value);
+const pct = (value: number) => `${(value * 100).toFixed(4)}%`;
+const differs = (used: number, prefill: number | undefined) => prefill === undefined || Math.abs(used - prefill) > 1e-9;
+function assumptionRows(result: Result, preparation: Preparation | null): [string, string, string][] {
+  const hist = preparation?.historical_assumptions ?? undefined;
+  const betaSource = differs(result.assumptions.beta, preparation?.beta_input.suggested ?? undefined) ? "User override"
+    : preparation?.beta_input.source === "company" ? "Company-reported beta"
+    : preparation?.beta_input.source === "peer_average" ? `Peer group average (${preparation.beta_input.peers_used ?? 0} peers)` : "User input";
+  return [
+    ["Revenue growth (year 1, fades to terminal)", pct(result.assumptions.revenue_growth_rate), differs(result.assumptions.revenue_growth_rate, hist?.revenue_growth_rate) ? "User override" : `Audited FY${result.fiscal_year} year-over-year growth`],
+    ["EBIT margin (held flat)", pct(result.assumptions.ebit_margin), differs(result.assumptions.ebit_margin, hist?.ebit_margin) ? "User override" : "Four-year audited average"],
+    ["Share count change (per year)", pct(result.assumptions.share_count_change), differs(result.assumptions.share_count_change, hist?.share_count_change) ? "User override" : "Trailing three-year audited average"],
+    ["Beta", result.assumptions.beta.toFixed(2), betaSource],
+    ["Cost of debt", pct(result.assumptions.cost_of_debt), result.assumptions.cost_of_debt_estimated ? "Estimated — company does not separately disclose interest expense (user input)" : "SEC interest expense / total debt"],
+    ["Tax rate", result.assumptions.tax_rate_normalized ? "21.00%" : "Effective", result.assumptions.tax_rate_normalized ? "Normalized statutory rate — company reported a loss" : "Audited effective rate"],
+    ["Risk-free rate", "Treasury 10-year", `As of ${result.treasury.date}`],
+    ["Equity risk premium", "4.50%", "Default"],
+    ["Terminal growth", "2.50%", "Default"],
+  ];
+}
 
 export default function DcfPanel({ ticker }: { ticker: string }) {
   const [beta, setBeta] = useState("");
@@ -148,7 +167,18 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
           <div className="flex items-center gap-2 text-sm font-medium text-foreground"><AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />&gt;40% deviation from current price</div>
           <p className="mt-2 text-sm text-muted-foreground">The implied share price of {money(result.implied_share_price)} is {Math.abs(result.difference_pct).toFixed(2)}% {result.difference_pct < 0 ? "below" : "above"} the current market price of {money(result.current_price)}. This valuation is highly sensitive to growth, margins and discount-rate assumptions.</p>
         </div>}
-        <p className="mt-3 text-xs text-muted-foreground">Revenue growth {(result.assumptions.revenue_growth_rate * 100).toFixed(4)}% · EBIT margin {(result.assumptions.ebit_margin * 100).toFixed(4)}% · Equity risk premium 4.5% · Terminal growth 2.5%</p>
+        {result.warnings.length > 0 && <div className="mt-3 space-y-2">{result.warnings.map((warning) => <div key={warning} role="alert" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground">{warning}</div>)}</div>}
+        <h3 className="mt-5 text-sm font-medium text-foreground">Assumptions &amp; Sources</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>{["Assumption", "Value", "Source"].map((heading) => <th key={heading} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
+            <tbody>{assumptionRows(result, preparation).map(([label, value, source]) => <tr key={label}>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2">{label}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{value}</td>
+              <td className="border-b border-border px-3 py-2 text-muted-foreground">{source}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">Market price source: {result.market_price_source}{result.market_price_as_of ? ` · As of ${new Date(result.market_price_as_of).toLocaleString()}` : ""}</p>
         <h3 className="mt-5 text-sm font-medium text-foreground">Projected balance checks</h3>
         <div className="mt-2 overflow-x-auto">
