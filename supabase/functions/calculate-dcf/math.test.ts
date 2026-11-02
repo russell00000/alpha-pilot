@@ -26,8 +26,9 @@ test("CAPM, debt costs, diluted-share market cap, weights and WACC use requested
 test("ten projections link days-based working capital and discount each unlevered FCF plus unchanged Gordon formula", () => {
   const r = calculateDcf(fixture(), args);
   expect(r.projections).toHaveLength(10);
+  let revenue = 133.1;
   r.projections.forEach((p, i) => {
-    const revenue = 133.1 * 1.1 ** (i + 1);
+    revenue *= 1 + 0.1 + (0.025 - 0.1) * i / 9;
     const fcf = revenue * 0.2 * 0.75 + p.depreciation_amortization - p.capex - p.change_nwc;
     expect(p.revenue).toBeCloseTo(revenue, 9);
     expect(p.ufcf).toBeCloseTo(fcf, 9);
@@ -108,11 +109,80 @@ test("historical prefills preserve the default calculation exactly", () => {
   expect(explicit.implied_share_price).toBe(original.implied_share_price);
   expect(explicit.enterprise_value).toBe(original.enterprise_value);
 });
-test("editable revenue growth applies to each of the five projections without altering history", () => {
+test("editable revenue growth sets the near-term rate and fades to terminal across all ten projections without altering history", () => {
   const data = fixture(), r = calculateDcf(data, { ...args, revenue_growth_rate: 0.08 });
-  r.projections.forEach((row, i) => expect(row.revenue).toBeCloseTo(133.1 * 1.08 ** (i + 1), 9));
+  let expected = 133.1;
+  r.projections.forEach((row, i) => {
+    expected *= 1 + 0.08 + (0.025 - 0.08) * i / 9;
+    expect(row.revenue).toBeCloseTo(expected, 9);
+  });
+  expect(r.projections[0]?.revenue_growth_rate).toBeCloseTo(0.08, 12);
+  expect(r.projections[9]?.revenue_growth_rate).toBeCloseTo(0.025, 12);
   expect(r.derived.historical_cagr).toBeCloseTo(0.1, 12);
   expect(r.assumptions.revenue_growth_rate).toBe(0.08);
+});
+test("near-term growth fades linearly from the latest-year rate to the terminal rate", () => {
+  const r = calculateDcf(fixture(), args);
+  expect(r.derived.latest_year_growth).toBeCloseTo(0.1, 12);
+  expect(r.projections[0]?.revenue_growth_rate).toBeCloseTo(0.1, 12);
+  expect(r.projections[4]?.revenue_growth_rate).toBeCloseTo(0.1 + (0.025 - 0.1) * 4 / 9, 12);
+  expect(r.projections[9]?.revenue_growth_rate).toBeCloseTo(0.025, 12);
+});
+test("share count rolls forward at the trailing three-year average and dilution adds financing cash while the balance sheet ties", () => {
+  const data = fixture();
+  data.history.diluted_shares = [item(11), item(10.5, 2024), item(10.2, 2023), item(10, 2022)];
+  const expectedChange = (11 / 10.5 - 1 + 10.5 / 10.2 - 1 + 10.2 / 10 - 1) / 3;
+  expect(shareCountChange(data)).toBeCloseTo(expectedChange, 12);
+  const r = calculateDcf(data, args);
+  expect(r.assumptions.share_count_change).toBeCloseTo(expectedChange, 12);
+  let prior = 10;
+  for (const p of r.projections) {
+    expect(p.diluted_shares).toBeCloseTo(prior * (1 + expectedChange), 9);
+    expect(p.financing_cash_flow).toBeCloseTo((p.diluted_shares - prior) * 100, 2);
+    expect(p.balance_check.gap).toBe(0);
+    prior = p.diluted_shares;
+  }
+});
+test("buybacks consume cash and equity without breaking the balance check", () => {
+  const data = fixture();
+  data.history.diluted_shares = [item(10), item(10.5, 2024), item(11, 2023), item(11.5, 2022)];
+  const r = calculateDcf(data, args);
+  expect(r.assumptions.share_count_change).toBeLessThan(0);
+  for (const p of r.projections) {
+    expect(p.financing_cash_flow).toBeLessThan(0);
+    expect(p.balance_check.gap).toBe(0);
+  }
+});
+test("flat share history and missing share history both default to zero change, never an assumed buyback", () => {
+  expect(shareCountChange(fixture())).toBe(0);
+  const data = fixture(); data.history.diluted_shares = [item(10)];
+  expect(shareCountChange(data)).toBe(0);
+  const r = calculateDcf(data, args);
+  expect(r.assumptions.share_count_change).toBe(0);
+  expect(r.projections[9]?.diluted_shares).toBe(10);
+});
+test("a loss-making base year normalizes the tax rate to 21 percent and flags it", () => {
+  const data = fixture();
+  data.financials.pretax_income = item(-8);
+  data.financials.income_tax_expense = item(1);
+  const r = calculateDcf(data, args);
+  expect(r.derived.tax_rate).toBe(0.21);
+  expect(r.assumptions.tax_rate_normalized).toBe(true);
+  expect(r.warnings.some((warning) => warning.includes("21% statutory"))).toBe(true);
+});
+test("negative base-year EBIT warns instead of silently projecting from a negative base", () => {
+  const data = fixture();
+  data.history.operating_income[0] = item(-5);
+  const r = calculateDcf(data, args);
+  expect(r.warnings.some((warning) => warning.includes("negative base"))).toBe(true);
+  expect(Number.isFinite(r.implied_share_price)).toBe(true);
+});
+test("company type warnings flag financials and REITs by SIC range only", () => {
+  expect(companyTypeWarnings(6021)[0]).toContain("financial companies");
+  expect(companyTypeWarnings(6798)[0]).toContain("REIT");
+  expect(companyTypeWarnings(6798)[0]).not.toContain("financial companies");
+  expect(companyTypeWarnings(3571)).toEqual([]);
+  expect(companyTypeWarnings(null)).toEqual([]);
 });
 test("editable EBIT margin changes every projected EBIT and leaves historical margin intact", () => {
   const r = calculateDcf(fixture(), { ...args, ebit_margin: 0.3 });

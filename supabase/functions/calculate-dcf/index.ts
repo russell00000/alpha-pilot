@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
     const costOfDebtInput = debtCostInput(financials as DcfData, treasury.rate);
     const sic = financials.company_profile?.sic ?? null;
     const company_type = { sic, sic_description: financials.company_profile?.sic_description ?? null, warnings: companyTypeWarnings(sic) };
+    caughtCompanyType = company_type;
     if (parsed.data.action === "prepare") {
       // Beta anchors to the company's own data first, then its peer group —
       // never a flat 1.0. Suggestions prefill the input; the user still confirms.
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
       financial_inputs: { financials: financials.financials, history: financials.history, linked_financials: financials.linked_financials },
     });
   } catch (error) {
-    if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields }, 422);
+    if (error instanceof DcfInputError) return reply({ error: error.message, missing_fields: error.missing_fields, company_type: caughtCompanyType ?? undefined }, 422);
     return reply({ error: error instanceof Error ? error.message : "DCF unavailable." }, 503);
   }
 });
