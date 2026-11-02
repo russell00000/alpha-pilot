@@ -68,7 +68,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { timeout: 15000, body: { action: "prepare", ticker } });
         if (invokeError) {
           const response = (invokeError as { context?: Response }).context;
-          const detail = response ? await response.json().catch(() => null) : null;
+          const detail = response instanceof Response ? await response.json().catch(() => null) : null;
           throw new Error(detail?.error || "Data temporarily unavailable, try again.");
         }
         if (!active) return;
@@ -102,7 +102,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
-        const detail = response ? await response.json().catch(() => null) : null;
+        const detail = response instanceof Response ? await response.json().catch(() => null) : null;
         const missing = detail?.missing_fields?.length ? ` Missing: ${detail.missing_fields.join(", ")}.` : "";
         throw new Error((detail?.error || "Data temporarily unavailable, try again.") + missing);
       }
