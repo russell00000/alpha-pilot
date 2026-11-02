@@ -1,7 +1,10 @@
 # Vantage DCF Phase 1
+- [x] Fix Treasury request identification (custom User-Agent repeatedly stalled; browser-compatible User-Agent returned in 0.43–0.51s), eliminate the remaining outer year fallback, and persist a service-only 24-hour yield cache with true refresh/observation timestamps. One refresh request, in-flight deduplication, explicit stale fallback, and 83 passing tests.
+- [x] Run fresh AAPL and RIVN back-to-back: AAPL calculated $123.43 in 1.57s; RIVN preparation succeeded in 1.44s and fresh calculation returned an independent audited-input block in 1.38s. Both reused 4.94%, refreshed 2026-11-02T20:02:22.931Z, observation 2026-10-30; database and signed-in UI verified, no page errors.
+- [ ] Complete a valid fresh Rivian valuation — blocked by missing FY2025 debt (only FY2023 extracted), plus missing same-filing PP&E/current-financing inputs; do not substitute guessed balances or bypass the audited completeness gate.
 - [x] Diagnose Rivian stalls: Treasury stage exceeded 50 seconds due to stacked retries; shared 15-second headers/body/SDK limits now fail explicitly. Five authenticated RIVN runs returned clean 503 retry messages in 15.78–16.03 seconds; visible UI failure verified.
 - [x] Reconcile Apple's audited diluted shares: 15,004,697,000 FY2025 is the actual denominator; 14,588,576,190.824305 is the FY2026 forecast after -2.7732703244570372% share change. Added exact source and projected rows; 78 regression tests pass, live SEC extraction and local real-input math verified.
-- [ ] Verify Apple’s new source rows through a fresh successful live valuation — blocked by Treasury upstream timing out; no substituted yield or fabricated result used.
+- [x] Verify Apple’s new source rows through a fresh successful live valuation — signed-in UI displays audited base 15,004,697,000, projected FY2026 14,588,576,191, and the true Treasury refresh timestamp; all ten balance checks $0.00.
 - [x] Add authenticated SEC lookup and service-only raw-response caches.
 - [x] Extract nine requested financial fields with annual-period provenance and missing-field reporting.
 - [x] Run 18 extraction tests and verify all nine fields against live Apple SEC data.

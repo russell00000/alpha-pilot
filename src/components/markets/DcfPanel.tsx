@@ -11,12 +11,12 @@ interface Result {
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
-  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean };
+  treasury: { date: string; rate: number; refreshed_at: string; cache: { hit: boolean; stale: boolean } }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean };
   projections: { year: number; fiscal_year: number; revenue_growth_rate: number; diluted_shares: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
   model_notes: string[]; warnings: string[]; company_type: CompanyType;
 }
 interface Preparation {
-  ticker: string; treasury: { rate: number; date: string };
+  ticker: string; treasury: { rate: number; date: string; refreshed_at: string; cache: { hit: boolean; stale: boolean } };
   cost_of_debt_input: { required: boolean; estimated: boolean; suggested_rate: number | null; label: string };
   historical_assumptions: { revenue_growth_rate: number; ebit_margin: number; share_count_change: number } | null;
   preparation_note: string | null;
@@ -41,7 +41,7 @@ function assumptionRows(result: Result, preparation: Preparation | null): [strin
     ["Beta", result.assumptions.beta.toFixed(2), betaSource],
     ["Cost of debt", pct(result.assumptions.cost_of_debt), result.assumptions.cost_of_debt_estimated ? "Estimated — company does not separately disclose interest expense (user input)" : "SEC interest expense / total debt"],
     ["Tax rate", result.assumptions.tax_rate_normalized ? "21.00%" : "Effective", result.assumptions.tax_rate_normalized ? "Normalized statutory rate — company reported a loss" : "Audited effective rate"],
-    ["Risk-free rate", "Treasury 10-year", `As of ${result.treasury.date}`],
+    ["Risk-free rate", pct(result.treasury.rate), `Treasury 10-year · observation ${result.treasury.date} · cache refreshed ${result.treasury.refreshed_at}${result.treasury.cache.stale ? " · Stale: refresh temporarily unavailable" : " · 24-hour cache"}`],
     ["Equity risk premium", "4.50%", "Default"],
     ["Terminal growth", "2.50%", "Default"],
   ];
@@ -142,6 +142,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}Run DCF
         </Button>
       </div>
+      {preparation && <p className="mt-3 text-xs text-muted-foreground">Treasury 10-year: {pct(preparation.treasury.rate)} · observation {preparation.treasury.date} · cache refreshed {preparation.treasury.refreshed_at}{preparation.treasury.cache.stale ? " · Stale: refresh temporarily unavailable" : " · 24-hour cache"}</p>}
       {preparing && <p role="status" className="mt-3 text-xs text-muted-foreground">Loading annual financial inputs and Treasury yield…</p>}
       {preparation?.company_type.warnings.map((warning) => <div key={warning} role="alert" className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground"><span className="font-medium">{preparation.company_type.sic_description ?? "Company type"} notice:</span> {warning}</div>)}
       {preparation?.preparation_note && <p role="alert" className="mt-3 text-xs text-destructive">{preparation.preparation_note}</p>}

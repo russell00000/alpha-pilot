@@ -15,6 +15,13 @@
       "when": 1793647971581,
       "tag": "0001_create_sec_company_profile_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793649604538,
+      "tag": "0002_create_treasury_yield_cache",
+      "breakpoints": true
     }
   ]
 }
