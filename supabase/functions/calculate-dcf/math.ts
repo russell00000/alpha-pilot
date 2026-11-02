@@ -42,7 +42,7 @@ export function marketComparison(impliedPrice: number, marketPrice: number) {
 }
 const dollars = (value: number) => Math.round(value * 100) / 100;
 export function balanceCheck(assets: number, liabilities: number, equity: number, year: number) {
-  const gap = dollars(assets - liabilities - equity);
+  const gap = dollars(assets - liabilities - equity) || 0;
   if (![assets, liabilities, equity].every(Number.isFinite) || gap !== 0) throw new DcfInputError(`Balance sheet does not balance in year ${year}: Assets minus Liabilities and Equity = ${gap}.`);
   return { balanced: true, gap, assets, liabilities, equity };
 }
