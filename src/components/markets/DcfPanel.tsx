@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import DcfExtractionAudit, { type ExtractionAudit } from "./DcfExtractionAudit";
 
 interface CompanyType { sic: number | null; sic_description: string | null; warnings: string[] }
 interface Result {
@@ -16,6 +17,7 @@ interface Result {
   model_notes: string[]; warnings: string[]; company_type: CompanyType;
 }
 interface Preparation {
+  extraction_audit?: ExtractionAudit;
   ticker: string; treasury: { rate: number; date: string; refreshed_at: string; cache: { hit: boolean; stale: boolean } };
   cost_of_debt_input: { required: boolean; estimated: boolean; suggested_rate: number | null; label: string };
   historical_assumptions: { revenue_growth_rate: number; ebit_margin: number; share_count_change: number } | null;
@@ -151,6 +153,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <p className="mt-1">Suggested Cost of Debt: Treasury 10-year yield {((preparation?.treasury.rate ?? 0) * 100).toFixed(2)}% + 1.00% · As of {preparation?.treasury.date}</p>
       </div>}
       {error && <p role="alert" className="mt-4 break-words text-sm text-destructive">{error}</p>}
+      {preparation?.extraction_audit && <DcfExtractionAudit audit={preparation.extraction_audit} />}
       {result && <>
         <p className="mt-4 text-xs text-muted-foreground">{result.ticker} · FY{result.fiscal_year} · Beta {result.assumptions.beta} · Treasury yield as of {result.treasury.date}</p>
         {result.assumptions.cost_of_debt_estimated && <p className="mt-2 text-xs text-muted-foreground">Estimated — company does not separately disclose interest expense · Cost of Debt used: {(result.assumptions.cost_of_debt * 100).toFixed(2)}% (user input)</p>}

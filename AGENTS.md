@@ -1,6 +1,7 @@
 
 - Never animate background layers or write CSS variables to <html> every frame — frosted-glass panels re-blur on each change, causing site-wide jank.
 - Keep SEC financial extraction in the get-company-financials edge function with a pure, locally tested parser; server-side identification and service-only caches prevent browser SEC restrictions and unauditable financial guesses.
+- Rank annual balance observations by period end before filing date/fiscal year, apply fallback chains within the latest period, and expose candidate/selected provenance in preparation; this prevents stale complete debt pairs and makes missing tags auditable. Keep lease-inclusive PP&E explicitly labeled and never double-count combined debt tags.
 - Use the shared bounded-fetch wrapper for DCF pipeline requests (including SDK transport and body reads); never retry timed-out upstream requests or swallow their errors, so slow providers fail visibly.
 - Treasury yields use a service-only persistent cache and a single official-XML refresh request with browser-compatible identification; preserve observation/refresh provenance and mark stale fallback so government outages do not erase the last successful rate.
 - Expose the exact audited share-count denominator and provenance from pure DCF math; distinguish base annual weighted-average diluted shares from projected shares to prevent source/forecast confusion.

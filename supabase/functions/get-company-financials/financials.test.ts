@@ -51,9 +51,9 @@ describe("SEC financial extraction contract", () => {
     expect(result.missing_fields).toEqual([...Object.keys(FIELD_TAGS), "total_debt", "revenue_history", "operating_income_history", "current_assets_history", "current_liabilities_history", "diluted_shares_history"]);
     expect(Object.values(result.financials)).toEqual(Array(11).fill(null));
   });
-  test("quarters, 10-Qs, and amendments do not replace annual 10-K values", () => {
+  test("quarterly periods and 10-Qs are excluded; latest annual amendment wins", () => {
     const raw = facts({ OperatingIncomeLoss: [annual(40), annual(2, { start: "2025-07-01" }), annual(3, { form: "10-Q" }), annual(4, { form: "10-K/A", filed: "2025-12-01" })] });
-    expect(field(raw, "operating_income").value).toBe(40);
+    expect(field(raw, "operating_income").value).toBe(4);
   });
   test("latest period wins before filing date; latest comparative restatement retains actual fiscal year", () => {
     const raw = facts({ NetIncomeLoss: [annual(50), annual(55, { fy: 2026, filed: "2026-11-01", accn: "2026-filing" })], OperatingIncomeLoss: [annual(80, { start: "2025-10-01", end: "2026-09-30", fy: 2026, filed: "2026-11-01", accn: "2026-filing" })] });
@@ -156,4 +156,43 @@ describe("SEC financial extraction contract", () => {
     expect(result.linked_missing_fields).toEqual([...Object.keys(LINKED_TAGS), "current_financing"]);
     expect(result.linked_financials.total_equity).toBeNull();
   });
+});
+ describe("Rivian extraction regressions", () => {
+ const instant = (val: number, overrides: Partial<Observation> = {}) => annual(val, { start: undefined, ...overrides });
+ test("newest annual debt period beats stale complete pair in unsorted arrays", () => {
+   const old = { end: "2023-12-31", fy: 2023, filed: "2024-02-26", accn: "old" };
+   const raw = facts({ LongTermDebtCurrent: [instant(0, old)], LongTermDebtNoncurrent: [instant(4440000000), instant(4431000000, old)], DebtInstrumentCarryingAmount: [instant(4475000000)] });
+   expect(field(raw, "total_debt")).toMatchObject({ value: 4475000000, period: { end: "2025-09-30" }, tag: "DebtInstrumentCarryingAmount" });
+ });
+ test("latest filed annual amendment wins same-period cash duplicates, regardless of array order", () => {
+   const raw = facts({ CashAndCashEquivalentsAtCarryingValue: [instant(3579000000, { form: "10-K/A", filed: "2025-12-01" }), instant(1), instant(999, { form: "10-Q", end: "2026-03-31" })] });
+   expect(field(raw, "cash")).toMatchObject({ value: 3579000000, form: "10-K/A" });
+ });
+ test("Rivian lease-inclusive net PP&E is preserved with exact tag", () => {
+   const tag = "PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetAfterAccumulatedDepreciationAndAmortization";
+   const result = extractFinancials(facts({ Revenues: [annual(5387000000)], [tag]: [instant(5119000000)] }));
+   expect(result.linked_financials.ppe).toMatchObject({ value: 5119000000, tag });
+ });
+ test("PP&E gross minus same-filing accumulated depreciation", () => {
+   const result = extractFinancials(facts({ Revenues: [annual(100)], PropertyPlantAndEquipmentGross: [instant(8458000000)], AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment: [instant(3339000000)] }));
+   expect(result.linked_financials.ppe?.value).toBe(5119000000);
+ });
+ test("gross PP&E cannot use depreciation from another filing", () => {
+   const result = extractFinancials(facts({ Revenues: [annual(100)], PropertyPlantAndEquipmentGross: [instant(8458000000)], AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment: [instant(3339000000, { accn: "other" })] }));
+   expect(result.linked_financials.ppe).toBeNull();
+   expect(result.linked_missing_fields).toContain("ppe");
+ });
+ test("current financing sums available leases without requiring a current debt tag", () => {
+   const result = extractFinancials(facts({ Revenues: [annual(100)], FinanceLeaseLiabilityCurrent: [instant(3000000)], OperatingLeaseLiabilityCurrent: [instant(110000000)] }));
+   expect(result.linked_financials.current_financing).toMatchObject({ value: 113000000, tag: "FinanceLeaseLiabilityCurrent + OperatingLeaseLiabilityCurrent" });
+ });
+ test("noncurrent financing sums long-term debt and finance leases", () => {
+   const result = extractFinancials(facts({ Revenues: [annual(100)], LongTermDebtNoncurrent: [instant(4440000000)], FinanceLeaseLiabilityNoncurrent: [instant(91000000)] }));
+   expect(result.linked_financials.noncurrent_financing?.value).toBe(4531000000);
+ });
+ test("missing debt stays null when newer incomplete data cannot supply total", () => {
+   const result = extractFinancials(facts({ LongTermDebtCurrent: [instant(0, { end: "2023-12-31", accn: "old" })], LongTermDebtNoncurrent: [instant(4440000000), instant(4431000000, { end: "2023-12-31", accn: "old" })] }));
+   expect(result.financials.total_debt).toBeNull();
+   expect(result.missing_fields).toContain("total_debt");
+ });
 });
