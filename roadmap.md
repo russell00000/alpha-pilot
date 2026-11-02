@@ -1,4 +1,6 @@
 # Vantage DCF Phase 1
+- [ ] Fix Treasury endpoint/retry root cause and persist the successful yield with a 24-hour refresh timestamp.
+- [ ] Verify fresh AAPL and RIVN back-to-back using the shared rate cache; report any independent input/model blockers honestly.
 - [x] Diagnose Rivian stalls: Treasury stage exceeded 50 seconds due to stacked retries; shared 15-second headers/body/SDK limits now fail explicitly. Five authenticated RIVN runs returned clean 503 retry messages in 15.78–16.03 seconds; visible UI failure verified.
 - [x] Reconcile Apple's audited diluted shares: 15,004,697,000 FY2025 is the actual denominator; 14,588,576,190.824305 is the FY2026 forecast after -2.7732703244570372% share change. Added exact source and projected rows; 78 regression tests pass, live SEC extraction and local real-input math verified.
 - [ ] Verify Apple’s new source rows through a fresh successful live valuation — blocked by Treasury upstream timing out; no substituted yield or fabricated result used.
