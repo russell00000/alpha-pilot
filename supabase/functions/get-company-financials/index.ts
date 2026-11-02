@@ -68,7 +68,23 @@ Deno.serve(async (req) => {
       if (error) throw new Error("Unable to save the company financials cache.");
     }
     if (!raw) throw new Error("No company financials available.");
-    return reply({ ticker, cik, company_name: raw.entityName, ...extractFinancials(raw),
+    // SIC classification comes from the SEC submissions API, cached like companyfacts.
+    // A profile failure must never block financial extraction.
+    let company_profile: { sic: number | null; sic_description: string | null } = { sic: null, sic_description: null };
+    try {
+      const { data: profileCached } = await db.from("sec_company_profile_cache").select("raw_response,fetched_at").eq("cik", cik).maybeSingle();
+      let profile = profileCached?.raw_response as { sic?: string; sicDescription?: string } | undefined;
+      if (!profileCached || !fresh(profileCached.fetched_at)) {
+        profile = await fetchSec(`https://data.sec.gov/submissions/CIK${cik}.json`) as typeof profile;
+        const { error } = await db.from("sec_company_profile_cache").upsert({ cik, raw_response: profile, fetched_at: new Date().toISOString() });
+        if (error) throw new Error("Unable to save the company profile cache.");
+      }
+      const sic = Number(profile?.sic);
+      company_profile = { sic: Number.isFinite(sic) ? sic : null, sic_description: typeof profile?.sicDescription === "string" ? profile.sicDescription : null };
+    } catch (profileError) {
+      console.error("company profile lookup failed:", profileError);
+    }
+    return reply({ ticker, cik, company_name: raw.entityName, company_profile, ...extractFinancials(raw),
       source: "SEC EDGAR companyfacts", fetched_at: fetchedAt,
       cache: { hit: cacheHit, expires_at: new Date(Date.parse(fetchedAt ?? "") + CACHE_TTL_MS).toISOString() },
     });

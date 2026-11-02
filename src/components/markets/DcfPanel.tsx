@@ -5,21 +5,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
+interface CompanyType { sic: number | null; sic_description: string | null; warnings: string[] }
 interface Result {
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
-  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number };
-  projections: { year: number; fiscal_year: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
-  model_notes: string[];
+  treasury: { date: string }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean };
+  projections: { year: number; fiscal_year: number; revenue_growth_rate: number; diluted_shares: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
+  model_notes: string[]; warnings: string[]; company_type: CompanyType;
 }
 interface Preparation {
   ticker: string; treasury: { rate: number; date: string };
   cost_of_debt_input: { required: boolean; estimated: boolean; suggested_rate: number | null; label: string };
-  historical_assumptions: { revenue_growth_rate: number; ebit_margin: number };
+  historical_assumptions: { revenue_growth_rate: number; ebit_margin: number; share_count_change: number } | null;
+  preparation_note: string | null;
+  beta_input: { suggested: number | null; source: string | null; peers_used?: number };
+  company_type: CompanyType;
 }
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const largeMoney = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(value);
+const pct = (value: number) => `${(value * 100).toFixed(4)}%`;
+const differs = (used: number, prefill: number | undefined) => prefill === undefined || Math.abs(used - prefill) > 1e-9;
+function assumptionRows(result: Result, preparation: Preparation | null): [string, string, string][] {
+  const hist = preparation?.historical_assumptions ?? undefined;
+  const betaSource = differs(result.assumptions.beta, preparation?.beta_input.suggested ?? undefined) ? "User override"
+    : preparation?.beta_input.source === "company" ? "Company-reported beta"
+    : preparation?.beta_input.source === "peer_average" ? `Peer group average (${preparation.beta_input.peers_used ?? 0} peers)` : "User input";
+  return [
+    ["Revenue growth (year 1, fades to terminal)", pct(result.assumptions.revenue_growth_rate), differs(result.assumptions.revenue_growth_rate, hist?.revenue_growth_rate) ? "User override" : `Audited FY${result.fiscal_year} year-over-year growth`],
+    ["EBIT margin (held flat)", pct(result.assumptions.ebit_margin), differs(result.assumptions.ebit_margin, hist?.ebit_margin) ? "User override" : "Four-year audited average"],
+    ["Share count change (per year)", pct(result.assumptions.share_count_change), differs(result.assumptions.share_count_change, hist?.share_count_change) ? "User override" : "Trailing three-year audited average"],
+    ["Beta", result.assumptions.beta.toFixed(2), betaSource],
+    ["Cost of debt", pct(result.assumptions.cost_of_debt), result.assumptions.cost_of_debt_estimated ? "Estimated — company does not separately disclose interest expense (user input)" : "SEC interest expense / total debt"],
+    ["Tax rate", result.assumptions.tax_rate_normalized ? "21.00%" : "Effective", result.assumptions.tax_rate_normalized ? "Normalized statutory rate — company reported a loss" : "Audited effective rate"],
+    ["Risk-free rate", "Treasury 10-year", `As of ${result.treasury.date}`],
+    ["Equity risk premium", "4.50%", "Default"],
+    ["Terminal growth", "2.50%", "Default"],
+  ];
+}
 
 export default function DcfPanel({ ticker }: { ticker: string }) {
   const [beta, setBeta] = useState("");
@@ -31,9 +54,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   const [costOfDebt, setCostOfDebt] = useState("");
   const [growth, setGrowth] = useState("");
   const [margin, setMargin] = useState("");
+  const [shareChange, setShareChange] = useState("");
   useEffect(() => {
     let active = true;
-    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin("");
+    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta("");
     setPreparing(Boolean(ticker));
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
@@ -48,8 +72,12 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         const prepared = data as Preparation;
         setPreparation(prepared);
         setCostOfDebt(prepared.cost_of_debt_input.suggested_rate === null ? "" : (prepared.cost_of_debt_input.suggested_rate * 100).toFixed(2));
-        setGrowth((prepared.historical_assumptions.revenue_growth_rate * 100).toFixed(4));
-        setMargin((prepared.historical_assumptions.ebit_margin * 100).toFixed(4));
+        if (prepared.historical_assumptions) {
+          setGrowth((prepared.historical_assumptions.revenue_growth_rate * 100).toFixed(4));
+          setMargin((prepared.historical_assumptions.ebit_margin * 100).toFixed(4));
+          setShareChange((prepared.historical_assumptions.share_count_change * 100).toFixed(4));
+        }
+        if (prepared.beta_input.suggested !== null) setBeta(prepared.beta_input.suggested.toFixed(2));
       } catch (err) { if (active) setError(err instanceof Error ? err.message : "Unable to load DCF inputs."); }
       finally { if (active) setPreparing(false); }
     }, 400);
@@ -57,16 +85,17 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   }, [ticker]);
   const requiresDebtCost = preparation?.cost_of_debt_input.required ?? false;
   const validDebtCost = Boolean(costOfDebt.trim()) && Number.isFinite(Number(costOfDebt)) && Number(costOfDebt) >= 0 && Number(costOfDebt) <= 100;
-  const validProjectionInputs = Boolean(growth.trim()) && Boolean(margin.trim()) && Number.isFinite(Number(growth)) && Number(growth) > -100 && Number.isFinite(Number(margin));
+  const validProjectionInputs = Boolean(growth.trim()) && Boolean(margin.trim()) && Boolean(shareChange.trim()) && Number.isFinite(Number(growth)) && Number(growth) > -100 && Number.isFinite(Number(margin)) && Number.isFinite(Number(shareChange)) && Number(shareChange) > -100;
   // An unchanged displayed prefill must use the original full-precision rate.
   const projectionRate = (text: string, historical: number) => text === (historical * 100).toFixed(4) ? historical : Number(text) / 100;
   const run = async () => {
     setBusy(true); setError(""); setResult(null);
     try {
-      if (!preparation || !validProjectionInputs) throw new Error("Enter valid revenue growth and EBIT margin assumptions.");
+      if (!preparation?.historical_assumptions || !validProjectionInputs) throw new Error("Enter valid revenue growth, EBIT margin and share count assumptions.");
       const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { body: { ticker, beta: Number(beta),
         revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
         ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
+        share_count_change: projectionRate(shareChange, preparation.historical_assumptions.share_count_change),
         ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
@@ -88,6 +117,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-28">
           <Label htmlFor="dcf-beta" className="text-xs text-muted-foreground">Beta</Label>
           <Input id="dcf-beta" type="number" step="0.01" value={beta} onChange={(e) => { setBeta(e.target.value); setResult(null); }} disabled={busy} required placeholder="e.g. 1.0" className="mt-1" />
+          {preparation?.beta_input.suggested !== null && preparation?.beta_input.suggested !== undefined && <p className="mt-1 text-[10px] text-muted-foreground">{preparation.beta_input.source === "company" ? "Company-reported beta" : `Peer average (${preparation.beta_input.peers_used ?? 0} peers)`} — editable</p>}
         </div>
         <div className="w-48">
           <Label htmlFor="dcf-growth" className="text-xs text-muted-foreground">Revenue Growth Rate (%)</Label>
@@ -96,6 +126,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-36">
           <Label htmlFor="dcf-margin" className="text-xs text-muted-foreground">EBIT Margin (%)</Label>
           <Input id="dcf-margin" type="number" step="0.01" required value={margin} onChange={(e) => { setMargin(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
+        </div>
+        <div className="w-44">
+          <Label htmlFor="dcf-share-change" className="text-xs text-muted-foreground">Share Count Change (%/yr)</Label>
+          <Input id="dcf-share-change" type="number" step="0.01" required value={shareChange} onChange={(e) => { setShareChange(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
         </div>
         {requiresDebtCost && <div className="w-40">
           <Label htmlFor="dcf-cost-of-debt" className="text-xs text-muted-foreground">Cost of Debt (%)</Label>
@@ -106,6 +140,8 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         </Button>
       </div>
       {preparing && <p role="status" className="mt-3 text-xs text-muted-foreground">Loading annual financial inputs and Treasury yield…</p>}
+      {preparation?.company_type.warnings.map((warning) => <div key={warning} role="alert" className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground"><span className="font-medium">{preparation.company_type.sic_description ?? "Company type"} notice:</span> {warning}</div>)}
+      {preparation?.preparation_note && <p role="alert" className="mt-3 text-xs text-destructive">{preparation.preparation_note}</p>}
       {requiresDebtCost && <div id="dcf-debt-estimate" className="mt-3 text-xs text-muted-foreground">
         <p>{preparation?.cost_of_debt_input.label}</p>
         <p className="mt-1">Suggested Cost of Debt: Treasury 10-year yield {((preparation?.treasury.rate ?? 0) * 100).toFixed(2)}% + 1.00% · As of {preparation?.treasury.date}</p>
@@ -131,7 +167,18 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
           <div className="flex items-center gap-2 text-sm font-medium text-foreground"><AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />&gt;40% deviation from current price</div>
           <p className="mt-2 text-sm text-muted-foreground">The implied share price of {money(result.implied_share_price)} is {Math.abs(result.difference_pct).toFixed(2)}% {result.difference_pct < 0 ? "below" : "above"} the current market price of {money(result.current_price)}. This valuation is highly sensitive to growth, margins and discount-rate assumptions.</p>
         </div>}
-        <p className="mt-3 text-xs text-muted-foreground">Revenue growth {(result.assumptions.revenue_growth_rate * 100).toFixed(4)}% · EBIT margin {(result.assumptions.ebit_margin * 100).toFixed(4)}% · Equity risk premium 4.5% · Terminal growth 2.5%</p>
+        {result.warnings.length > 0 && <div className="mt-3 space-y-2">{result.warnings.map((warning) => <div key={warning} role="alert" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground">{warning}</div>)}</div>}
+        <h3 className="mt-5 text-sm font-medium text-foreground">Assumptions &amp; Sources</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>{["Assumption", "Value", "Source"].map((heading) => <th key={heading} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
+            <tbody>{assumptionRows(result, preparation).map(([label, value, source]) => <tr key={label}>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2">{label}</td>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{value}</td>
+              <td className="border-b border-border px-3 py-2 text-muted-foreground">{source}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">Market price source: {result.market_price_source}{result.market_price_as_of ? ` · As of ${new Date(result.market_price_as_of).toLocaleString()}` : ""}</p>
         <h3 className="mt-5 text-sm font-medium text-foreground">Projected balance checks</h3>
         <div className="mt-2 overflow-x-auto">

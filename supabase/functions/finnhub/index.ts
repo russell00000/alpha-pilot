@@ -116,7 +116,15 @@ const metric = (symbol: string) =>
       volume: typeof m["10DayAverageTradingVolume"] === "number" ? m["10DayAverageTradingVolume"] * 1e6 : null,
       industry: profile?.finnhubIndustry ?? null,
       name: profile?.name ?? null,
+      beta: typeof m.beta === "number" && Number.isFinite(m.beta) ? m.beta : null,
     };
+  });
+
+const peers = (symbol: string) =>
+  cached(`p:${symbol}`, 24 * 60 * 60_000, async () => {
+    const list = await getJson(`${BASE}/stock/peers?symbol=${encodeURIComponent(symbol)}&token=${KEY}`).catch(() => null);
+    if (!Array.isArray(list)) return null;
+    return { symbol, peers: list.filter((p: unknown) => typeof p === "string" && p !== symbol).slice(0, 12) };
   });
 
 // Finnhub's free tier has no index coverage, so liquid ETFs stand in.
@@ -146,6 +154,8 @@ Deno.serve(async (req) => {
       data = (await pool(symbols, 6, (s) => cryptoQuote(s).catch(() => null))).filter(Boolean);
     } else if (action === "metrics") {
       data = (await pool(symbols, 8, (s) => metric(s).catch(() => null))).filter(Boolean);
+    } else if (action === "peers") {
+      data = (await pool(symbols, 4, (s) => peers(s).catch(() => null))).filter(Boolean);
     } else if (action === "indices") {
       const quotes = await pool(INDEX_PROXIES, 4, async (i) => {
         const q = await quote(i.proxy).catch(() => null);
