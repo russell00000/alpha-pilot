@@ -68,9 +68,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   const [growth, setGrowth] = useState("");
   const [margin, setMargin] = useState("");
   const [shareChange, setShareChange] = useState("");
+  const [exitMultiple, setExitMultiple] = useState("");
   useEffect(() => {
     let active = true;
-    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta("");
+    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta(""); setExitMultiple("");
     setPreparing(Boolean(ticker));
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
@@ -109,6 +110,7 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
         ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
         share_count_change: projectionRate(shareChange, preparation.historical_assumptions.share_count_change),
+        ...(exitMultiple.trim() && Number.isFinite(Number(exitMultiple)) && Number(exitMultiple) > 0 ? { exit_multiple: Number(exitMultiple) } : {}),
         ...(requiresDebtCost ? { cost_of_debt: Number(costOfDebt) / 100 } : {}) } });
       if (invokeError) {
         const response = (invokeError as { context?: Response }).context;
@@ -143,6 +145,11 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-44">
           <Label htmlFor="dcf-share-change" className="text-xs text-muted-foreground">Share Count Change (%/yr)</Label>
           <Input id="dcf-share-change" type="number" step="0.01" required value={shareChange} onChange={(e) => { setShareChange(e.target.value); setResult(null); }} disabled={busy || preparing} className="mt-1" />
+        </div>
+        <div className="w-36">
+          <Label htmlFor="dcf-exit-multiple" className="text-xs text-muted-foreground">Exit Multiple (×)</Label>
+          <Input id="dcf-exit-multiple" type="number" min="0" step="0.1" value={exitMultiple} onChange={(e) => { setExitMultiple(e.target.value); setResult(null); }} disabled={busy} placeholder="Auto" className="mt-1" />
+          <p className="mt-1 text-[10px] text-muted-foreground">Blank = trailing EV/EBITDA placeholder</p>
         </div>
         {requiresDebtCost && <div className="w-40">
           <Label htmlFor="dcf-cost-of-debt" className="text-xs text-muted-foreground">Cost of Debt (%)</Label>
