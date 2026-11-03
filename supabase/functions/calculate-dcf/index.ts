@@ -12,6 +12,7 @@ const Schema = z.object({
   equity_risk_premium: z.number().finite().optional(), terminal_growth_rate: z.number().finite().optional(),
   revenue_growth_rate: z.number().finite().gt(-1).optional(), ebit_margin: z.number().finite().optional(),
   share_count_change: z.number().finite().gt(-1).optional(),
+  exit_multiple: z.number().finite().positive().optional(),
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
