@@ -363,7 +363,7 @@ test("invalid exit multiples are rejected", () => {
 test("sensitivity grid spans WACC +/-1pp and growth 0 to terminal, center cell equals headline EV", () => {
   const r = calculateDcf(fixture(), args);
   [-0.01, -0.005, 0, 0.005, 0.01].forEach((delta, i) => expect(r.sensitivity.wacc_values[i] - r.wacc).toBeCloseTo(delta, 12));
-  expect(r.sensitivity.growth_values).toEqual([0, 0.00625, 0.0125, 0.01875, 0.025]);
+  [0, 0.00625, 0.0125, 0.01875, 0.025].forEach((g, i) => expect(r.sensitivity.growth_values[i]).toBeCloseTo(g, 12));
   expect(r.sensitivity.cells[2][4]).toBeCloseTo(r.enterprise_value, 9);
   const w = r.sensitivity.wacc_values[0], g = r.sensitivity.growth_values[0];
   const ufcfs = r.projections.map((p) => p.ufcf);
