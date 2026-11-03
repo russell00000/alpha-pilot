@@ -1,4 +1,5 @@
 # Vantage DCF Phase 1
+- [ ] Fix period-first tag selection for every FIELD_TAGS field and history; add cash/pretax fallbacks and complete field audits; run regression tests, 10-ticker batch and AAPL peer validation. Leave Rivian's negative-cash model unchanged.
 - [x] Add optional 2–5 peer ticker input, audited EV/EBITDA median default, explicit dropped-peer reasons and fallback labels; 118 tests pass, deployed and signed-in AAPL flow verified.
 - [ ] Obtain a real AAPL MSFT/GOOGL peer-median valuation — existing extraction returns missing/out-of-period D&A for MSFT and EBIT/D&A/debt/cash/shares for GOOGL; UI run also encountered unavailable GOOGL quote. Both peers explicitly dropped; no fabricated median. Fallback verified at 35.4487×, exit price $264.66, TV 78.05%, g* 7.0323% (2026-11-03).
 - [x] Normalize effective tax rates below 0% or above 40% to 21% with visible reason in warnings and Sources; negative-benefit, high-rate and exact-boundary tests passed (103 total). Deployed and reran the batch after the tax fix.
