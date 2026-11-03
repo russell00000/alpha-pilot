@@ -62,6 +62,43 @@ export function historicalAssumptions(data: DcfData) {
     ebit_margin: rows.reduce((sum, row) => sum + row.income / row.revenue, 0) / 4,
     share_count_change: shareCountChange(data) };
 }
+// Titman & Martin Ch. 9 dual terminal-value cross-checks. All pure.
+export function impliedGrowthRate(tvExit: number, wacc: number, ufcf: number) {
+  if (![tvExit, wacc, ufcf].every(Number.isFinite) || tvExit + ufcf === 0) throw new DcfInputError("Invalid implied growth cross-check inputs.");
+  return (tvExit * wacc - ufcf) / (tvExit + ufcf);
+}
+export function gordonEnterpriseValue(ufcfs: number[], wacc: number, growth: number) {
+  if (!ufcfs.length || !Number.isFinite(wacc) || wacc <= 0 || !Number.isFinite(growth)) throw new DcfInputError("Invalid Gordon enterprise value inputs.");
+  if (growth >= wacc) return null;
+  const last = ufcfs[ufcfs.length - 1] as number;
+  const terminal_value = last * (1 + growth) / (wacc - growth);
+  const discounted_terminal_value = terminal_value / (1 + wacc) ** ufcfs.length;
+  return { terminal_value, discounted_terminal_value,
+    enterprise_value: ufcfs.reduce((sum, ufcf, i) => sum + ufcf / (1 + wacc) ** (i + 1), 0) + discounted_terminal_value };
+}
+// Solve for the terminal growth rate at which the Gordon enterprise value
+// equals the market's implied enterprise value. EV(g) is strictly increasing
+// in g on (-1, wacc), so bisection converges; null when no in-range solution.
+export function breakevenTerminalGrowth(ufcfs: number[], wacc: number, targetEnterpriseValue: number): number | null {
+  if (!Number.isFinite(targetEnterpriseValue) || targetEnterpriseValue <= 0) return null;
+  const evAt = (g: number) => gordonEnterpriseValue(ufcfs, wacc, g)?.enterprise_value ?? NaN;
+  let lo = -0.95, hi = wacc - 1e-9;
+  if (evAt(lo) > targetEnterpriseValue || evAt(hi) < targetEnterpriseValue) return null;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (evAt(mid) < targetEnterpriseValue) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+// WACC x terminal-growth enterprise-value grid: five WACCs spanning +/-1pp in
+// 0.5pp steps around the computed WACC, five growth rates from 0% to the
+// computed terminal assumption. Cells with growth >= WACC are null.
+export function sensitivityGrid(ufcfs: number[], wacc: number, terminalGrowth: number) {
+  const wacc_values = [-0.01, -0.005, 0, 0.005, 0.01].map((delta) => wacc + delta).filter((value) => value > 0);
+  const growth_values = [0, 0.25, 0.5, 0.75, 1].map((fraction) => terminalGrowth * fraction);
+  return { wacc_values, growth_values,
+    cells: wacc_values.map((w) => growth_values.map((g) => gordonEnterpriseValue(ufcfs, w, g)?.enterprise_value ?? null)) };
+}
 export function marketComparison(impliedPrice: number, marketPrice: number) {
   if (![impliedPrice, marketPrice].every(Number.isFinite) || marketPrice <= 0) throw new DcfInputError("Invalid market comparison prices.");
   return { difference_pct: (impliedPrice / marketPrice - 1) * 100,
