@@ -235,7 +235,7 @@ export function extractFinancials(raw: CompanyFacts) {
     selection_rule: "10-K / 10-K/A only; newest annual period across all candidate tags first, then fallback tag order within that period, then latest filing. History selects independently per fiscal period across tags. Components share the same period and filing; opening balances match revenue's filing. Never use stale complete pairs over newer debt data.",
     fields: fieldAudits,
     ...fieldAudits,
-    total_debt: { selected: financials.total_debt, tags: auditTags(debtTags) },
+    total_debt: { selected: financials.total_debt, tags: auditTags([...debtTags, "ShortTermBorrowings", "LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths"]) },
     ppe: { selected: linked_financials.ppe, tags: auditTags([...LINKED_TAGS.ppe, grossTag, ...depreciationTags]) },
     current_financing: { selected: linked_financials.current_financing, tags: auditTags([...currentTags, "DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings", "CommercialPaper"]) },
     noncurrent_financing: { selected: linked_financials.noncurrent_financing, tags: auditTags([...noncurrentTags, "DebtNoncurrent", "LongTermDebtNoncurrent"]) },
