@@ -159,6 +159,17 @@ describe("SEC financial extraction contract", () => {
 });
 describe("period-first tag switches", () => {
   const year = (val: number, fy: number) => annual(val, { fy, start: `${fy}-01-01`, end: `${fy}-12-31`, accn: `${fy}-filing`, filed: `${fy + 1}-02-05` });
+  test("Microsoft D&A sums reported same-filing depreciation and intangible amortization, not lease amortization", () => {
+    const result = extractFinancials(facts({ Revenues: [year(100e9, 2026)], Depreciation: [year(34300000000, 2026)], AmortizationOfIntangibleAssets: [year(4700000000, 2026)], FinanceLeaseRightOfUseAssetAmortization: [year(5403000000, 2026)] }));
+    expect(result.financials.depreciation_amortization).toMatchObject({ value: 39000000000, tag: "Depreciation + AmortizationOfIntangibleAssets", fiscal_year: 2026 });
+    expect(result.missing_fields).not.toContain("depreciation_amortization");
+    expect(result.extraction_audit.fields.depreciation_amortization.tags.slice(-2).every(tag => tag.selected !== null)).toBe(true);
+  });
+  test("separate D&A components must match filing and duration", () => {
+    const result = extractFinancials(facts({ Depreciation: [year(34e9, 2026)], AmortizationOfIntangibleAssets: [{ ...year(4e9, 2026), accn: "other-filing" }] }));
+    expect(result.financials.depreciation_amortization).toBeNull();
+    expect(result.missing_fields).toContain("depreciation_amortization");
+  });
   test("GOOGL FY2025 Revenues anchors 402.836B instead of abandoned FY2024 contract tag", () => {
     const raw = facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [year(350000000000, 2024), year(300000000000, 2023)], Revenues: [year(402836000000, 2025), year(999, 2024), year(280000000000, 2022)], OperatingIncomeLoss: [year(100000000000, 2025)] });
     const result = extractFinancials(raw);
