@@ -259,12 +259,46 @@ export function calculateDcf(data: DcfData, assumptions: {
   if (!finalYear) throw new DcfInputError("Year ten projection is missing.");
   const terminal_value = finalYear.ufcf * (1 + terminal_growth_rate) / (wacc - terminal_growth_rate);
   const discounted_terminal_value = terminal_value / (1 + wacc) ** 10;
-  const enterprise_value = projections.reduce((sum, row) => sum + row.discounted_ufcf, 0) + discounted_terminal_value;
+  const discounted_ufcf_sum = projections.reduce((sum, row) => sum + row.discounted_ufcf, 0);
+  const enterprise_value = discounted_ufcf_sum + discounted_terminal_value;
   const equity_value = enterprise_value - debt + value("cash");
   const implied_share_price = equity_value / shares;
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
+  // Exit-multiple terminal value (Titman & Martin Ch. 9): the default multiple
+  // is the company's own trailing EV/EBITDA — a placeholder pending a real
+  // peer-comp multiple, and labeled as such wherever it is used.
+  const base_ebitda = base_ebit + value("depreciation_amortization");
+  const market_enterprise_value = market_cap + debt - value("cash");
+  const exit_multiple_default = base_ebitda > 0 ? market_enterprise_value / base_ebitda : null;
+  if (assumptions.exit_multiple !== undefined && (!Number.isFinite(assumptions.exit_multiple) || assumptions.exit_multiple <= 0)) throw new DcfInputError("Exit multiple must be a positive number.");
+  const exit_multiple = assumptions.exit_multiple ?? exit_multiple_default;
+  const exit_multiple_source = assumptions.exit_multiple !== undefined ? "user_input"
+    : exit_multiple_default !== null ? "placeholder_company_trailing_ev_ebitda" : "unavailable";
+  const ebitda_year_10 = finalYear.operating_income + finalYear.depreciation_amortization;
+  let terminal_exit: Record<string, number> | null = null;
+  let implied_growth_rate: number | null = null;
+  if (exit_multiple !== null && ebitda_year_10 > 0) {
+    const tv = exit_multiple * ebitda_year_10;
+    const dtv = tv / (1 + wacc) ** 10;
+    const ev = discounted_ufcf_sum + dtv;
+    const eq = ev - debt + value("cash");
+    implied_growth_rate = impliedGrowthRate(tv, wacc, finalYear.ufcf);
+    if (implied_growth_rate > 0.04) warnings.push(`Implied growth cross-check: the exit multiple's terminal value would require ${(implied_growth_rate * 100).toFixed(2)}% perpetual growth — above the ~4% long-run nominal GDP rule of thumb, so the multiple may be pricing something this DCF does not justify.`);
+    terminal_exit = { terminal_value: tv, discounted_terminal_value: dtv, enterprise_value: ev, equity_value: eq, implied_share_price: eq / shares, terminal_pct_of_ev: dtv / ev };
+  } else {
+    warnings.push("Exit-multiple cross-check unavailable — base-year or year-ten EBITDA is not positive, so no trailing EV/EBITDA placeholder could be computed.");
+  }
+  const implied_multiple = ebitda_year_10 > 0 ? terminal_value / ebitda_year_10 : null;
+  const breakeven_growth_rate = breakevenTerminalGrowth(projections.map((row) => row.ufcf), wacc, market_enterprise_value);
   return { wacc, enterprise_value, equity_value, implied_share_price, ...marketComparison(implied_share_price, current_price),
     current_price, fiscal_year: latest.fiscal_year, share_count_basis: data.financials.diluted_shares, projections, terminal_value, discounted_terminal_value, warnings,
+    terminal: {
+      gordon: { terminal_value, discounted_terminal_value, terminal_pct_of_ev: discounted_terminal_value / enterprise_value, implied_multiple },
+      exit_multiple: terminal_exit && { ...terminal_exit, exit_multiple, exit_multiple_source, ebitda_year_10 },
+      cross_checks: { implied_growth_rate, implied_multiple },
+      breakeven_growth_rate, market_enterprise_value,
+    },
+    sensitivity: sensitivityGrid(projections.map((row) => row.ufcf), wacc, terminal_growth_rate),
     model_notes: ["Dividends are not modeled; future addition.", "Near-term revenue growth fades linearly to the terminal growth rate by year ten.", "Projected diluted shares roll forward from the latest audited annual weighted-average diluted shares; these forecasts are not point-in-time shares outstanding. Buyback and issuance cash flows are not modeled. Implied price and WACC use the audited base-year weighted-average diluted shares, not year-one or terminal projected shares.", "Debt, other assets and other liabilities are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax uses the audited effective rate, or the normalized 21% statutory rate when the base year is a loss."],
     opening_balance_check: balanceCheck(opening_assets, opening_liabilities, opening_equity, 0),
     assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, revenue_growth_rate, ebit_margin, share_count_change, cost_of_debt, cost_of_debt_estimated, tax_rate_normalized,
