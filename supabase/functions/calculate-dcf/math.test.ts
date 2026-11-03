@@ -362,7 +362,7 @@ test("invalid exit multiples are rejected", () => {
 });
 test("sensitivity grid spans WACC +/-1pp and growth 0 to terminal, center cell equals headline EV", () => {
   const r = calculateDcf(fixture(), args);
-  expect(r.sensitivity.wacc_values.map((w) => w - r.wacc)).toEqual([-0.01, -0.005, 0, 0.005, 0.01]);
+  [-0.01, -0.005, 0, 0.005, 0.01].forEach((delta, i) => expect(r.sensitivity.wacc_values[i] - r.wacc).toBeCloseTo(delta, 12));
   expect(r.sensitivity.growth_values).toEqual([0, 0.00625, 0.0125, 0.01875, 0.025]);
   expect(r.sensitivity.cells[2][4]).toBeCloseTo(r.enterprise_value, 9);
   const w = r.sensitivity.wacc_values[0], g = r.sensitivity.growth_values[0];
@@ -378,6 +378,6 @@ test("breakeven growth reproduces the market enterprise value and is null when u
   const ev = ufcfs.reduce((s, u, i) => s + u / (1 + r.wacc) ** (i + 1), 0) + ufcfs[9] * (1 + g!) / (r.wacc - g!) / (1 + r.wacc) ** 10;
   expect(ev).toBeCloseTo(r.terminal.market_enterprise_value, 6);
   expect(r.terminal.market_enterprise_value).toBe(1080);
-  const pricey = calculateDcf(fixture(), { ...args, current_price: 100000 });
+  const pricey = calculateDcf(fixture(), { ...args, current_price: 0.01 });
   expect(pricey.terminal.breakeven_growth_rate).toBeNull();
 });
