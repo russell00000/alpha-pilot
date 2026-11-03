@@ -1,4 +1,5 @@
 # Vantage DCF Phase 1
+- [ ] Add optional 2–5 peer ticker input, audited EV/EBITDA median default, explicit dropped-peer reasons and fallback labels; test and verify AAPL with MSFT/GOOGL live.
 - [x] Normalize effective tax rates below 0% or above 40% to 21% with visible reason in warnings and Sources; negative-benefit, high-rate and exact-boundary tests passed (103 total). Deployed and reran the batch after the tax fix.
 - [x] Add and run reusable authenticated scripts/dcf-batch.ts with beta 1.0 and existing defaults; post-tax-fix run 2026-11-02T20:31:18.937Z–20:31:54.833Z: AAPL $123.34 vs $338.78 (-63.59%), COST $271.26 vs $1,040.85 (-73.94%). Other eight return clear 422 audited-input/projection failures, not fabricated numbers; full table reported in chat.
 - [x] Hard-block financial institutions / REITs (SIC 6000–6799) before rate/quote lookup and in pure math; boundary tests pass. Live JPM SIC 6021 and O SIC 6798 both returned exact unsupported-message 422 with no valuation. None of the requested ten has an unsupported SIC.
