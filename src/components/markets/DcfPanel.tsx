@@ -190,6 +190,64 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
           <p className="mt-2 text-sm text-muted-foreground">The implied share price of {money(result.implied_share_price)} is {Math.abs(result.difference_pct).toFixed(2)}% {result.difference_pct < 0 ? "below" : "above"} the current market price of {money(result.current_price)}. This valuation is highly sensitive to growth, margins and discount-rate assumptions.</p>
         </div>}
         {result.warnings.length > 0 && <div className="mt-3 space-y-2">{result.warnings.map((warning) => <div key={warning} role="alert" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-foreground">{warning}</div>)}</div>}
+        <h3 className="mt-5 text-sm font-medium text-foreground">Terminal Value — Gordon Growth vs Exit Multiple</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>{["Method", "Terminal value", "Discounted TV", "Enterprise value", "Implied share price", "TV % of EV"].map((heading) => <th key={heading} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
+            <tbody>
+              <tr>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2">Gordon Growth (headline)</td>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.terminal.gordon.terminal_value)}</td>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.terminal.gordon.discounted_terminal_value)}</td>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.enterprise_value)}</td>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{money(result.implied_share_price)}</td>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{(result.terminal.gordon.terminal_pct_of_ev * 100).toFixed(1)}%</td>
+              </tr>
+              <tr>
+                <td className="whitespace-nowrap border-b border-border px-3 py-2">Exit Multiple{result.terminal.exit_multiple ? ` (${result.terminal.exit_multiple.exit_multiple.toFixed(2)}× EBITDA)` : ""}</td>
+                {result.terminal.exit_multiple ? <>
+                  <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.terminal.exit_multiple.terminal_value)}</td>
+                  <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.terminal.exit_multiple.discounted_terminal_value)}</td>
+                  <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{largeMoney(result.terminal.exit_multiple.enterprise_value)}</td>
+                  <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{money(result.terminal.exit_multiple.implied_share_price)}</td>
+                  <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{(result.terminal.exit_multiple.terminal_pct_of_ev * 100).toFixed(1)}%</td>
+                </> : <td colSpan={5} className="border-b border-border px-3 py-2 text-muted-foreground">Unavailable — EBITDA not positive</td>}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {result.terminal.exit_multiple?.exit_multiple_source === "placeholder_company_trailing_ev_ebitda" && <p className="mt-2 text-xs text-muted-foreground">Exit multiple is a placeholder: the company's own trailing EV/EBITDA, pending a real peer-comp multiple.</p>}
+        <h3 className="mt-5 text-sm font-medium text-foreground">Cross-Checks</h3>
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Implied growth rate (g*)</p>
+            <p className="mt-2 font-mono text-xl text-foreground">{result.terminal.cross_checks.implied_growth_rate === null ? "—" : pct(result.terminal.cross_checks.implied_growth_rate)}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Perpetual growth the Gordon model would need to match the exit multiple's terminal value</p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Implied exit multiple</p>
+            <p className="mt-2 font-mono text-xl text-foreground">{result.terminal.cross_checks.implied_multiple === null ? "—" : `${result.terminal.cross_checks.implied_multiple.toFixed(2)}×`}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">EV/EBITDA the Gordon terminal value implies at year 10</p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Breakeven terminal growth</p>
+            <p className="mt-2 font-mono text-xl text-foreground">{result.terminal.breakeven_growth_rate === null ? "—" : pct(result.terminal.breakeven_growth_rate)}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{result.terminal.breakeven_growth_rate === null ? `No terminal growth rate below WACC reproduces the market's implied enterprise value of ${largeMoney(result.terminal.market_enterprise_value)}` : `The market is pricing ${(result.terminal.breakeven_growth_rate * 100).toFixed(2)}% perpetual growth at our WACC of ${(result.wacc * 100).toFixed(2)}%`}</p>
+          </div>
+        </div>
+        <h3 className="mt-5 text-sm font-medium text-foreground">Sensitivity — Enterprise Value by WACC × Terminal Growth</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>
+              <th className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">WACC \ g</th>
+              {result.sensitivity.growth_values.map((g) => <th key={g} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{(g * 100).toFixed(2)}%</th>)}
+            </tr></thead>
+            <tbody>{result.sensitivity.wacc_values.map((w, i) => <tr key={w}>
+              <td className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{(w * 100).toFixed(2)}%</td>
+              {result.sensitivity.cells[i]?.map((cell, j) => <td key={j} className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{cell === null ? "—" : largeMoney(cell)}</td>)}
+            </tr>)}</tbody>
+          </table>
+        </div>
         <h3 className="mt-5 text-sm font-medium text-foreground">Assumptions &amp; Sources</h3>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-left text-xs">
