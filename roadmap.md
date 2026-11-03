@@ -36,3 +36,8 @@
 - [x] Extend same-filing audited opening balances for PP&E, retained earnings, assets/liabilities/equity, COGS and current financing; exclude cash/current financing from operating days schedules.
 - [x] Implement ten-year roll-forwards, days schedules, net income/cash flow links and annual balance checks — 62 tests passed; no balancing plugs.
 - [x] Display annual balance checks and omitted distributions; signed-in AAPL live result $98.61, all FY2026–2035 checks $0.00, no page errors. Identical prior inputs: five-year static $94.69958, ten-year static $92.62991, ten-year linked $98.61246; linkage-only +$5.98256, net vs prior +$3.91288. Flat debt yields constant $5.3862732B interest, which now feeds net income/cash flow but is added back after tax for unlevered DCF.
+# Dual terminal-value methodology (Titman & Martin Ch. 9)
+- [x] Exit-multiple TV (multiple x year-10 EBITDA) with optional user override; default is the company's own trailing EV/EBITDA, labeled placeholder pending peer comps.
+- [x] Cross-checks: implied growth g* = (TV_exit x WACC - UFCF10) / (TV_exit + UFCF10), implied multiple = TV_gordon / EBITDA10, visible warning when g* > 4%.
+- [x] Terminal value as % of EV for both methods; 5x5 WACC (+/-1pp) x growth (0 to terminal) EV sensitivity grid; breakeven terminal growth vs market-implied EV via bisection.
+- [x] 109 tests passed; deployed calculate-dcf; live AAPL verified in signed-in UI (g* 7.47% warning, breakeven 8.14%, grid center = headline EV).
