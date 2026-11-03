@@ -136,6 +136,21 @@ export function extractFinancials(raw: CompanyFacts) {
     diluted_shares: historyFor("diluted_shares", 4),
   };
   const latestRevenue = history.revenue[0];
+  // Microsoft discloses depreciation and intangible amortization separately.
+  // Sum only an audited same-duration/same-filing pair; never use depreciation
+  // alone as D&A or add finance-lease amortization again.
+  const daComponentTags = ["Depreciation", "AmortizationOfIntangibleAssets"];
+  const daEnd = [...FIELD_TAGS.depreciation_amortization, ...daComponentTags].flatMap(tag => annualRows(tag, "USD", false)).sort(newest)[0]?.end;
+  if (!financials.depreciation_amortization || financials.depreciation_amortization.period.end !== daEnd) {
+    const depreciation = annualRows(daComponentTags[0], "USD", false).find(row => row.end === daEnd);
+    const amortization = depreciation && annualRows(daComponentTags[1], "USD", false).find(row => row.end === depreciation.end && row.start === depreciation.start && Boolean(row.accn) && row.accn === depreciation.accn);
+    if (depreciation && amortization) {
+      financials.depreciation_amortization = { ...provenance(depreciation, daComponentTags.join(" + ")), value: depreciation.val + amortization.val,
+        components: [provenance(depreciation, daComponentTags[0]), provenance(amortization, daComponentTags[1])] };
+      const index = missing_fields.indexOf("depreciation_amortization");
+      if (index >= 0) missing_fields.splice(index, 1);
+    }
+  }
   // Unlike other fields, each interest fallback must have a valid latest-year
   // annual value, not merely an existing concept or an older observation.
   financials.interest_expense = null;
@@ -144,7 +159,7 @@ export function extractFinancials(raw: CompanyFacts) {
       .sort(newest);
     const selected = rows.find((row) => {
       const item = provenance(row, tag);
-      return !latestRevenue || (item.fiscal_year === latestRevenue.fiscal_year && item.period.end === latestRevenue.period.end && item.period.start === latestRevenue.period.start);
+      return !latestRevenue ? item.period.end === periodSelections(FIELD_TAGS.interest_expense, "USD", false)[0]?.period.end : (item.fiscal_year === latestRevenue.fiscal_year && item.period.end === latestRevenue.period.end && item.period.start === latestRevenue.period.start);
     });
     if (selected) { financials.interest_expense = provenance(selected, tag); break; }
   }
@@ -203,11 +218,13 @@ export function extractFinancials(raw: CompanyFacts) {
   const fieldAudits = Object.fromEntries(Object.entries(FIELD_TAGS).map(([field, tags]) => {
     const unit = field === "diluted_shares" ? "shares" : "USD";
     const selected = financials[field];
-    const latestEnd = periodSelections(tags, unit, field === "cash")[0]?.period.end;
-    return [field, { selected, tags: tags.map(tag => {
+    const attempted = field === "depreciation_amortization" ? [...tags, ...daComponentTags] : [...tags];
+    const latestEnd = periodSelections(attempted, unit, field === "cash")[0]?.period.end;
+    return [field, { selected, tags: attempted.map(tag => {
       const rows = gaap[tag]?.units[unit] ?? [];
       const annual = annualRows(tag, unit, field === "cash");
-      const chosen = selected?.tag === tag ? selected : null;
+      const component = field === "depreciation_amortization" && selected?.tag === daComponentTags.join(" + ") && daComponentTags.includes(tag) ? annual.find(row => row.end === selected.period.end && row.accn === selected.accession_number && row.start === selected.period.start) : undefined;
+      const chosen = selected?.tag === tag ? selected : component ? provenance(component, tag, unit) : null;
       const rejection_reason = chosen ? null : !gaap[tag] ? "Tag not reported" : !annual.length ? `No valid annual ${unit} observations` : annual[0].end !== latestEnd ? `Stale tag: latest annual end ${annual[0].end}, newest candidate period ${latestEnd}` : field === "interest_expense" && !selected ? "No observation aligned to the latest revenue period" : "Lower-priority fallback in the same newest annual period";
       return { tag, exists: gaap[tag] !== undefined, latest_annual_end: annual[0]?.end ?? null, rejection_reason,
         selected: chosen, status: chosen ? "Annual value selected" : rejection_reason ?? "Not selected", raw_end_dates: rows.map(row => row.end), annual_candidates: annual.map(row => provenance(row, tag, unit)) };
