@@ -6,6 +6,21 @@ const fixture = (): DcfData => ({ financials: {
   depreciation_amortization: item(10), capex: item(15), cash: item(20, 2025, true), total_debt: item(100, 2025, true), diluted_shares: item(10), income_tax_expense: item(5), pretax_income: item(20), interest_expense: item(4),
 }, linked_financials: { cogs: item(80), ppe: item(50, 2025, true), total_assets: item(200, 2025, true), total_liabilities: item(130, 2025, true), total_equity: item(70, 2025, true), retained_earnings: item(30, 2025, true), current_assets: item(60, 2025, true), current_liabilities: item(30, 2025, true), current_financing: item(10, 2025, true) }, history: { revenue: [item(133.1), item(121, 2024), item(110, 2023), item(100, 2022)], operating_income: [item(26.62), item(24.2, 2024), item(22, 2023), item(20, 2022)], current_assets: [item(60, 2025, true), item(50, 2024, true)], current_liabilities: [item(30, 2025, true), item(25, 2024, true)], diluted_shares: [item(10), item(10, 2024), item(10, 2023), item(10, 2022)] } });
 const args = { beta: 1, risk_free_rate: 0.04, current_price: 100 };
+test("peer median replaces own-company default without changing Gordon; explicit override still wins", () => {
+  const own = calculateDcf(fixture(), args);
+  const peer = calculateDcf(fixture(), { ...args, peer_exit_multiple: 12 });
+  expect(peer.assumptions.exit_multiple).toBe(12);
+  expect(peer.assumptions.exit_multiple_source).toBe("peer_median_ev_ebitda");
+  expect(peer.enterprise_value).toBe(own.enterprise_value);
+  expect(peer.terminal.exit_multiple?.terminal_value).toBe(12 * (peer.projections[9].operating_income + peer.projections[9].depreciation_amortization));
+  const override = calculateDcf(fixture(), { ...args, peer_exit_multiple: 12, exit_multiple: 9 });
+  expect(override.assumptions.exit_multiple).toBe(9); expect(override.assumptions.exit_multiple_source).toBe("user_input");
+});
+test("insufficient peers preserve an explicitly warned own-company fallback", () => {
+  const result = calculateDcf(fixture(), { ...args, peer_exit_multiple: null });
+  expect(result.assumptions.exit_multiple_source).toBe("placeholder_company_trailing_ev_ebitda");
+  expect(result.warnings.some((warning) => warning.includes("fallback placeholder"))).toBe(true);
+});
 test("Apple share forecasts begin at 15.004697B; 14.59B is year one, never the valuation denominator", () => {
   const data = fixture();
   data.financials.diluted_shares = item(15004697000);
