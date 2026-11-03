@@ -114,6 +114,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   beta: number; risk_free_rate: number; current_price: number;
   equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
   revenue_growth_rate?: number; ebit_margin?: number; share_count_change?: number;
+  exit_multiple?: number;
 }) {
   assertStandardDcfSupported(data.company_profile?.sic);
   const { beta, risk_free_rate, current_price } = assumptions;
