@@ -115,6 +115,7 @@ export function calculateDcf(data: DcfData, assumptions: {
   equity_risk_premium?: number; terminal_growth_rate?: number; cost_of_debt?: number;
   revenue_growth_rate?: number; ebit_margin?: number; share_count_change?: number;
   exit_multiple?: number;
+  peer_exit_multiple?: number | null;
 }) {
   assertStandardDcfSupported(data.company_profile?.sic);
   const { beta, risk_free_rate, current_price } = assumptions;
@@ -264,16 +265,19 @@ export function calculateDcf(data: DcfData, assumptions: {
   const equity_value = enterprise_value - debt + value("cash");
   const implied_share_price = equity_value / shares;
   if (![enterprise_value, equity_value, implied_share_price].every(Number.isFinite)) throw new DcfInputError("DCF produced nonfinite results.");
-  // Exit-multiple terminal value (Titman & Martin Ch. 9): the default multiple
-  // is the company's own trailing EV/EBITDA — a placeholder pending a real
-  // peer-comp multiple, and labeled as such wherever it is used.
+  // A resolved audited peer median replaces the circular company multiple.
+  // The own-company trailing multiple is only an explicit fallback.
   const base_ebitda = base_ebit + value("depreciation_amortization");
   const market_enterprise_value = market_cap + debt - value("cash");
   const exit_multiple_default = base_ebitda > 0 ? market_enterprise_value / base_ebitda : null;
   if (assumptions.exit_multiple !== undefined && (!Number.isFinite(assumptions.exit_multiple) || assumptions.exit_multiple <= 0)) throw new DcfInputError("Exit multiple must be a positive number.");
-  const exit_multiple = assumptions.exit_multiple ?? exit_multiple_default;
+  const peerDefault = assumptions.peer_exit_multiple;
+  if (peerDefault != null && (!Number.isFinite(peerDefault) || peerDefault <= 0)) throw new DcfInputError("Peer exit multiple must be positive.");
+  const exit_multiple = assumptions.exit_multiple ?? peerDefault ?? exit_multiple_default;
   const exit_multiple_source = assumptions.exit_multiple !== undefined ? "user_input"
+    : peerDefault != null ? "peer_median_ev_ebitda"
     : exit_multiple_default !== null ? "placeholder_company_trailing_ev_ebitda" : "unavailable";
+  if (exit_multiple_source === "placeholder_company_trailing_ev_ebitda") warnings.push("Exit multiple fallback placeholder — fewer than two resolved peers; using the company's own trailing EV/EBITDA, not a real peer comp.");
   const ebitda_year_10 = finalYear.operating_income + finalYear.depreciation_amortization;
   let terminal_exit: Record<string, number> | null = null;
   let implied_growth_rate: number | null = null;
@@ -299,7 +303,7 @@ export function calculateDcf(data: DcfData, assumptions: {
       breakeven_growth_rate, market_enterprise_value,
     },
     sensitivity: sensitivityGrid(projections.map((row) => row.ufcf), wacc, terminal_growth_rate),
-    model_notes: ["Dividends are not modeled; future addition.", "Near-term revenue growth fades linearly to the terminal growth rate by year ten.", "Projected diluted shares roll forward from the latest audited annual weighted-average diluted shares; these forecasts are not point-in-time shares outstanding. Buyback and issuance cash flows are not modeled. Implied price and WACC use the audited base-year weighted-average diluted shares, not year-one or terminal projected shares.", "Debt, other assets and other liabilities are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax uses the audited effective rate, or the normalized 21% statutory rate when the base year is a loss.", "Exit-multiple terminal value is a cross-check only; the headline valuation remains Gordon Growth. The default exit multiple is the company's own trailing EV/EBITDA — a placeholder pending a real peer-comp multiple."],
+    model_notes: ["Dividends are not modeled; future addition.", "Near-term revenue growth fades linearly to the terminal growth rate by year ten.", "Projected diluted shares roll forward from the latest audited annual weighted-average diluted shares; these forecasts are not point-in-time shares outstanding. Buyback and issuance cash flows are not modeled. Implied price and WACC use the audited base-year weighted-average diluted shares, not year-one or terminal projected shares.", "Debt, other assets and other liabilities are carried flat; no financing or balancing plugs.", "Operating current assets exclude cash; operating current liabilities exclude disclosed current financing. Aggregate days are not receivables-specific DSO.", "COGS/revenue, depreciation/revenue and capex/revenue use latest audited ratios; tax normalization is disclosed in warnings.", "Exit-multiple terminal value is a cross-check only; the headline valuation remains Gordon Growth. Default: median audited peer EV/EBITDA with at least two resolved peers; otherwise explicitly labeled own-company fallback placeholder."],
     opening_balance_check: balanceCheck(opening_assets, opening_liabilities, opening_equity, 0),
     assumptions: { beta, risk_free_rate, equity_risk_premium, terminal_growth_rate, revenue_growth_rate, ebit_margin, share_count_change, cost_of_debt, cost_of_debt_estimated, tax_rate_normalized,
       cost_of_debt_source: cost_of_debt_estimated ? "user_estimate" : "SEC interest expense / total debt",

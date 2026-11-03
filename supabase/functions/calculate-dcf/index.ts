@@ -4,6 +4,7 @@ import { z } from "npm:zod@3";
 import { assertStandardDcfSupported, calculateDcf, companyTypeWarnings, debtCostInput, historicalAssumptions, DcfInputError, type DcfData } from "./math.ts";
 import { createTreasuryLoader } from "./treasury-cache.ts";
 import { boundedFetch, DataTimeoutError, TEMPORARY_DATA_MESSAGE } from "../_shared/bounded-fetch.ts";
+import { resolvePeerComps, validatePeerTickers, type PeerQuote } from "./peers.ts";
 
 const Schema = z.object({
   ticker: z.string().trim().min(1).max(15).regex(/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/),
@@ -13,6 +14,7 @@ const Schema = z.object({
   revenue_growth_rate: z.number().finite().gt(-1).optional(), ebit_margin: z.number().finite().optional(),
   share_count_change: z.number().finite().gt(-1).optional(),
   exit_multiple: z.number().finite().positive().optional(),
+  peer_tickers: z.array(z.string().trim().min(1).max(15).regex(/^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$/)).min(2).max(5).optional(),
 }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status,
   headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -55,6 +57,7 @@ Deno.serve(async (req) => {
   let caughtCompanyType: unknown = null;
   let caughtTreasury: unknown = null;
   try {
+    const peerTickers = parsed.data.peer_tickers ? validatePeerTickers(ticker, parsed.data.peer_tickers) : [];
     const { data: financials, error: financialError } = await client.functions.invoke("get-company-financials", { body: { ticker } });
     if (financialError) {
       const context = (financialError as { context?: Response }).context;
@@ -107,9 +110,25 @@ Deno.serve(async (req) => {
     if (quoteResponse.data?.error) return reply({ error: quoteResponse.data.error, company_type }, 503);
     if (quoteResponse.error) return reply({ error: TEMPORARY_DATA_MESSAGE, company_type }, 503);
     if (!Number.isFinite(quote?.c) || quote.c <= 0) return reply({ error: "No live market price is available from the existing quote source." }, 503);
-    const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c });
-    return reply({ ticker, company_name: financials.company_name, ...result, treasury, cost_of_debt_input: costOfDebtInput, company_type,
-      warnings: [...company_type.warnings, ...result.warnings, ...(treasury.cache.stale ? ["Treasury refresh temporarily unavailable — using the last successful yield; see its observation and refresh dates."] : [])],
+    const peer_comps = await resolvePeerComps(peerTickers, async (peer) => {
+      const response = await client.functions.invoke("get-company-financials", { body: { ticker: peer } });
+      if (response.error) {
+        const context = (response.error as { context?: Response }).context;
+        const detail = context ? await context.json().catch(() => null) : null;
+        throw new Error(detail?.error ?? TEMPORARY_DATA_MESSAGE);
+      }
+      if (!response.data || response.data.error) throw new Error(response.data?.error ?? "Peer extraction unavailable.");
+      return response.data as DcfData;
+    }, async (peer) => {
+      const response = await client.functions.invoke("finnhub", { body: { action: "quotes", symbols: [peer] } });
+      if (response.error || response.data?.error) throw new Error(response.data?.error ?? TEMPORARY_DATA_MESSAGE);
+      const peerQuote = response.data?.data?.find((row: { symbol: string }) => row.symbol === peer);
+      if (!peerQuote) throw new Error("Current Finnhub market quote unavailable.");
+      return peerQuote as PeerQuote;
+    });
+    const result = calculateDcf(financials as DcfData, { ...parsed.data, beta, risk_free_rate: treasury.rate, current_price: quote.c, peer_exit_multiple: peer_comps.median });
+    return reply({ ticker, company_name: financials.company_name, ...result, peer_comps, treasury, cost_of_debt_input: costOfDebtInput, company_type,
+      warnings: [...company_type.warnings, ...result.warnings, ...peer_comps.dropped.map((peer) => `Peer ${peer.ticker} dropped: ${peer.reason}`), ...(treasury.cache.stale ? ["Treasury refresh temporarily unavailable — using the last successful yield; see its observation and refresh dates."] : [])],
       market_price_source: "Finnhub", market_price_as_of: quote.t ? new Date(quote.t * 1000).toISOString() : null,
       financial_inputs: { financials: financials.financials, history: financials.history, linked_financials: financials.linked_financials },
     });

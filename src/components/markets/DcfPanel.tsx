@@ -8,6 +8,7 @@ import DcfExtractionAudit, { type ExtractionAudit } from "./DcfExtractionAudit";
 
 interface CompanyType { sic: number | null; sic_description: string | null; warnings: string[] }
 interface Result {
+  peer_comps: { median: number | null; fallback_reason: string | null; resolved: { ticker: string; multiple: number; fiscal_year: number; current_price: number; market_cap: number; total_debt: number; cash: number; ebit: number; depreciation_amortization: number; market_price_as_of: string | null }[]; dropped: { ticker: string; reason: string }[] };
   share_count_basis: { value: number; fiscal_year: number; period: { start: string; end: string }; tag: string; accession_number: string; filed: string };
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
@@ -53,7 +54,7 @@ function assumptionRows(result: Result, preparation: Preparation | null): [strin
     ["Risk-free rate", pct(result.treasury.rate), `Treasury 10-year · observation ${result.treasury.date} · cache refreshed ${result.treasury.refreshed_at}${result.treasury.cache.stale ? " · Stale: refresh temporarily unavailable" : " · 24-hour cache"}`],
     ["Equity risk premium", "4.50%", "Default"],
     ["Terminal growth", "2.50%", "Default"],
-    ["Exit multiple (EV/EBITDA)", result.assumptions.exit_multiple === null ? "Unavailable" : `${result.assumptions.exit_multiple.toFixed(2)}×`, result.assumptions.exit_multiple_source === "user_input" ? "User input" : result.assumptions.exit_multiple_source === "placeholder_company_trailing_ev_ebitda" ? "Placeholder — company's own trailing EV/EBITDA (peer-comp multiple not built yet)" : "Unavailable — base EBITDA not positive"],
+    ["Exit multiple (EV/EBITDA)", result.assumptions.exit_multiple === null ? "Unavailable" : `${result.assumptions.exit_multiple.toFixed(2)}×`, result.assumptions.exit_multiple_source === "user_input" ? "User input" : result.assumptions.exit_multiple_source === "peer_median_ev_ebitda" ? `Audited peer median (${result.peer_comps.resolved.map(peer => peer.ticker).join(", ")})` : result.assumptions.exit_multiple_source === "placeholder_company_trailing_ev_ebitda" ? "Fallback placeholder — company's own trailing EV/EBITDA; fewer than two resolved peers" : "Unavailable — base EBITDA not positive"],
   ];
 }
 
@@ -69,9 +70,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
   const [margin, setMargin] = useState("");
   const [shareChange, setShareChange] = useState("");
   const [exitMultiple, setExitMultiple] = useState("");
+  const [peerTickers, setPeerTickers] = useState("");
   useEffect(() => {
     let active = true;
-    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta(""); setExitMultiple("");
+    setResult(null); setError(""); setPreparation(null); setCostOfDebt(""); setGrowth(""); setMargin(""); setShareChange(""); setBeta(""); setExitMultiple(""); setPeerTickers("");
     setPreparing(Boolean(ticker));
     if (!ticker) return;
     const timer = window.setTimeout(async () => {
@@ -106,7 +108,10 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
     setBusy(true); setError(""); setResult(null);
     try {
       if (!preparation?.historical_assumptions || !validProjectionInputs) throw new Error("Enter valid revenue growth, EBIT margin and share count assumptions.");
-      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { timeout: 15000, body: { ticker, beta: Number(beta),
+      const peers = peerTickers.trim() ? peerTickers.trim().toUpperCase().split(/[\s,]+/).map(peer => peer.replace(/\./g, "-")) : [];
+      if (peers.length && (peers.length < 2 || peers.length > 5 || new Set(peers).size !== peers.length || peers.includes(ticker.toUpperCase()) || peers.some(peer => !/^[A-Z0-9]+(?:[.-][A-Z0-9]+)*$/.test(peer)))) throw new Error("Enter 2–5 distinct peer tickers, excluding the target company.");
+      const { data, error: invokeError } = await supabase.functions.invoke("calculate-dcf", { timeout: peers.length ? 45000 : 15000, body: { ticker, beta: Number(beta),
+        ...(peers.length ? { peer_tickers: peers } : {}),
         revenue_growth_rate: projectionRate(growth, preparation.historical_assumptions.revenue_growth_rate),
         ebit_margin: projectionRate(margin, preparation.historical_assumptions.ebit_margin),
         share_count_change: projectionRate(shareChange, preparation.historical_assumptions.share_count_change),
@@ -149,7 +154,11 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
         <div className="w-36">
           <Label htmlFor="dcf-exit-multiple" className="text-xs text-muted-foreground">Exit Multiple (×)</Label>
           <Input id="dcf-exit-multiple" type="number" min="0" step="0.1" value={exitMultiple} onChange={(e) => { setExitMultiple(e.target.value); setResult(null); }} disabled={busy} placeholder="Auto" className="mt-1" />
-          <p className="mt-1 text-[10px] text-muted-foreground">Blank = trailing EV/EBITDA placeholder</p>
+          <p className="mt-1 text-[10px] text-muted-foreground">Default: peer median; own-company fallback</p>
+        </div>
+        <div className="w-56">
+          <Label htmlFor="dcf-peers" className="text-xs text-muted-foreground">Peer Tickers (optional, 2–5)</Label>
+          <Input id="dcf-peers" value={peerTickers} onChange={e => { setPeerTickers(e.target.value); setResult(null); }} disabled={busy} placeholder="MSFT, GOOGL" className="mt-1" />
         </div>
         {requiresDebtCost && <div className="w-40">
           <Label htmlFor="dcf-cost-of-debt" className="text-xs text-muted-foreground">Cost of Debt (%)</Label>
@@ -216,7 +225,16 @@ export default function DcfPanel({ ticker }: { ticker: string }) {
             </tbody>
           </table>
         </div>
-        {result.terminal.exit_multiple?.exit_multiple_source === "placeholder_company_trailing_ev_ebitda" && <p className="mt-2 text-xs text-muted-foreground">Exit multiple is a placeholder: the company's own trailing EV/EBITDA, pending a real peer-comp multiple.</p>}
+        {result.peer_comps && <>
+          <h3 className="mt-5 text-sm font-medium text-foreground">Peer EV/EBITDA — {result.peer_comps.median === null ? "Fallback placeholder" : `Median ${result.peer_comps.median.toFixed(2)}×`}</h3>
+          <div className="mt-2 overflow-x-auto"><table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground"><tr>{["Peer", "Annual period", "Price", "Market cap", "Debt", "Cash", "EBIT", "D&A", "EV/EBITDA"].map(label => <th key={label} className="whitespace-nowrap border-b border-border px-3 py-2 font-medium">{label}</th>)}</tr></thead>
+            <tbody>{result.peer_comps.resolved.map(peer => <tr key={peer.ticker}>{[peer.ticker, `FY${peer.fiscal_year}`, money(peer.current_price), largeMoney(peer.market_cap), largeMoney(peer.total_debt), largeMoney(peer.cash), largeMoney(peer.ebit), largeMoney(peer.depreciation_amortization), `${peer.multiple.toFixed(2)}×`].map((value, i) => <td key={i} className="whitespace-nowrap border-b border-border px-3 py-2 font-mono">{value}</td>)}</tr>)}</tbody>
+          </table></div>
+          {result.peer_comps.resolved.map(peer => <p key={peer.ticker} className="mt-1 text-xs text-muted-foreground">{peer.ticker} · Finnhub quote {peer.market_price_as_of ?? "timestamp unavailable"} · market cap uses audited annual weighted-average diluted shares</p>)}
+          {result.peer_comps.fallback_reason && <p className="mt-2 text-xs text-muted-foreground">{result.peer_comps.fallback_reason}</p>}
+          {result.peer_comps.dropped.map(peer => <p key={peer.ticker} role="alert" className="mt-2 text-xs text-destructive">{peer.ticker} dropped: {peer.reason}</p>)}
+        </>}
         <h3 className="mt-5 text-sm font-medium text-foreground">Cross-Checks</h3>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-md border border-border bg-card p-4">
