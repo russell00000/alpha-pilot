@@ -324,4 +324,60 @@ test("price deviation warning applies strictly above 40 percent in either direct
   expect(marketComparison(59.99, 100).deviation_warning).toBe(true);
   expect(marketComparison(100, 100).deviation_warning).toBe(false);
   expect(marketComparison(90, 100).difference_pct).toBeCloseTo(-10, 12);
+});test("exit-multiple terminal value uses default trailing EV/EBITDA with exact cross-check formulas", () => {
+  const r = calculateDcf(fixture(), args);
+  const finalYear = r.projections[9];
+  const baseEbitda = 26.62 + 10;
+  const marketEv = 1000 + 100 - 20;
+  expect(r.assumptions.exit_multiple).toBeCloseTo(marketEv / baseEbitda, 12);
+  expect(r.assumptions.exit_multiple_source).toBe("placeholder_company_trailing_ev_ebitda");
+  const exit = r.terminal.exit_multiple;
+  expect(exit).not.toBeNull();
+  const ebitda10 = finalYear.operating_income + finalYear.depreciation_amortization;
+  expect(exit!.ebitda_year_10).toBeCloseTo(ebitda10, 9);
+  expect(exit!.terminal_value).toBeCloseTo(r.assumptions.exit_multiple! * ebitda10, 9);
+  expect(exit!.discounted_terminal_value).toBeCloseTo(exit!.terminal_value / (1 + r.wacc) ** 10, 9);
+  expect(exit!.enterprise_value).toBeCloseTo(r.projections.reduce((s, p) => s + p.discounted_ufcf, 0) + exit!.discounted_terminal_value, 9);
+  expect(exit!.implied_share_price).toBeCloseTo((exit!.enterprise_value - 100 + 20) / 10, 9);
+  expect(exit!.terminal_pct_of_ev).toBeCloseTo(exit!.discounted_terminal_value / exit!.enterprise_value, 12);
+  expect(r.terminal.gordon.terminal_pct_of_ev).toBeCloseTo(r.terminal.gordon.discounted_terminal_value / r.enterprise_value, 12);
+  const gStar = (exit!.terminal_value * r.wacc - finalYear.ufcf) / (exit!.terminal_value + finalYear.ufcf);
+  expect(r.terminal.cross_checks.implied_growth_rate).toBeCloseTo(gStar, 12);
+  expect(r.terminal.cross_checks.implied_multiple).toBeCloseTo(r.terminal_value / ebitda10, 12);
+});
+test("user exit multiple overrides the placeholder and is labeled user input", () => {
+  const r = calculateDcf(fixture(), { ...args, exit_multiple: 12 });
+  expect(r.assumptions.exit_multiple).toBe(12);
+  expect(r.assumptions.exit_multiple_source).toBe("user_input");
+  const ebitda10 = r.projections[9].operating_income + r.projections[9].depreciation_amortization;
+  expect(r.terminal.exit_multiple!.terminal_value).toBeCloseTo(12 * ebitda10, 9);
+});
+test("implied growth above 4 percent triggers a visible warning", () => {
+  const r = calculateDcf(fixture(), args);
+  expect(r.terminal.cross_checks.implied_growth_rate!).toBeGreaterThan(0.04);
+  expect(r.warnings.some((w) => w.startsWith("Implied growth cross-check"))).toBe(true);
+});
+test("invalid exit multiples are rejected", () => {
+  for (const exit_multiple of [0, -2, NaN, Infinity]) expect(() => calculateDcf(fixture(), { ...args, exit_multiple })).toThrow("Exit multiple");
+});
+test("sensitivity grid spans WACC +/-1pp and growth 0 to terminal, center cell equals headline EV", () => {
+  const r = calculateDcf(fixture(), args);
+  expect(r.sensitivity.wacc_values.map((w) => w - r.wacc)).toEqual([-0.01, -0.005, 0, 0.005, 0.01]);
+  expect(r.sensitivity.growth_values).toEqual([0, 0.00625, 0.0125, 0.01875, 0.025]);
+  expect(r.sensitivity.cells[2][4]).toBeCloseTo(r.enterprise_value, 9);
+  const w = r.sensitivity.wacc_values[0], g = r.sensitivity.growth_values[0];
+  const ufcfs = r.projections.map((p) => p.ufcf);
+  const expected = ufcfs.reduce((s, u, i) => s + u / (1 + w) ** (i + 1), 0) + ufcfs[9] * (1 + g) / (w - g) / (1 + w) ** 10;
+  expect(r.sensitivity.cells[0][0]).toBeCloseTo(expected, 9);
+});
+test("breakeven growth reproduces the market enterprise value and is null when unreachable", () => {
+  const r = calculateDcf(fixture(), args);
+  const g = r.terminal.breakeven_growth_rate;
+  expect(g).not.toBeNull();
+  const ufcfs = r.projections.map((p) => p.ufcf);
+  const ev = ufcfs.reduce((s, u, i) => s + u / (1 + r.wacc) ** (i + 1), 0) + ufcfs[9] * (1 + g!) / (r.wacc - g!) / (1 + r.wacc) ** 10;
+  expect(ev).toBeCloseTo(r.terminal.market_enterprise_value, 6);
+  expect(r.terminal.market_enterprise_value).toBe(1080);
+  const pricey = calculateDcf(fixture(), { ...args, current_price: 100000 });
+  expect(pricey.terminal.breakeven_growth_rate).toBeNull();
 });
