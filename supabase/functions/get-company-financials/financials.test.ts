@@ -30,7 +30,7 @@ describe("SEC financial extraction contract", () => {
       expect(field(facts({ [tags[0]]: [row] }, unit), key)).toMatchObject({ value: 123, tag: tags[0], unit, fiscal_year: 2025 });
     });
   }
-  test("revenue fallback order is not overridden by a newer secondary tag", () => {
+  test("revenue fallback order is preserved within the same annual period", () => {
     expect(field(facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [annual(100)], Revenues: [annual(999)] }), "revenue").value).toBe(100);
     expect(field(facts({ Revenues: [annual(200)], SalesRevenueNet: [annual(300)] }), "revenue").tag).toBe("Revenues");
     expect(field(facts({ SalesRevenueNet: [annual(300)] }), "revenue").value).toBe(300);
@@ -64,8 +64,8 @@ describe("SEC financial extraction contract", () => {
     expect(field(facts({ NetIncomeLoss: [annual(30)] }, "EUR"), "net_income")).toBeNull();
     expect(field(facts({ NetIncomeLoss: [annual(NaN)] }), "net_income")).toBeNull();
   });
-  test("existing tag without annual data does not guess from another tag", () => {
-    expect(field(facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [annual(1, { form: "10-Q" })], Revenues: [annual(9)] }), "revenue")).toBeNull();
+  test("existing tag without annual data uses the next valid audited fallback", () => {
+    expect(field(facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [annual(1, { form: "10-Q" })], Revenues: [annual(9)] }), "revenue")).toMatchObject({ value: 9, tag: "Revenues" });
   });
   test("zero and negative reported values remain unchanged", () => {
     expect(field(facts({ NetIncomeLoss: [annual(-25)] }), "net_income").value).toBe(-25);
@@ -155,6 +155,40 @@ describe("SEC financial extraction contract", () => {
     const result = extractFinancials(facts({ Revenues: [annual(100)] }));
     expect(result.linked_missing_fields).toEqual([...Object.keys(LINKED_TAGS), "current_financing"]);
     expect(result.linked_financials.total_equity).toBeNull();
+  });
+});
+describe("period-first tag switches", () => {
+  const year = (val: number, fy: number) => annual(val, { fy, start: `${fy}-01-01`, end: `${fy}-12-31`, accn: `${fy}-filing`, filed: `${fy + 1}-02-05` });
+  test("GOOGL FY2025 Revenues anchors 402.836B instead of abandoned FY2024 contract tag", () => {
+    const raw = facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [year(350000000000, 2024), year(300000000000, 2023)], Revenues: [year(402836000000, 2025), year(999, 2024), year(280000000000, 2022)], OperatingIncomeLoss: [year(100000000000, 2025)] });
+    const result = extractFinancials(raw);
+    expect(result.financials.revenue).toMatchObject({ value: 402836000000, tag: "Revenues", fiscal_year: 2025, period: { end: "2025-12-31" } });
+    expect(result.history.revenue.map(row => row.fiscal_year)).toEqual([2025, 2024, 2023, 2022]);
+    expect(result.history.revenue.map(row => row.tag)).toEqual(["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"]);
+    expect(result.extraction_audit.fields.revenue.tags[0]).toMatchObject({ exists: true, latest_annual_end: "2024-12-31" });
+    expect(result.extraction_audit.fields.revenue.tags[0].rejection_reason).toContain("Stale tag");
+  });
+  test("XOM abandoned FY2018 concept cannot beat four current Revenues years", () => {
+    const result = extractFinancials(facts({ RevenueFromContractWithCustomerExcludingAssessedTax: [year(1, 2018)], Revenues: [2022, 2024, 2025, 2023].map(fy => year(fy * 100000000, fy)) }));
+    expect(result.financials.revenue).toMatchObject({ tag: "Revenues", fiscal_year: 2025 });
+    expect(result.history.revenue.map(row => row.fiscal_year)).toEqual([2025, 2024, 2023, 2022]);
+  });
+  test("every multi-tag field picks newest annual period, including cash and pretax fallbacks", () => {
+    for (const [key, tags] of Object.entries(FIELD_TAGS)) {
+      if (tags.length < 2) continue;
+      const instant = key === "cash";
+      const old = { ...year(10, 2024), ...(instant ? { start: undefined } : {}) };
+      const current = { ...year(20, 2025), ...(instant ? { start: undefined } : {}) };
+      const result = extractFinancials(facts({ [tags[0]]: [old], [tags[1]]: [current] }));
+      expect(result.financials[key]).toMatchObject({ value: 20, tag: tags[1], fiscal_year: 2025 });
+      expect(result.extraction_audit.fields[key].tags[0].rejection_reason).toContain("Stale tag");
+    }
+  });
+  test("every ordinary field audit includes missing tags and latest annual dates", () => {
+    const result = extractFinancials(facts({ Revenues: [year(100, 2025)] }));
+    expect(Object.keys(result.extraction_audit.fields)).toEqual(Object.keys(FIELD_TAGS));
+    expect(result.extraction_audit.fields.revenue.tags[0]).toMatchObject({ exists: false, latest_annual_end: null, rejection_reason: "Tag not reported" });
+    expect(result.extraction_audit.fields.revenue.tags[1]).toMatchObject({ exists: true, latest_annual_end: "2025-12-31", rejection_reason: null });
   });
 });
  describe("Rivian extraction regressions", () => {
