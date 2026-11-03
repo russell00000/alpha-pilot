@@ -12,8 +12,15 @@ interface Result {
   ticker: string; wacc: number; enterprise_value: number; equity_value: number;
   implied_share_price: number; difference_pct: number; current_price: number;
   fiscal_year: number; deviation_warning: boolean; market_price_source: string; market_price_as_of: string | null;
-  treasury: { date: string; rate: number; refreshed_at: string; cache: { hit: boolean; stale: boolean } }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean };
+  treasury: { date: string; rate: number; refreshed_at: string; cache: { hit: boolean; stale: boolean } }; assumptions: { beta: number; cost_of_debt: number; cost_of_debt_estimated: boolean; revenue_growth_rate: number; ebit_margin: number; share_count_change: number; tax_rate_normalized: boolean; exit_multiple: number | null; exit_multiple_source: string };
   projections: { year: number; fiscal_year: number; revenue_growth_rate: number; diluted_shares: number; balance_check: { balanced: boolean; gap: number; assets: number; liabilities: number; equity: number } }[];
+  terminal: {
+    gordon: { terminal_value: number; discounted_terminal_value: number; terminal_pct_of_ev: number; implied_multiple: number | null };
+    exit_multiple: { terminal_value: number; discounted_terminal_value: number; enterprise_value: number; equity_value: number; implied_share_price: number; terminal_pct_of_ev: number; exit_multiple: number; exit_multiple_source: string; ebitda_year_10: number } | null;
+    cross_checks: { implied_growth_rate: number | null; implied_multiple: number | null };
+    breakeven_growth_rate: number | null; market_enterprise_value: number;
+  };
+  sensitivity: { wacc_values: number[]; growth_values: number[]; cells: (number | null)[][] };
   model_notes: string[]; warnings: string[]; company_type: CompanyType;
 }
 interface Preparation {
@@ -46,6 +53,7 @@ function assumptionRows(result: Result, preparation: Preparation | null): [strin
     ["Risk-free rate", pct(result.treasury.rate), `Treasury 10-year · observation ${result.treasury.date} · cache refreshed ${result.treasury.refreshed_at}${result.treasury.cache.stale ? " · Stale: refresh temporarily unavailable" : " · 24-hour cache"}`],
     ["Equity risk premium", "4.50%", "Default"],
     ["Terminal growth", "2.50%", "Default"],
+    ["Exit multiple (EV/EBITDA)", result.assumptions.exit_multiple === null ? "Unavailable" : `${result.assumptions.exit_multiple.toFixed(2)}×`, result.assumptions.exit_multiple_source === "user_input" ? "User input" : result.assumptions.exit_multiple_source === "placeholder_company_trailing_ev_ebitda" ? "Placeholder — company's own trailing EV/EBITDA (peer-comp multiple not built yet)" : "Unavailable — base EBITDA not positive"],
   ];
 }
 
