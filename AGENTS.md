@@ -1,5 +1,6 @@
 
 - Never animate background layers or write CSS variables to <html> every frame — frosted-glass panels re-blur on each change, causing site-wide jank.
+- Keep stock-analysis AI transport separate from market-data timeouts; await generation without a timer-driven abort so valid model work is not discarded as a 500.
 - Keep SEC financial extraction in the get-company-financials edge function with a pure, locally tested parser; server-side identification and service-only caches prevent browser SEC restrictions and unauditable financial guesses.
 - Rank every financial field across all fallback tags by annual period end before applying tag order and filing date; select histories per period across tags and audit existence/latest dates/rejection reasons, preventing abandoned concepts from anchoring stale years. Preserve same-filing balance components, explicitly label lease-inclusive PP&E and never double-count combined debt tags.
 - Use the shared bounded-fetch wrapper for DCF pipeline requests (including SDK transport and body reads); never retry timed-out upstream requests or swallow their errors, so slow providers fail visibly.

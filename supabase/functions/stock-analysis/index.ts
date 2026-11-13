@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { requestAnalysis } from "./ai-request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -386,10 +387,10 @@ ${philosophy?.market_insights_style || "Be helpful and informative, communicatin
     const userPrompt = `Produce a deep-dive research note on ${symbol}${fundamentals?.companyName ? ` (${fundamentals.companyName})` : ""}.
 
 ## LIVE MARKET DATA
-Current Price: $${price}
+Current Price: $${currentPrice}
 Daily Change: ${changePercent !== undefined ? (changePercent > 0 ? '+' : '') + changePercent.toFixed(2) + '%' : 'n/a'}
-52-Week High: $${week52High}
-52-Week Low: $${week52Low}
+52-Week High: $${week52High ?? fundamentals?.fiftyTwoWeekHigh ?? "not disclosed"}
+52-Week Low: $${week52Low ?? fundamentals?.fiftyTwoWeekLow ?? "not disclosed"}
 Volume: ${volume}
 
 ## FUNDAMENTALS (real data — ground every number you cite to this block)
@@ -421,23 +422,7 @@ Provide your analysis in the following JSON format only, no other text:
 
 Return ONLY the JSON. Be decisive, specific, and grounded in the investing philosophy.`;
 
-    const response = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        // Output is shorter now (positionSizing removed) — smaller budget = faster completion.
-        max_tokens: 1300,
-        response_format: { type: "json_object" },
-      }),
-    }, 11000);
+    const response = await requestAnalysis(LOVABLE_API_KEY, systemPrompt, userPrompt);
 
     if (!response.ok) {
       if (response.status === 429) {
